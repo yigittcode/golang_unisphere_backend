@@ -1,0 +1,946 @@
+basePath: /api/v1
+definitions:
+  dto.APIResponse:
+    properties:
+      data: {}
+      error: {}
+      message:
+        example: Operation successful
+        type: string
+      success:
+        example: true
+        type: boolean
+      timestamp:
+        example: "2025-04-23T12:01:05.123Z"
+        type: string
+    type: object
+  dto.CreatePastExamRequest:
+    properties:
+      content:
+        type: string
+      courseCode:
+        type: string
+      departmentId:
+        minimum: 1
+        type: integer
+      fileUrl:
+        type: string
+      term:
+        enum:
+        - FALL
+        - SPRING
+        type: string
+      title:
+        type: string
+      year:
+        maximum: 2100
+        minimum: 1900
+        type: integer
+    required:
+    - content
+    - courseCode
+    - departmentId
+    - term
+    - title
+    - year
+    type: object
+  dto.ErrorCode:
+    enum:
+    - AUTH_001
+    - AUTH_002
+    - AUTH_003
+    - AUTH_004
+    - AUTH_005
+    - AUTH_006
+    - AUTH_007
+    - AUTH_008
+    - RES_001
+    - RES_002
+    - RES_003
+    - VAL_001
+    - SRV_001
+    - SRV_002
+    - SRV_003
+    type: string
+    x-enum-varnames:
+    - ErrorCodeInvalidCredentials
+    - ErrorCodeInvalidEmail
+    - ErrorCodeInvalidPassword
+    - ErrorCodeInvalidStudentID
+    - ErrorCodeInvalidToken
+    - ErrorCodeExpiredToken
+    - ErrorCodeTokenNotFound
+    - ErrorCodeUnauthorized
+    - ErrorCodeResourceNotFound
+    - ErrorCodeResourceAlreadyExists
+    - ErrorCodeResourceInvalid
+    - ErrorCodeValidationFailed
+    - ErrorCodeInternalServer
+    - ErrorCodeDatabaseError
+    - ErrorCodeExternalServiceError
+  dto.ErrorDetail:
+    properties:
+      code:
+        allOf:
+        - $ref: '#/definitions/dto.ErrorCode'
+        example: AUTH_001
+      debugInfo:
+        type: string
+      details: {}
+      field:
+        example: email
+        type: string
+      message:
+        example: Email format is invalid, school email required
+        type: string
+      severity:
+        allOf:
+        - $ref: '#/definitions/dto.ErrorSeverity'
+        example: ERROR
+    type: object
+  dto.ErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/dto.ErrorDetail'
+      success:
+        example: false
+        type: boolean
+      timestamp:
+        example: "2025-04-23T12:01:05.123Z"
+        type: string
+    type: object
+  dto.ErrorSeverity:
+    enum:
+    - INFO
+    - WARNING
+    - ERROR
+    - CRITICAL
+    type: string
+    x-enum-varnames:
+    - ErrorSeverityInfo
+    - ErrorSeverityWarning
+    - ErrorSeverityError
+    - ErrorSeverityCritical
+  dto.LoginRequest:
+    properties:
+      email:
+        example: user@school.edu.tr
+        type: string
+      password:
+        example: Password123
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  dto.RefreshTokenRequest:
+    properties:
+      refreshToken:
+        example: 62a71580-9d9e-4884-a000-5dc497a3d1d8
+        type: string
+    required:
+    - refreshToken
+    type: object
+  dto.RegisterInstructorRequest:
+    properties:
+      departmentId:
+        example: 1
+        type: integer
+      email:
+        example: instructor@school.edu.tr
+        type: string
+      firstName:
+        example: Jane
+        type: string
+      lastName:
+        example: Smith
+        type: string
+      password:
+        example: Password123
+        minLength: 6
+        type: string
+      title:
+        example: Professor
+        type: string
+    required:
+    - departmentId
+    - email
+    - firstName
+    - lastName
+    - password
+    - title
+    type: object
+  dto.RegisterStudentRequest:
+    properties:
+      departmentId:
+        example: 1
+        type: integer
+      email:
+        example: student@school.edu.tr
+        type: string
+      firstName:
+        example: John
+        type: string
+      graduationYear:
+        example: 2025
+        type: integer
+      lastName:
+        example: Doe
+        type: string
+      password:
+        example: Password123
+        minLength: 6
+        type: string
+      studentId:
+        example: "12345678"
+        type: string
+    required:
+    - departmentId
+    - email
+    - firstName
+    - lastName
+    - password
+    - studentId
+    type: object
+  dto.UpdatePastExamRequest:
+    properties:
+      content:
+        type: string
+      courseCode:
+        type: string
+      departmentId:
+        minimum: 1
+        type: integer
+      fileUrl:
+        type: string
+      term:
+        enum:
+        - FALL
+        - SPRING
+        type: string
+      title:
+        type: string
+      year:
+        maximum: 2100
+        minimum: 1900
+        type: integer
+    required:
+    - content
+    - courseCode
+    - departmentId
+    - term
+    - title
+    - year
+    type: object
+  models.Department:
+    properties:
+      code:
+        type: string
+      faculty:
+        $ref: '#/definitions/models.Faculty'
+      faculty_id:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  models.Faculty:
+    properties:
+      code:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@unisphere.com
+    name: API Support
+    url: https://www.unisphere.com/support
+  description: API for UniSphere university social platform
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: UniSphere API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate with email and password
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "400":
+          description: Invalid request format
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: User login
+      tags:
+      - auth
+  /auth/profile:
+    get:
+      description: Get profile information for authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Profile retrieved successfully
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user profile
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Generate new access and refresh tokens using refresh token
+      parameters:
+      - description: Refresh token information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token refresh successful
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "400":
+          description: Invalid request format
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Invalid or expired token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Refresh authentication token
+      tags:
+      - auth
+  /auth/register-instructor:
+    post:
+      consumes:
+      - application/json
+      description: Create a new instructor account
+      parameters:
+      - description: Instructor registration information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RegisterInstructorRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Instructor successfully registered
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "400":
+          description: Invalid request format or validation error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Email already in use
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Register a new instructor
+      tags:
+      - auth
+  /auth/register-student:
+    post:
+      consumes:
+      - application/json
+      description: Create a new student account
+      parameters:
+      - description: Student registration information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RegisterStudentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Student successfully registered
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "400":
+          description: Invalid request format or validation error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Email or student ID already in use
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Register a new student
+      tags:
+      - auth
+  /departments:
+    get:
+      description: Get a list of all departments
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Departments retrieved successfully
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get all departments
+      tags:
+      - departments
+    post:
+      consumes:
+      - application/json
+      description: Create a new department with the provided data
+      parameters:
+      - description: Department information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.Department'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Department successfully created
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "400":
+          description: Invalid request format or validation error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Faculty not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Department already exists
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Create a new department
+      tags:
+      - departments
+  /departments/{id}:
+    delete:
+      description: Delete a department by ID
+      parameters:
+      - description: Department ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Department successfully deleted
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "404":
+          description: Department not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Cannot delete department with associated data
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Delete a department
+      tags:
+      - departments
+    get:
+      description: Get department information by ID
+      parameters:
+      - description: Department ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Department information retrieved successfully
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "404":
+          description: Department not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get department by ID
+      tags:
+      - departments
+    put:
+      consumes:
+      - application/json
+      description: Update a department with the provided data
+      parameters:
+      - description: Department ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated department information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.Department'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Department successfully updated
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "400":
+          description: Invalid request format or validation error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Department not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Update a department
+      tags:
+      - departments
+  /faculties:
+    get:
+      description: Get a list of all faculties
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Faculties retrieved successfully
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get all faculties
+      tags:
+      - faculties
+    post:
+      consumes:
+      - application/json
+      description: Create a new faculty with the provided data
+      parameters:
+      - description: Faculty information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.Faculty'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Faculty successfully created
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "400":
+          description: Invalid request format or validation error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Faculty already exists
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Create a new faculty
+      tags:
+      - faculties
+  /faculties/{id}:
+    delete:
+      description: Delete a faculty by ID
+      parameters:
+      - description: Faculty ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Faculty successfully deleted
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "404":
+          description: Faculty not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Cannot delete faculty with associated departments
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Delete a faculty
+      tags:
+      - faculties
+    get:
+      description: Get faculty information by ID
+      parameters:
+      - description: Faculty ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Faculty information retrieved successfully
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "404":
+          description: Faculty not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get faculty by ID
+      tags:
+      - faculties
+    put:
+      consumes:
+      - application/json
+      description: Update a faculty with the provided data
+      parameters:
+      - description: Faculty ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated faculty information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.Faculty'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Faculty successfully updated
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "400":
+          description: Invalid request format or validation error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Faculty not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Update a faculty
+      tags:
+      - faculties
+  /faculty-departments/{facultyId}:
+    get:
+      description: Get a list of departments for a specific faculty
+      parameters:
+      - description: Faculty ID
+        in: path
+        name: facultyId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Departments retrieved successfully
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "404":
+          description: Faculty not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get departments by faculty ID
+      tags:
+      - departments
+  /pastexams:
+    get:
+      description: Get a list of all past exams with optional filtering and pagination
+      parameters:
+      - description: Filter by faculty ID
+        in: query
+        name: facultyId
+        type: integer
+      - description: Filter by department ID
+        in: query
+        name: departmentId
+        type: integer
+      - description: Filter by course code
+        in: query
+        name: courseCode
+        type: string
+      - description: Filter by year
+        in: query
+        name: year
+        type: integer
+      - description: Filter by term (FALL or SPRING)
+        in: query
+        name: term
+        type: string
+      - description: 'Sort field (default: createdAt)'
+        in: query
+        name: sortBy
+        type: string
+      - description: 'Sort order (ASC or DESC, default: DESC)'
+        in: query
+        name: sortOrder
+        type: string
+      - description: 'Page number (0-based, default: 0)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 10)'
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Past exams retrieved successfully
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get all past exams
+      tags:
+      - pastexams
+    post:
+      consumes:
+      - application/json
+      description: Create a new past exam with the provided data
+      parameters:
+      - description: Past exam information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreatePastExamRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Past exam successfully created
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "400":
+          description: Invalid request format or validation error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Permission denied or not an instructor
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Create a new past exam
+      tags:
+      - pastexams
+  /pastexams/{id}:
+    delete:
+      description: Delete a past exam by ID
+      parameters:
+      - description: Past Exam ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Past exam successfully deleted
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "403":
+          description: Permission denied or not an instructor
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Past exam not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Delete a past exam
+      tags:
+      - pastexams
+    get:
+      description: Get past exam information by ID
+      parameters:
+      - description: Past Exam ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Past exam information retrieved successfully
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "404":
+          description: Past exam not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get past exam by ID
+      tags:
+      - pastexams
+    put:
+      consumes:
+      - application/json
+      description: Update a past exam with the provided data
+      parameters:
+      - description: Past Exam ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated past exam information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdatePastExamRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Past exam successfully updated
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "400":
+          description: Invalid request format or validation error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Permission denied or not an instructor
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Past exam not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Update a past exam
+      tags:
+      - pastexams
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    description: JWT token for authorization
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
