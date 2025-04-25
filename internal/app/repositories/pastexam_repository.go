@@ -6,10 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yigit/unisphere/internal/app/models"
+	"github.com/yigit/unisphere/internal/pkg/logger"
 )
 
 // PastExam error types
@@ -20,95 +23,146 @@ var (
 // PastExamRepository handles past exam database operations
 type PastExamRepository struct {
 	db *pgxpool.Pool
+	sb squirrel.StatementBuilderType
 }
 
 // NewPastExamRepository creates a new PastExamRepository
 func NewPastExamRepository(db *pgxpool.Pool) *PastExamRepository {
 	return &PastExamRepository{
 		db: db,
+		sb: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
 	}
 }
 
-// GetAllPastExams retrieves all past exams with pagination and optional filtering
+// Helper function to get nullable string from pointer
+func getNullString(s *string) sql.NullString {
+	if s == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: *s, Valid: true}
+}
+
+// Helper function to get nullable string from value
+func getContentNullString(s string) sql.NullString {
+	if s == "" {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: s, Valid: true}
+}
+
+// Helper function to get nullable int64
+func getNullInt64(i int64) sql.NullInt64 {
+	if i == 0 {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: i, Valid: true}
+}
+
+// GetAllPastExams retrieves all past exams with pagination and optional filtering/sorting
 func (r *PastExamRepository) GetAllPastExams(ctx context.Context, page, pageSize int, filters map[string]interface{}) ([]models.PastExam, int, error) {
-	offset := (page - 1) * pageSize
+	offset := uint64((page - 1) * pageSize)
 
-	// Common base query parts - extracted to constants for readability
-	const baseSelectCount = `
-		SELECT COUNT(*) 
-		FROM past_exams pe
-		JOIN departments d ON pe.department_id = d.id
-		JOIN faculties f ON d.faculty_id = f.id
-		WHERE 1=1
-	`
+	// Base select query
+	baseSelect := r.sb.Select(
+		"pe.id", "pe.year", "pe.term", "pe.department_id", "pe.course_code",
+		"pe.title", "pe.content", "pe.file_url", "pe.instructor_id",
+		"pe.created_at", "pe.updated_at",
+		"d.name as department_name",
+		"f.id as faculty_id", "f.name as faculty_name",
+		"COALESCE(u.first_name || ' ' || u.last_name, '') as instructor_name",
+		"COALESCE(u.email, '') as uploaded_by_email",
+	).
+		From("past_exams pe").
+		Join("departments d ON pe.department_id = d.id").
+		Join("faculties f ON d.faculty_id = f.id").
+		LeftJoin("instructors i ON pe.instructor_id = i.id").
+		LeftJoin("users u ON i.user_id = u.id")
 
-	const baseSelectColumns = `
-		SELECT 
-			pe.id, pe.year, pe.term, pe.department_id, pe.course_code, 
-			pe.title, pe.content, pe.file_url, pe.instructor_id, 
-			pe.created_at, pe.updated_at,
-			d.name as department_name,
-			f.id as faculty_id, f.name as faculty_name,
-			u.first_name || ' ' || u.last_name as instructor_name,
-			u.email as uploaded_by_email
-		FROM past_exams pe
-		JOIN departments d ON pe.department_id = d.id
-		JOIN faculties f ON d.faculty_id = f.id
-		LEFT JOIN instructors i ON pe.instructor_id = i.id
-		LEFT JOIN users u ON i.user_id = u.id
-		WHERE 1=1
-	`
+	// Count query (without limit/offset/order)
+	countSelect := r.sb.Select("COUNT(*)").
+		From("past_exams pe").
+		Join("departments d ON pe.department_id = d.id").
+		Join("faculties f ON d.faculty_id = f.id").
+		LeftJoin("instructors i ON pe.instructor_id = i.id").
+		LeftJoin("users u ON i.user_id = u.id")
 
-	// Build where clause for filtering
-	whereClause, whereArgs := buildWhereClause(filters)
-
-	// Full count query
-	countQuery := baseSelectCount
-	if whereClause != "" {
-		countQuery += " AND " + whereClause
+	// Apply filters
+	whereCondition := squirrel.And{}
+	if facultyID, ok := filters["faculty_id"].(int); ok && facultyID > 0 {
+		whereCondition = append(whereCondition, squirrel.Eq{"f.id": facultyID})
+	}
+	if departmentID, ok := filters["department_id"].(int); ok && departmentID > 0 {
+		whereCondition = append(whereCondition, squirrel.Eq{"pe.department_id": departmentID})
+	}
+	if year, ok := filters["year"].(int); ok && year > 0 {
+		whereCondition = append(whereCondition, squirrel.Eq{"pe.year": year})
+	}
+	if term, ok := filters["term"].(string); ok && term != "" {
+		whereCondition = append(whereCondition, squirrel.Eq{"pe.term": term})
+	}
+	if courseCode, ok := filters["course_code"].(string); ok && courseCode != "" {
+		whereCondition = append(whereCondition, squirrel.ILike{"pe.course_code": "%" + strings.TrimSpace(courseCode) + "%"})
+	}
+	if title, ok := filters["title"].(string); ok && title != "" {
+		whereCondition = append(whereCondition, squirrel.ILike{"pe.title": "%" + strings.TrimSpace(title) + "%"})
+	}
+	if instructorName, ok := filters["instructor_name"].(string); ok && instructorName != "" {
+		whereCondition = append(whereCondition, squirrel.Expr("u.first_name || ' ' || u.last_name ILIKE ?", "%"+strings.TrimSpace(instructorName)+"%"))
 	}
 
-	// Execute count query
-	var totalItems int
-	err := r.db.QueryRow(ctx, countQuery, whereArgs...).Scan(&totalItems)
+	baseSelect = baseSelect.Where(whereCondition)
+	countSelect = countSelect.Where(whereCondition)
+
+	// --- Execute Count Query ---
+	countSql, countArgs, err := countSelect.ToSql()
 	if err != nil {
+		logger.Error().Err(err).Msg("Error building count past exams SQL")
+		return nil, 0, fmt.Errorf("failed to build count past exams query: %w", err)
+	}
+
+	var totalItems int
+	err = r.db.QueryRow(ctx, countSql, countArgs...).Scan(&totalItems)
+	if err != nil {
+		logger.Error().Err(err).Msg("Error executing count past exams query")
 		return nil, 0, fmt.Errorf("failed to count past exams: %w", err)
 	}
 
-	// Build main query
-	query := baseSelectColumns
-	if whereClause != "" {
-		query += " AND " + whereClause
+	if totalItems == 0 {
+		return []models.PastExam{}, 0, nil
 	}
 
-	// Add sorting - using prepared statement parameters instead of string concatenation
-	// to avoid SQL injection
+	// --- Apply Sorting and Pagination ---
 	sortBy := "created_at"
 	sortOrder := "DESC"
 
-	if val, ok := filters["sortBy"]; ok && val != nil {
+	if val, ok := filters["sortBy"]; ok {
 		if field, ok := val.(string); ok && isValidSortField(field) {
 			sortBy = field
 		}
 	}
-
-	if val, ok := filters["sortOrder"]; ok && val != nil {
-		if order, ok := val.(string); ok && (order == "ASC" || order == "DESC") {
-			sortOrder = order
+	if val, ok := filters["sortOrder"]; ok {
+		if order, ok := val.(string); ok && (strings.ToUpper(order) == "ASC" || strings.ToUpper(order) == "DESC") {
+			sortOrder = strings.ToUpper(order)
 		}
 	}
 
-	// Build sort and pagination part of the query using a safer approach
-	// Add ORDER BY clause based on validated sortBy and sortOrder values
-	query += " ORDER BY pe." + sortBy + " " + sortOrder + " LIMIT $" +
-		fmt.Sprintf("%d", len(whereArgs)+1) + " OFFSET $" + fmt.Sprintf("%d", len(whereArgs)+2)
+	// Map model fields to DB columns for sorting
+	dbSortColumn := mapSortFieldToColumn(sortBy)
 
-	// Add pagination args
-	queryArgs := append(whereArgs, pageSize, offset)
+	baseSelect = baseSelect.OrderBy(fmt.Sprintf("%s %s", dbSortColumn, sortOrder)).
+		Limit(uint64(pageSize)).
+		Offset(offset)
 
-	// Execute query
-	rows, err := r.db.Query(ctx, query, queryArgs...)
+	// --- Execute Main Query ---
+	querySql, queryArgs, err := baseSelect.ToSql()
 	if err != nil {
+		logger.Error().Err(err).Msg("Error building get all past exams SQL")
+		return nil, 0, fmt.Errorf("failed to build get past exams query: %w", err)
+	}
+
+	rows, err := r.db.Query(ctx, querySql, queryArgs...)
+	if err != nil {
+		logger.Error().Err(err).Msg("Error executing get all past exams query")
 		return nil, 0, fmt.Errorf("failed to query past exams: %w", err)
 	}
 	defer rows.Close()
@@ -117,19 +171,20 @@ func (r *PastExamRepository) GetAllPastExams(ctx context.Context, page, pageSize
 	for rows.Next() {
 		var pastExam models.PastExam
 		var departmentName, facultyName, instructorName, uploadedByEmail sql.NullString
-		var facultyID sql.NullInt64
+		var facultyID, nullableInstructorID sql.NullInt64
 
 		err := rows.Scan(
 			&pastExam.ID, &pastExam.Year, &pastExam.Term, &pastExam.DepartmentID,
 			&pastExam.CourseCode, &pastExam.Title, &pastExam.Content, &pastExam.FileURL,
-			&pastExam.InstructorID, &pastExam.CreatedAt, &pastExam.UpdatedAt,
+			&nullableInstructorID,
+			&pastExam.CreatedAt, &pastExam.UpdatedAt,
 			&departmentName, &facultyID, &facultyName, &instructorName, &uploadedByEmail,
 		)
 		if err != nil {
+			logger.Error().Err(err).Msg("Error scanning past exam row")
 			return nil, 0, fmt.Errorf("failed to scan past exam row: %w", err)
 		}
 
-		// Handle null values
 		if departmentName.Valid {
 			pastExam.Department = &models.Department{ID: pastExam.DepartmentID, Name: departmentName.String}
 		}
@@ -137,60 +192,76 @@ func (r *PastExamRepository) GetAllPastExams(ctx context.Context, page, pageSize
 			pastExam.FacultyID = facultyID.Int64
 			pastExam.Faculty = &models.Faculty{ID: facultyID.Int64, Name: facultyName.String}
 		}
-		if instructorName.Valid {
-			pastExam.UploadedByName = instructorName.String
-		}
-		if uploadedByEmail.Valid {
-			pastExam.UploadedByEmail = uploadedByEmail.String
+		if nullableInstructorID.Valid {
+			pastExam.InstructorID = nullableInstructorID.Int64
+			if instructorName.Valid {
+				pastExam.UploadedByName = instructorName.String
+			}
+			if uploadedByEmail.Valid {
+				pastExam.UploadedByEmail = uploadedByEmail.String
+			}
+		} else {
+			pastExam.InstructorID = 0
 		}
 
 		pastExams = append(pastExams, pastExam)
 	}
 
 	if err := rows.Err(); err != nil {
+		logger.Error().Err(err).Msg("Error iterating past exam rows")
 		return nil, 0, fmt.Errorf("error iterating past exam rows: %w", err)
 	}
 
+	logger.Info().Int("page", page).Int("pageSize", pageSize).Int("totalItems", totalItems).Int("returnedItems", len(pastExams)).Msg("Successfully fetched past exams")
 	return pastExams, totalItems, nil
 }
 
-// GetPastExamByID retrieves a past exam by its ID
+// GetPastExamByID retrieves a past exam by its ID including related data
 func (r *PastExamRepository) GetPastExamByID(ctx context.Context, id int64) (*models.PastExam, error) {
-	query := `
-		SELECT 
-			pe.id, pe.year, pe.term, pe.department_id, pe.course_code, 
-			pe.title, pe.content, pe.file_url, pe.instructor_id, 
-			pe.created_at, pe.updated_at,
-			d.name as department_name,
-			f.id as faculty_id, f.name as faculty_name,
-			u.first_name || ' ' || u.last_name as instructor_name,
-			u.email as uploaded_by_email
-		FROM past_exams pe
-		JOIN departments d ON pe.department_id = d.id
-		JOIN faculties f ON d.faculty_id = f.id
-		LEFT JOIN instructors i ON pe.instructor_id = i.id
-		LEFT JOIN users u ON i.user_id = u.id
-		WHERE pe.id = $1
-	`
+	selectBuilder := r.sb.Select(
+		"pe.id", "pe.year", "pe.term", "pe.department_id", "pe.course_code",
+		"pe.title", "pe.content", "pe.file_url", "pe.instructor_id",
+		"pe.created_at", "pe.updated_at",
+		"d.name as department_name",
+		"f.id as faculty_id", "f.name as faculty_name",
+		"COALESCE(u.first_name || ' ' || u.last_name, '') as instructor_name",
+		"COALESCE(u.email, '') as uploaded_by_email",
+	).
+		From("past_exams pe").
+		Join("departments d ON pe.department_id = d.id").
+		Join("faculties f ON d.faculty_id = f.id").
+		LeftJoin("instructors i ON pe.instructor_id = i.id").
+		LeftJoin("users u ON i.user_id = u.id").
+		Where(squirrel.Eq{"pe.id": id}).
+		Limit(1)
+
+	sqlQuery, args, err := selectBuilder.ToSql()
+	if err != nil {
+		logger.Error().Err(err).Msg("Error building get past exam by ID SQL")
+		return nil, fmt.Errorf("failed to build get past exam query: %w", err)
+	}
 
 	var pastExam models.PastExam
 	var departmentName, facultyName, instructorName, uploadedByEmail sql.NullString
-	var facultyID sql.NullInt64
+	var facultyID, nullableInstructorID sql.NullInt64
 
-	err := r.db.QueryRow(ctx, query, id).Scan(
+	err = r.db.QueryRow(ctx, sqlQuery, args...).Scan(
 		&pastExam.ID, &pastExam.Year, &pastExam.Term, &pastExam.DepartmentID,
 		&pastExam.CourseCode, &pastExam.Title, &pastExam.Content, &pastExam.FileURL,
-		&pastExam.InstructorID, &pastExam.CreatedAt, &pastExam.UpdatedAt,
+		&nullableInstructorID,
+		&pastExam.CreatedAt, &pastExam.UpdatedAt,
 		&departmentName, &facultyID, &facultyName, &instructorName, &uploadedByEmail,
 	)
+
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrPastExamNotFound
+			logger.Warn().Int64("pastExamID", id).Msg("Past exam not found by ID")
+			return nil, ErrPastExamNotFound
 		}
+		logger.Error().Err(err).Int64("pastExamID", id).Msg("Error scanning past exam row by ID")
 		return nil, fmt.Errorf("error querying past exam ID=%d: %w", id, err)
 	}
 
-	// Handle null values
 	if departmentName.Valid {
 		pastExam.Department = &models.Department{ID: pastExam.DepartmentID, Name: departmentName.String}
 	}
@@ -198,11 +269,16 @@ func (r *PastExamRepository) GetPastExamByID(ctx context.Context, id int64) (*mo
 		pastExam.FacultyID = facultyID.Int64
 		pastExam.Faculty = &models.Faculty{ID: facultyID.Int64, Name: facultyName.String}
 	}
-	if instructorName.Valid {
-		pastExam.UploadedByName = instructorName.String
-	}
-	if uploadedByEmail.Valid {
-		pastExam.UploadedByEmail = uploadedByEmail.String
+	if nullableInstructorID.Valid {
+		pastExam.InstructorID = nullableInstructorID.Int64
+		if instructorName.Valid {
+			pastExam.UploadedByName = instructorName.String
+		}
+		if uploadedByEmail.Valid {
+			pastExam.UploadedByEmail = uploadedByEmail.String
+		}
+	} else {
+		pastExam.InstructorID = 0
 	}
 
 	return &pastExam, nil
@@ -210,122 +286,143 @@ func (r *PastExamRepository) GetPastExamByID(ctx context.Context, id int64) (*mo
 
 // CreatePastExam inserts a new past exam into the database
 func (r *PastExamRepository) CreatePastExam(ctx context.Context, pastExam *models.PastExam) (int64, error) {
-	// InstructorID zaten bulunuyor, öğretim görevlisini aramaya gerek yok
-	query := `
-		INSERT INTO past_exams (
-			year, term, department_id, course_code, title, content, 
-			file_url, instructor_id
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		RETURNING id
-	`
+	var instructorIDArg interface{}
+	if pastExam.InstructorID != 0 {
+		instructorIDArg = pastExam.InstructorID
+	} else {
+		instructorIDArg = nil
+	}
 
-	var id int64
-	err := r.db.QueryRow(ctx, query,
-		pastExam.Year, pastExam.Term, pastExam.DepartmentID, pastExam.CourseCode,
-		pastExam.Title, pastExam.Content, pastExam.FileURL, pastExam.InstructorID,
-	).Scan(&id)
+	sql, args, err := r.sb.Insert("past_exams").
+		Columns(
+			"year", "term", "department_id", "course_code", "title", "content",
+			"file_url", "instructor_id",
+		).
+		Values(
+			pastExam.Year, pastExam.Term, pastExam.DepartmentID, pastExam.CourseCode,
+			pastExam.Title, pastExam.Content, getNullString(pastExam.FileURL),
+			instructorIDArg,
+		).
+		Suffix("RETURNING id").
+		ToSql()
 
 	if err != nil {
+		logger.Error().Err(err).Msg("Error building create past exam SQL")
+		return 0, fmt.Errorf("failed to build create past exam query: %w", err)
+	}
+
+	var id int64
+	err = r.db.QueryRow(ctx, sql, args...).Scan(&id)
+	if err != nil {
+		logger.Error().Err(err).Msg("Error executing create past exam query")
 		return 0, fmt.Errorf("error inserting past exam: %w", err)
 	}
 
+	logger.Info().Int64("pastExamID", id).Msg("Past exam created successfully")
 	return id, nil
 }
 
 // UpdatePastExam updates an existing past exam in the database
 func (r *PastExamRepository) UpdatePastExam(ctx context.Context, pastExam *models.PastExam) error {
-	query := `
-		UPDATE past_exams SET
-			year = $1, term = $2, department_id = $3, course_code = $4, 
-			title = $5, content = $6, file_url = $7, updated_at = CURRENT_TIMESTAMP
-		WHERE id = $8
-	`
+	var instructorIDArg interface{}
+	if pastExam.InstructorID != 0 {
+		instructorIDArg = pastExam.InstructorID
+	} else {
+		instructorIDArg = nil
+	}
 
-	cmdTag, err := r.db.Exec(ctx, query,
-		pastExam.Year, pastExam.Term, pastExam.DepartmentID, pastExam.CourseCode,
-		pastExam.Title, pastExam.Content, pastExam.FileURL, pastExam.ID,
-	)
+	sql, args, err := r.sb.Update("past_exams").
+		SetMap(map[string]interface{}{
+			"year":          pastExam.Year,
+			"term":          pastExam.Term,
+			"department_id": pastExam.DepartmentID,
+			"course_code":   pastExam.CourseCode,
+			"title":         pastExam.Title,
+			"content":       getContentNullString(pastExam.Content),
+			"file_url":      getNullString(pastExam.FileURL),
+			"instructor_id": instructorIDArg,
+			"updated_at":    time.Now(),
+		}).
+		Where(squirrel.Eq{"id": pastExam.ID}).
+		ToSql()
+
 	if err != nil {
+		logger.Error().Err(err).Int64("pastExamID", pastExam.ID).Msg("Error building update past exam SQL")
+		return fmt.Errorf("failed to build update past exam query: %w", err)
+	}
+
+	cmdTag, err := r.db.Exec(ctx, sql, args...)
+	if err != nil {
+		// Log error before returning
+		logger.Error().Err(err).Int64("pastExamID", pastExam.ID).Msg("Error executing update past exam query")
 		return fmt.Errorf("error updating past exam ID=%d: %w", pastExam.ID, err)
 	}
 
 	if cmdTag.RowsAffected() == 0 {
+		// Log warning before returning
+		logger.Warn().Int64("pastExamID", pastExam.ID).Msg("Attempted to update non-existent past exam")
 		return ErrPastExamNotFound
 	}
 
+	// Log success
+	logger.Info().Int64("pastExamID", pastExam.ID).Msg("Past exam updated successfully")
 	return nil
 }
 
 // DeletePastExam removes a past exam from the database
 func (r *PastExamRepository) DeletePastExam(ctx context.Context, id int64) error {
-	query := "DELETE FROM past_exams WHERE id = $1"
+	sql, args, err := r.sb.Delete("past_exams"). // Use squirrel
+							Where(squirrel.Eq{"id": id}).
+							ToSql()
 
-	cmdTag, err := r.db.Exec(ctx, query, id)
 	if err != nil {
+		logger.Error().Err(err).Int64("pastExamID", id).Msg("Error building delete past exam SQL")
+		return fmt.Errorf("failed to build delete past exam query: %w", err)
+	}
+
+	cmdTag, err := r.db.Exec(ctx, sql, args...)
+	if err != nil {
+		logger.Error().Err(err).Int64("pastExamID", id).Msg("Error executing delete past exam query")
 		return fmt.Errorf("error deleting past exam ID=%d: %w", id, err)
 	}
 
 	if cmdTag.RowsAffected() == 0 {
+		logger.Warn().Int64("pastExamID", id).Msg("Attempted to delete non-existent past exam")
 		return ErrPastExamNotFound
 	}
 
+	logger.Info().Int64("pastExamID", id).Msg("Past exam deleted successfully")
 	return nil
 }
 
-// buildWhereClause constructs the WHERE clause for filtering past exams
-func buildWhereClause(filters map[string]interface{}) (string, []interface{}) {
-	var conditions []string
-	var args []interface{}
-	argIndex := 1
-
-	// Add conditions based on the filters
-	for key, value := range filters {
-		// Skip sort and paging related parameters
-		if key == "sortBy" || key == "sortOrder" || value == nil {
-			continue
-		}
-
-		switch key {
-		case "year":
-			conditions = append(conditions, "pe.year = $"+fmt.Sprintf("%d", argIndex))
-			args = append(args, value)
-			argIndex++
-		case "term":
-			conditions = append(conditions, "pe.term = $"+fmt.Sprintf("%d", argIndex))
-			args = append(args, value)
-			argIndex++
-		case "departmentId":
-			conditions = append(conditions, "pe.department_id = $"+fmt.Sprintf("%d", argIndex))
-			args = append(args, value)
-			argIndex++
-		case "facultyId":
-			conditions = append(conditions, "d.faculty_id = $"+fmt.Sprintf("%d", argIndex))
-			args = append(args, value)
-			argIndex++
-		case "courseCode":
-			conditions = append(conditions, "pe.course_code = $"+fmt.Sprintf("%d", argIndex))
-			args = append(args, value)
-			argIndex++
-		case "instructorId":
-			conditions = append(conditions, "pe.instructor_id = $"+fmt.Sprintf("%d", argIndex))
-			args = append(args, value)
-			argIndex++
-		case "search":
-			// Search in title, content, and course code (case insensitive)
-			searchTerm := "%" + fmt.Sprintf("%v", value) + "%"
-			conditions = append(conditions, "(LOWER(pe.title) LIKE LOWER($"+fmt.Sprintf("%d", argIndex)+
-				") OR LOWER(pe.content) LIKE LOWER($"+fmt.Sprintf("%d", argIndex)+
-				") OR LOWER(pe.course_code) LIKE LOWER($"+fmt.Sprintf("%d", argIndex)+"))")
-			args = append(args, searchTerm)
-			argIndex++
-		}
+// mapSortFieldToColumn maps API sort field names to database column names
+// Prevents SQL injection by using a predefined map
+func mapSortFieldToColumn(field string) string {
+	switch field {
+	case "year":
+		return "pe.year"
+	case "term":
+		return "pe.term"
+	case "courseCode", "course_code":
+		return "pe.course_code"
+	case "title":
+		return "pe.title"
+	case "departmentName", "department_name":
+		return "d.name"
+	case "facultyName", "faculty_name":
+		return "f.name"
+	case "instructorName", "instructor_name":
+		return "instructor_name" // Alias used in select
+	case "createdAt", "created_at":
+		return "pe.created_at"
+	case "updatedAt", "updated_at":
+		return "pe.updated_at"
+	default:
+		return "pe.created_at" // Default sort column
 	}
-
-	whereClause := strings.Join(conditions, " AND ")
-	return whereClause, args
 }
 
-// isValidSortField checks if a sort field is valid to prevent SQL injection
+// isValidSortField checks if the provided sort field is allowed
 func isValidSortField(field string) bool {
 	// List of column names that are allowed to be used for sorting
 	// This is a security measure to prevent SQL injection

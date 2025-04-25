@@ -249,8 +249,8 @@ func (c *AuthController) RefreshToken(ctx *gin.Context) {
 // @Tags auth
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} dto.APIResponse "Profile retrieved successfully"
-// @Failure 401 {object} dto.ErrorResponse "Authentication required"
+// @Success 200 {object} dto.APIResponse{data=dto.UserProfile} "User profile retrieved successfully"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /auth/profile [get]
 func (c *AuthController) GetProfile(ctx *gin.Context) {

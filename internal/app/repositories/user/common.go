@@ -6,98 +6,157 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yigit/unisphere/internal/app/models"
+	"github.com/yigit/unisphere/internal/pkg/dberrors"
+	"github.com/yigit/unisphere/internal/pkg/logger"
 )
 
 // Common errors
 var (
 	ErrUserNotFound       = errors.New("user not found")
 	ErrEmailAlreadyExists = errors.New("email already in use")
+	ErrDepartmentNotFound = errors.New("department not found")
 )
 
 // Repository handles common user database operations
 type Repository struct {
 	db *pgxpool.Pool
+	sb squirrel.StatementBuilderType
 }
 
 // NewRepository creates a new Repository
 func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{
 		db: db,
+		sb: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
 	}
 }
 
 // CreateUser creates a new user
 func (r *Repository) CreateUser(ctx context.Context, user *models.User) (int64, error) {
-	// Check email availability
-	exists, err := r.EmailExists(ctx, user.Email)
+	sql, args, err := r.sb.Insert("users").
+		Columns("email", "password", "first_name", "last_name", "role_type", "is_active").
+		Values(user.Email, user.Password, user.FirstName, user.LastName, user.RoleType, user.IsActive).
+		Suffix("RETURNING id").
+		ToSql()
+
 	if err != nil {
-		return 0, fmt.Errorf("error checking email: %w", err)
-	}
-	if exists {
-		return 0, ErrEmailAlreadyExists
+		logger.Error().Err(err).Msg("Error building create user SQL")
+		return 0, fmt.Errorf("failed to build create user query: %w", err)
 	}
 
 	var id int64
-	err = r.db.QueryRow(ctx, `
-		INSERT INTO users (email, password, first_name, last_name, role_type, is_active)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id`,
-		user.Email, user.Password, user.FirstName, user.LastName, user.RoleType, user.IsActive).Scan(&id)
-
+	err = r.db.QueryRow(ctx, sql, args...).Scan(&id)
 	if err != nil {
+		if dberrors.IsDuplicateConstraintError(err, "users_email_key") {
+			logger.Warn().Str("email", user.Email).Msg("Attempted to create user with duplicate email")
+			return 0, ErrEmailAlreadyExists
+		}
+		logger.Error().Err(err).Str("email", user.Email).Msg("Error executing create user query")
 		return 0, fmt.Errorf("error creating user: %w", err)
 	}
 
+	logger.Info().Int64("userID", id).Str("email", user.Email).Msg("User created successfully")
 	return id, nil
 }
 
 // GetUserByEmail retrieves a user by email
 func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
-	user := &models.User{}
-	err := r.db.QueryRow(ctx, `
-		SELECT id, email, password, first_name, last_name, created_at, updated_at, role_type, is_active
-		FROM users
-		WHERE email = $1`,
-		email).Scan(
-		&user.ID, &user.Email, &user.Password, &user.FirstName, &user.LastName,
-		&user.CreatedAt, &user.UpdatedAt, &user.RoleType, &user.IsActive)
+	var user models.User
+	sql, args, err := r.sb.Select("id", "email", "password", "first_name", "last_name", "created_at", "updated_at", "role_type", "is_active", "last_login_at").
+		From("users").
+		Where(squirrel.Eq{"email": email}).
+		Limit(1).
+		ToSql()
 
 	if err != nil {
-		return nil, ErrUserNotFound
+		logger.Error().Err(err).Msg("Error building get user by email SQL")
+		return nil, fmt.Errorf("failed to build get user query: %w", err)
 	}
 
-	return user, nil
+	var lastLoginAt pgtype.Timestamp
+	err = r.db.QueryRow(ctx, sql, args...).Scan(
+		&user.ID, &user.Email, &user.Password, &user.FirstName, &user.LastName,
+		&user.CreatedAt, &user.UpdatedAt, &user.RoleType, &user.IsActive, &lastLoginAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			logger.Warn().Str("email", email).Msg("User not found by email")
+			return nil, ErrUserNotFound
+		}
+		logger.Error().Err(err).Str("email", email).Msg("Error scanning user row")
+		return nil, fmt.Errorf("error retrieving user by email: %w", err)
+	}
+
+	// Assign lastLoginAt if it's valid
+	if lastLoginAt.Valid {
+		user.LastLoginAt = &lastLoginAt.Time // Assign address of Time
+	}
+
+	return &user, nil
 }
 
 // GetUserByID retrieves a user by ID
 func (r *Repository) GetUserByID(ctx context.Context, id int64) (*models.User, error) {
-	user := &models.User{}
-	err := r.db.QueryRow(ctx, `
-		SELECT id, email, password, first_name, last_name, created_at, updated_at, role_type, is_active
-		FROM users
-		WHERE id = $1`,
-		id).Scan(
-		&user.ID, &user.Email, &user.Password, &user.FirstName, &user.LastName,
-		&user.CreatedAt, &user.UpdatedAt, &user.RoleType, &user.IsActive)
+	var user models.User
+	sql, args, err := r.sb.Select("id", "email", "password", "first_name", "last_name", "created_at", "updated_at", "role_type", "is_active", "last_login_at").
+		From("users").
+		Where(squirrel.Eq{"id": id}).
+		Limit(1).
+		ToSql()
 
 	if err != nil {
-		return nil, ErrUserNotFound
+		logger.Error().Err(err).Msg("Error building get user by ID SQL")
+		return nil, fmt.Errorf("failed to build get user query: %w", err)
 	}
 
-	return user, nil
+	var lastLoginAt pgtype.Timestamp
+	err = r.db.QueryRow(ctx, sql, args...).Scan(
+		&user.ID, &user.Email, &user.Password, &user.FirstName, &user.LastName,
+		&user.CreatedAt, &user.UpdatedAt, &user.RoleType, &user.IsActive, &lastLoginAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			logger.Warn().Int64("userID", id).Msg("User not found by ID")
+			return nil, ErrUserNotFound
+		}
+		logger.Error().Err(err).Int64("userID", id).Msg("Error scanning user row")
+		return nil, fmt.Errorf("error retrieving user by ID: %w", err)
+	}
+
+	// Assign lastLoginAt if it's valid
+	if lastLoginAt.Valid {
+		user.LastLoginAt = &lastLoginAt.Time // Assign address of Time
+	}
+
+	return &user, nil
 }
 
 // EmailExists checks if an email already exists
 func (r *Repository) EmailExists(ctx context.Context, email string) (bool, error) {
 	var exists bool
-	err := r.db.QueryRow(ctx, `
-		SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`,
-		email).Scan(&exists)
+	sql, args, err := r.sb.Select("1").
+		From("users").
+		Where(squirrel.Eq{"email": email}).
+		Prefix("SELECT EXISTS (").
+		Suffix(")").
+		ToSql()
 
 	if err != nil {
-		return false, fmt.Errorf("error checking email: %w", err)
+		logger.Error().Err(err).Msg("Error building email exists SQL")
+		return false, fmt.Errorf("failed to build email exists query: %w", err)
+	}
+
+	err = r.db.QueryRow(ctx, sql, args...).Scan(&exists)
+	if err != nil {
+		logger.Error().Err(err).Str("email", email).Msg("Error checking email existence")
+		return false, fmt.Errorf("error checking email existence: %w", err)
 	}
 
 	return exists, nil
@@ -106,12 +165,25 @@ func (r *Repository) EmailExists(ctx context.Context, email string) (bool, error
 // GetDepartmentNameByID retrieves department name by ID
 func (r *Repository) GetDepartmentNameByID(ctx context.Context, departmentID int64) (string, error) {
 	var name string
-	err := r.db.QueryRow(ctx, `
-		SELECT name FROM departments WHERE id = $1`,
-		departmentID).Scan(&name)
+	sql, args, err := r.sb.Select("name").
+		From("departments").
+		Where(squirrel.Eq{"id": departmentID}).
+		Limit(1).
+		ToSql()
 
 	if err != nil {
-		return "", fmt.Errorf("department not found: %w", err)
+		logger.Error().Err(err).Msg("Error building get department name SQL")
+		return "", fmt.Errorf("failed to build get department name query: %w", err)
+	}
+
+	err = r.db.QueryRow(ctx, sql, args...).Scan(&name)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			logger.Warn().Int64("departmentID", departmentID).Msg("Department not found by ID")
+			return "", ErrDepartmentNotFound
+		}
+		logger.Error().Err(err).Int64("departmentID", departmentID).Msg("Error scanning department name")
+		return "", fmt.Errorf("error retrieving department name: %w", err)
 	}
 
 	return name, nil
@@ -119,17 +191,27 @@ func (r *Repository) GetDepartmentNameByID(ctx context.Context, departmentID int
 
 // UpdateLastLogin updates the last login time
 func (r *Repository) UpdateLastLogin(ctx context.Context, userID int64) error {
-	now := time.Now()
-	_, err := r.db.Exec(ctx, `
-		UPDATE users
-		SET last_login_at = $1
-		WHERE id = $2`,
-		now, userID)
+	sql, args, err := r.sb.Update("users").
+		Set("last_login_at", time.Now()).
+		Where(squirrel.Eq{"id": userID}).
+		ToSql()
 
 	if err != nil {
+		logger.Error().Err(err).Int64("userID", userID).Msg("Error building update last login SQL")
+		return fmt.Errorf("failed to build update last login query: %w", err)
+	}
+
+	cmdTag, err := r.db.Exec(ctx, sql, args...)
+	if err != nil {
+		logger.Error().Err(err).Int64("userID", userID).Msg("Error executing update last login query")
 		return fmt.Errorf("failed to update last login time: %w", err)
 	}
 
+	if cmdTag.RowsAffected() == 0 {
+		logger.Warn().Int64("userID", userID).Msg("Attempted to update last login for non-existent user")
+		return ErrUserNotFound
+	}
+
+	logger.Info().Int64("userID", userID).Msg("Last login time updated")
 	return nil
 }
- 

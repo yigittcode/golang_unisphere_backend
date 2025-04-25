@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/rs/zerolog"
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/repositories"
@@ -34,17 +35,30 @@ var (
 
 // AuthService handles authentication operations
 type AuthService struct {
-	userRepo   *repositories.UserRepository
-	tokenRepo  *repositories.TokenRepository
-	jwtService *auth.JWTService
+	userRepo       *repositories.UserRepository
+	tokenRepo      *repositories.TokenRepository
+	departmentRepo *repositories.DepartmentRepository
+	facultyRepo    *repositories.FacultyRepository
+	jwtService     *auth.JWTService
+	logger         zerolog.Logger
 }
 
 // NewAuthService creates a new AuthService
-func NewAuthService(userRepo *repositories.UserRepository, tokenRepo *repositories.TokenRepository, jwtService *auth.JWTService) *AuthService {
+func NewAuthService(
+	userRepo *repositories.UserRepository,
+	tokenRepo *repositories.TokenRepository,
+	departmentRepo *repositories.DepartmentRepository,
+	facultyRepo *repositories.FacultyRepository,
+	jwtService *auth.JWTService,
+	logger zerolog.Logger,
+) *AuthService {
 	return &AuthService{
-		userRepo:   userRepo,
-		tokenRepo:  tokenRepo,
-		jwtService: jwtService,
+		userRepo:       userRepo,
+		tokenRepo:      tokenRepo,
+		departmentRepo: departmentRepo,
+		facultyRepo:    facultyRepo,
+		jwtService:     jwtService,
+		logger:         logger,
 	}
 }
 
@@ -361,7 +375,12 @@ func (s *AuthService) GetProfile(ctx context.Context, userID int64) (*dto.UserPr
 	// Get user information
 	user, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("user not found: %w", err)
+		// Check if the error is user not found from repository
+		if errors.Is(err, repositories.ErrUserNotFound) { // Check specific repo error
+			return nil, ErrUserNotFound // Return the service's ErrUserNotFound
+		}
+		// For other errors, wrap and return
+		return nil, fmt.Errorf("failed to get user information: %w", err)
 	}
 
 	// Basic profile information
@@ -373,39 +392,54 @@ func (s *AuthService) GetProfile(ctx context.Context, userID int64) (*dto.UserPr
 		RoleType:  string(user.RoleType),
 	}
 
+	var departmentID int64
 	// Get additional information based on user type
 	if user.RoleType == models.RoleStudent {
 		student, err := s.userRepo.GetStudentByUserID(ctx, user.ID)
 		if err != nil {
+			// Check specific repo error
+			if errors.Is(err, repositories.ErrUserNotFound) {
+				return nil, ErrUserNotFound // Return service's UserNotFound
+			}
 			return nil, fmt.Errorf("failed to get student information: %w", err)
 		}
 
-		profile.StudentID = student.StudentID
+		profile.StudentID = &student.StudentID
 		profile.GraduationYear = student.GraduationYear
-		profile.DepartmentID = student.DepartmentID
-
-		// Get department name
-		deptName, err := s.userRepo.GetDepartmentNameByID(ctx, student.DepartmentID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get department information: %w", err)
-		}
-		profile.DepartmentName = deptName
+		departmentID = student.DepartmentID // Store department ID
 
 	} else if user.RoleType == models.RoleInstructor {
 		instructor, err := s.userRepo.GetInstructorByUserID(ctx, user.ID)
 		if err != nil {
+			// Check specific repo error
+			if errors.Is(err, repositories.ErrUserNotFound) {
+				return nil, ErrUserNotFound // Return service's UserNotFound
+			}
 			return nil, fmt.Errorf("failed to get instructor information: %w", err)
 		}
 
-		profile.Title = instructor.Title
-		profile.DepartmentID = instructor.DepartmentID
+		profile.Title = &instructor.Title
+		departmentID = instructor.DepartmentID // Store department ID
+	}
 
-		// Get department name
-		deptName, err := s.userRepo.GetDepartmentNameByID(ctx, instructor.DepartmentID)
+	// Fetch Department and Faculty info if DepartmentID is available
+	if departmentID > 0 {
+		profile.DepartmentID = departmentID
+		department, err := s.departmentRepo.GetByID(ctx, departmentID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get department information: %w", err)
+			s.logger.Warn().Err(err).Int64("deptId", departmentID).Msg("Could not find department info for profile")
+		} else if department != nil {
+			profile.DepartmentName = department.Name
+			profile.FacultyID = department.FacultyID // Get FacultyID from department
+
+			// Fetch Faculty Name using FacultyID
+			faculty, err := s.facultyRepo.GetFacultyByID(ctx, department.FacultyID) // Use facultyRepo
+			if err != nil {
+				s.logger.Warn().Err(err).Int64("facultyId", department.FacultyID).Msg("Could not find faculty name for profile")
+			} else if faculty != nil {
+				profile.FacultyName = faculty.Name
+			}
 		}
-		profile.DepartmentName = deptName
 	}
 
 	return profile, nil
@@ -434,7 +468,7 @@ func (s *AuthService) generateTokenResponse(ctx context.Context, user *models.Us
 		AccessToken:      accessToken,
 		RefreshToken:     refreshToken,
 		TokenType:        "Bearer",
-		ExpiresIn:        expiresIn,
-		RefreshExpiresIn: refreshExpiresIn,
+		ExpiresIn:        int64(expiresIn),        // Convert int to int64
+		RefreshExpiresIn: int64(refreshExpiresIn), // Convert int to int64
 	}, nil
 }

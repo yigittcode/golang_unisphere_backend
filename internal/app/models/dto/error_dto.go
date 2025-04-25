@@ -131,3 +131,17 @@ func (v *ValidationErrors) AddError(field, message string) *ValidationErrors {
 func (v *ValidationErrors) HasErrors() bool {
 	return len(v.Errors) > 0
 }
+
+// HandleValidationError attempts to parse validation errors (e.g., from Gin binding)
+// and convert them into a structured ErrorDetail.
+// This is a basic implementation and might need adjustments based on the specific
+// error types returned by the validator library used (e.g., go-playground/validator).
+func HandleValidationError(err error) *ErrorDetail {
+	// TODO: Implement proper parsing of validation errors.
+	// This requires inspecting the 'err' type and structure provided by the validator.
+	// For go-playground/validator, you might iterate through err.(validator.ValidationErrors)
+	// and extract field names, tags, and generate user-friendly messages.
+
+	// Placeholder implementation:
+	return NewErrorDetail(ErrorCodeValidationFailed, "Input validation failed").WithDetails(err.Error())
+}

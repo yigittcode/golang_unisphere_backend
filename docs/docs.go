@@ -93,13 +93,25 @@ const docTemplate = `{
                 "summary": "Get user profile",
                 "responses": {
                     "200": {
-                        "description": "Profile retrieved successfully",
+                        "description": "User profile retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/dto.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.UserProfile"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "401": {
-                        "description": "Authentication required",
+                        "description": "Unauthorized - Invalid or missing token",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -256,6 +268,537 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Email or student ID already in use",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/classNotes": {
+            "get": {
+                "description": "Retrieves a list of class notes with optional filtering and pagination.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ClassNotes"
+                ],
+                "summary": "Get all class notes",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "Filter by Faculty ID",
+                        "name": "facultyId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "Filter by Department ID",
+                        "name": "departmentId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "CENG304",
+                        "description": "Filter by Course Code",
+                        "name": "courseCode",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 2024,
+                        "description": "Filter by Year",
+                        "name": "year",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "SPRING",
+                        "description": "Filter by Term (FALL or SPRING)",
+                        "name": "term",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "createdAt",
+                        "description": "Sort field (createdAt, year, term, courseCode, title)",
+                        "name": "sortBy",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "DESC",
+                        "description": "Sort order (ASC or DESC)",
+                        "name": "sortOrder",
+                        "in": "query"
+                    },
+                    {
+                        "minimum": 0,
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Page number (0-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Page size",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Class notes retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ClassNoteListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request (e.g., invalid query parameters)",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Adds a new class note to the system. Requires authentication.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ClassNotes"
+                ],
+                "summary": "Create a new class note",
+                "parameters": [
+                    {
+                        "description": "Class Note Data",
+                        "name": "note",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateClassNoteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Class note created successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ClassNoteResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request (e.g., validation errors)",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (handled by middleware)\" // Middleware should handle this",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/classNotes/my-notes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves all class notes uploaded by the currently authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ClassNotes"
+                ],
+                "summary": "Get my class notes",
+                "responses": {
+                    "200": {
+                        "description": "Your class notes retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.ClassNoteResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (handled by middleware)\" // Middleware should handle this",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/classNotes/{noteId}": {
+            "get": {
+                "description": "Retrieves a specific class note by its ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ClassNotes"
+                ],
+                "summary": "Get class note by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 15,
+                        "description": "Class Note ID",
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Class note retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ClassNoteResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request (e.g., invalid ID)",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates an existing class note. Requires authentication and ownership.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ClassNotes"
+                ],
+                "summary": "Update a class note",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 15,
+                        "description": "Class Note ID to update",
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated Class Note Data",
+                        "name": "note",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateClassNoteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Class note updated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ClassNoteResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request (e.g., validation errors, invalid ID)",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (handled by middleware)\" // Middleware should handle this",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden (not owner)",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes an existing class note. Requires authentication and ownership.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ClassNotes"
+                ],
+                "summary": "Delete a class note",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 15,
+                        "description": "Class Note ID to delete",
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Class note deleted successfully\" // Changed data type",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.SuccessResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request (e.g., invalid ID)",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (handled by middleware)\" // Middleware should handle this",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden (not owner)",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/department-instructors/{departmentId}": {
+            "get": {
+                "description": "Get a list of instructors belonging to a specific department",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "instructors"
+                ],
+                "summary": "Get instructors by department",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Department ID",
+                        "name": "departmentId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Instructors retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.Instructor"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid Department ID format",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Department not found",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -754,9 +1297,199 @@ const docTemplate = `{
                 }
             }
         },
+        "/instructors/profile": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get detailed profile information for the currently authenticated instructor (Requires instructor role)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "instructors"
+                ],
+                "summary": "Get instructor profile",
+                "responses": {
+                    "200": {
+                        "description": "Instructor profile retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.Instructor"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or missing token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - User is not an instructor or token invalid",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Instructor not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/instructors/title": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update the academic title for the currently authenticated instructor (Requires instructor role)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "instructors"
+                ],
+                "summary": "Update instructor title",
+                "parameters": [
+                    {
+                        "description": "New title information",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateTitleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Instructor title updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/dto.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format or validation error (e.g., empty title)",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or missing token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - User is not an instructor or token invalid",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Instructor not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/instructors/{id}": {
+            "get": {
+                "description": "Get public information about an instructor by their user ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "instructors"
+                ],
+                "summary": "Get instructor by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Instructor User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Instructor retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.Instructor"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid Instructor ID format",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Instructor not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/pastexams": {
             "get": {
-                "description": "Get a list of all past exams with optional filtering and pagination",
+                "description": "Get a list of all past exams. Supports filtering by faculty, department, course code, year, term and sorting by various fields.",
                 "produces": [
                     "application/json"
                 ],
@@ -767,55 +1500,77 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
+                        "format": "int64",
+                        "example": 1,
                         "description": "Filter by faculty ID",
                         "name": "facultyId",
                         "in": "query"
                     },
                     {
                         "type": "integer",
+                        "format": "int64",
+                        "example": 1,
                         "description": "Filter by department ID",
                         "name": "departmentId",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Filter by course code",
+                        "example": "CENG",
+                        "description": "Filter by course code (case-insensitive, partial match)",
                         "name": "courseCode",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Filter by year",
+                        "example": 2023,
+                        "description": "Filter by exact year",
                         "name": "year",
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "FALL",
+                            "SPRING"
+                        ],
                         "type": "string",
-                        "description": "Filter by term (FALL or SPRING)",
+                        "example": "FALL",
+                        "description": "Filter by term",
                         "name": "term",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Sort field (default: createdAt)",
+                        "default": "createdAt",
+                        "description": "Sort field (year, term, courseCode, title, createdAt, updatedAt)",
                         "name": "sortBy",
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "ASC",
+                            "DESC"
+                        ],
                         "type": "string",
-                        "description": "Sort order (ASC or DESC, default: DESC)",
+                        "default": "DESC",
+                        "description": "Sort order",
                         "name": "sortOrder",
                         "in": "query"
                     },
                     {
+                        "minimum": 0,
                         "type": "integer",
-                        "description": "Page number (0-based, default: 0)",
+                        "default": 0,
+                        "description": "Page number for pagination (0-based)",
                         "name": "page",
                         "in": "query"
                     },
                     {
+                        "maximum": 100,
+                        "minimum": 1,
                         "type": "integer",
-                        "description": "Page size (default: 10)",
+                        "default": 10,
+                        "description": "Number of items per page",
                         "name": "size",
                         "in": "query"
                     }
@@ -824,7 +1579,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Past exams retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/dto.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.PastExamListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameter format or value",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
@@ -836,7 +1609,12 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Create a new past exam with the provided data",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new past exam. Requires instructor role.",
                 "consumes": [
                     "application/json"
                 ],
@@ -846,7 +1624,7 @@ const docTemplate = `{
                 "tags": [
                     "pastexams"
                 ],
-                "summary": "Create a new past exam",
+                "summary": "Create a new past exam (Instructor only)",
                 "parameters": [
                     {
                         "description": "Past exam information",
@@ -862,7 +1640,19 @@ const docTemplate = `{
                     "201": {
                         "description": "Past exam successfully created",
                         "schema": {
-                            "$ref": "#/definitions/dto.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.PastExamResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -871,8 +1661,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized - Invalid or missing token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
                     "403": {
-                        "description": "Permission denied or not an instructor",
+                        "description": "Forbidden - User is not an instructor",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -888,7 +1684,7 @@ const docTemplate = `{
         },
         "/pastexams/{id}": {
             "get": {
-                "description": "Get past exam information by ID",
+                "description": "Get detailed information for a specific past exam by its ID.",
                 "produces": [
                     "application/json"
                 ],
@@ -899,6 +1695,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
+                        "format": "int64",
+                        "example": 1,
                         "description": "Past Exam ID",
                         "name": "id",
                         "in": "path",
@@ -909,7 +1707,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Past exam information retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/dto.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.PastExamResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid Past Exam ID format",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "404": {
@@ -927,7 +1743,12 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "description": "Update a past exam with the provided data",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update an existing past exam. Requires instructor role and ownership.",
                 "consumes": [
                     "application/json"
                 ],
@@ -937,10 +1758,12 @@ const docTemplate = `{
                 "tags": [
                     "pastexams"
                 ],
-                "summary": "Update a past exam",
+                "summary": "Update a past exam (Instructor only, Owner only)",
                 "parameters": [
                     {
                         "type": "integer",
+                        "format": "int64",
+                        "example": 1,
                         "description": "Past Exam ID",
                         "name": "id",
                         "in": "path",
@@ -960,7 +1783,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Past exam successfully updated",
                         "schema": {
-                            "$ref": "#/definitions/dto.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.PastExamResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -969,8 +1804,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized - Invalid or missing token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
                     "403": {
-                        "description": "Permission denied or not an instructor",
+                        "description": "Forbidden - User is not an instructor or not the owner",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -990,17 +1831,24 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a past exam by ID",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a past exam by its ID. Requires instructor role and ownership.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "pastexams"
                 ],
-                "summary": "Delete a past exam",
+                "summary": "Delete a past exam (Instructor only, Owner only)",
                 "parameters": [
                     {
                         "type": "integer",
+                        "format": "int64",
+                        "example": 1,
                         "description": "Past Exam ID",
                         "name": "id",
                         "in": "path",
@@ -1014,8 +1862,20 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
+                    "400": {
+                        "description": "Invalid Past Exam ID format",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or missing token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
                     "403": {
-                        "description": "Permission denied or not an instructor",
+                        "description": "Forbidden - User is not an instructor or not the owner",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -1040,19 +1900,192 @@ const docTemplate = `{
         "dto.APIResponse": {
             "type": "object",
             "properties": {
-                "data": {},
-                "error": {},
+                "data": {
+                    "description": "Use specific DTOs for data structure"
+                },
+                "error": {
+                    "description": "Include error details if Success is false",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.ErrorDetail"
+                        }
+                    ]
+                },
                 "message": {
                     "type": "string",
-                    "example": "Operation successful"
+                    "example": "Operation completed successfully"
                 },
                 "success": {
                     "type": "boolean",
                     "example": true
                 },
                 "timestamp": {
+                    "description": "Timestamp of the response",
                     "type": "string",
                     "example": "2025-04-23T12:01:05.123Z"
+                }
+            }
+        },
+        "dto.ClassNoteListResponse": {
+            "type": "object",
+            "properties": {
+                "notes": {
+                    "description": "List of class note details for the current page",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ClassNoteResponse"
+                    }
+                },
+                "pagination": {
+                    "description": "Pagination metadata",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.PaginationInfo"
+                        }
+                    ]
+                }
+            }
+        },
+        "dto.ClassNoteResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "description": "Main content of the note",
+                    "type": "string",
+                    "example": "Detailed notes covering topic X..."
+                },
+                "courseCode": {
+                    "description": "Course code",
+                    "type": "string",
+                    "example": "CENG304"
+                },
+                "createdAt": {
+                    "description": "Timestamp when the note was created",
+                    "type": "string",
+                    "example": "2024-01-15T10:00:00Z"
+                },
+                "departmentId": {
+                    "description": "ID of the department for the course",
+                    "type": "integer",
+                    "example": 1
+                },
+                "departmentName": {
+                    "description": "Name of the department",
+                    "type": "string",
+                    "example": "Computer Engineering"
+                },
+                "facultyId": {
+                    "description": "ID of the faculty associated with the department",
+                    "type": "integer",
+                    "example": 1
+                },
+                "facultyName": {
+                    "description": "Name of the faculty",
+                    "type": "string",
+                    "example": "Engineering Faculty"
+                },
+                "id": {
+                    "description": "Unique identifier for the class note",
+                    "type": "integer",
+                    "example": 15
+                },
+                "image": {
+                    "description": "Optional URL to an associated image",
+                    "type": "string",
+                    "example": "http://example.com/image.jpg"
+                },
+                "term": {
+                    "description": "Term (FALL or SPRING)",
+                    "type": "string",
+                    "example": "SPRING"
+                },
+                "title": {
+                    "description": "Title of the class note",
+                    "type": "string",
+                    "example": "Lecture Notes - Week 5"
+                },
+                "updatedAt": {
+                    "description": "Timestamp when the note was last updated",
+                    "type": "string",
+                    "example": "2024-01-16T11:30:00Z"
+                },
+                "uploadedByStudent": {
+                    "description": "True if uploaded by a student, false if by an instructor",
+                    "type": "boolean",
+                    "example": true
+                },
+                "uploaderEmail": {
+                    "description": "Email of the user who uploaded the note",
+                    "type": "string",
+                    "example": "john.doe@example.com"
+                },
+                "uploaderName": {
+                    "description": "Name of the user who uploaded the note",
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "year": {
+                    "description": "Year the note corresponds to",
+                    "type": "integer",
+                    "example": 2024
+                }
+            }
+        },
+        "dto.CreateClassNoteRequest": {
+            "type": "object",
+            "required": [
+                "content",
+                "courseCode",
+                "departmentId",
+                "term",
+                "title",
+                "year"
+            ],
+            "properties": {
+                "content": {
+                    "description": "Main content of the note",
+                    "type": "string",
+                    "minLength": 10,
+                    "example": "Detailed notes covering topic X..."
+                },
+                "courseCode": {
+                    "description": "Course code (e.g., CENG304)",
+                    "type": "string",
+                    "maxLength": 10,
+                    "minLength": 3,
+                    "example": "CENG304"
+                },
+                "departmentId": {
+                    "description": "ID of the department for the course",
+                    "type": "integer",
+                    "example": 1
+                },
+                "image": {
+                    "description": "Optional URL to an associated image",
+                    "type": "string",
+                    "example": "http://example.com/image.jpg"
+                },
+                "term": {
+                    "description": "Term (FALL or SPRING)",
+                    "type": "string",
+                    "enum": [
+                        "FALL",
+                        "SPRING"
+                    ],
+                    "example": "SPRING"
+                },
+                "title": {
+                    "description": "Title of the class note",
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 5,
+                    "example": "Lecture Notes - Week 5"
+                },
+                "year": {
+                    "description": "Year the note corresponds to",
+                    "type": "integer",
+                    "minimum": 2000,
+                    "example": 2024
                 }
             }
         },
@@ -1068,32 +2101,46 @@ const docTemplate = `{
             ],
             "properties": {
                 "content": {
-                    "type": "string"
+                    "description": "Detailed content or description of the exam",
+                    "type": "string",
+                    "example": "Exam content details..."
                 },
                 "courseCode": {
-                    "type": "string"
+                    "description": "Course code (e.g., CENG301)",
+                    "type": "string",
+                    "example": "CENG301"
                 },
                 "departmentId": {
+                    "description": "ID of the department for the course",
                     "type": "integer",
-                    "minimum": 1
+                    "minimum": 1,
+                    "example": 1
                 },
                 "fileUrl": {
-                    "type": "string"
+                    "description": "Optional URL to the exam file (PDF, image, etc.)",
+                    "type": "string",
+                    "example": "http://example.com/exam.pdf"
                 },
                 "term": {
+                    "description": "Term the exam was held (FALL or SPRING)",
                     "type": "string",
                     "enum": [
                         "FALL",
                         "SPRING"
-                    ]
+                    ],
+                    "example": "FALL"
                 },
                 "title": {
-                    "type": "string"
+                    "description": "Title of the exam (e.g., Midterm 1, Final Exam)",
+                    "type": "string",
+                    "example": "Midterm Exam"
                 },
                 "year": {
+                    "description": "Year the exam was held (e.g., 2023)",
                     "type": "integer",
                     "maximum": 2100,
-                    "minimum": 1900
+                    "minimum": 1900,
+                    "example": 2023
                 }
             }
         },
@@ -1206,12 +2253,129 @@ const docTemplate = `{
             ],
             "properties": {
                 "email": {
+                    "description": "User's registered email address",
                     "type": "string",
                     "example": "user@school.edu.tr"
                 },
                 "password": {
+                    "description": "User's password",
                     "type": "string",
                     "example": "Password123"
+                }
+            }
+        },
+        "dto.PaginationInfo": {
+            "type": "object",
+            "properties": {
+                "currentPage": {
+                    "description": "Current page number (0-based)",
+                    "type": "integer",
+                    "example": 0
+                },
+                "pageSize": {
+                    "description": "Number of items per page",
+                    "type": "integer",
+                    "example": 10
+                },
+                "totalItems": {
+                    "description": "Total number of items matching the query",
+                    "type": "integer",
+                    "example": 48
+                },
+                "totalPages": {
+                    "description": "Total number of pages available",
+                    "type": "integer",
+                    "example": 5
+                }
+            }
+        },
+        "dto.PastExamListResponse": {
+            "type": "object",
+            "properties": {
+                "exams": {
+                    "description": "List of past exam details for the current page",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.PastExamResponse"
+                    }
+                },
+                "pagination": {
+                    "description": "Pagination metadata",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.PaginationInfo"
+                        }
+                    ]
+                }
+            }
+        },
+        "dto.PastExamResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "description": "Detailed content or description of the exam",
+                    "type": "string",
+                    "example": "Exam content details..."
+                },
+                "courseCode": {
+                    "description": "Course code",
+                    "type": "string",
+                    "example": "CENG301"
+                },
+                "departmentId": {
+                    "description": "ID of the department for the course",
+                    "type": "integer",
+                    "example": 1
+                },
+                "departmentName": {
+                    "description": "Name of the department",
+                    "type": "string",
+                    "example": "Computer Engineering"
+                },
+                "facultyId": {
+                    "description": "ID of the faculty associated with the department",
+                    "type": "integer",
+                    "example": 1
+                },
+                "facultyName": {
+                    "description": "Name of the faculty",
+                    "type": "string",
+                    "example": "Engineering Faculty"
+                },
+                "fileUrl": {
+                    "description": "URL to the exam file, if available",
+                    "type": "string",
+                    "example": "http://example.com/exam.pdf"
+                },
+                "id": {
+                    "description": "Unique identifier for the past exam",
+                    "type": "integer",
+                    "example": 10
+                },
+                "instructorName": {
+                    "description": "Name of the instructor who uploaded the exam",
+                    "type": "string",
+                    "example": "Jane Smith"
+                },
+                "term": {
+                    "description": "Term the exam was held (FALL or SPRING)",
+                    "type": "string",
+                    "example": "FALL"
+                },
+                "title": {
+                    "description": "Title of the exam",
+                    "type": "string",
+                    "example": "Midterm 1"
+                },
+                "uploadedByEmail": {
+                    "description": "Email of the instructor who uploaded the exam",
+                    "type": "string",
+                    "example": "instructor@school.edu.tr"
+                },
+                "year": {
+                    "description": "Year the exam was held",
+                    "type": "integer",
+                    "example": 2023
                 }
             }
         },
@@ -1222,8 +2386,9 @@ const docTemplate = `{
             ],
             "properties": {
                 "refreshToken": {
+                    "description": "The refresh token obtained during login",
                     "type": "string",
-                    "example": "62a71580-9d9e-4884-a000-5dc497a3d1d8"
+                    "example": "your_refresh_token_here"
                 }
             }
         },
@@ -1239,27 +2404,33 @@ const docTemplate = `{
             ],
             "properties": {
                 "departmentId": {
+                    "description": "ID of the department the instructor belongs to",
                     "type": "integer",
                     "example": 1
                 },
                 "email": {
+                    "description": "Instructor's email address (must be unique)",
                     "type": "string",
                     "example": "instructor@school.edu.tr"
                 },
                 "firstName": {
+                    "description": "Instructor's first name",
                     "type": "string",
                     "example": "Jane"
                 },
                 "lastName": {
+                    "description": "Instructor's last name",
                     "type": "string",
                     "example": "Smith"
                 },
                 "password": {
+                    "description": "Instructor's password (min 8 characters, letter+number required by service)",
                     "type": "string",
-                    "minLength": 6,
+                    "minLength": 8,
                     "example": "Password123"
                 },
                 "title": {
+                    "description": "Instructor's academic title (e.g., Professor, Dr.)",
                     "type": "string",
                     "example": "Professor"
                 }
@@ -1277,33 +2448,108 @@ const docTemplate = `{
             ],
             "properties": {
                 "departmentId": {
+                    "description": "ID of the department the student belongs to",
                     "type": "integer",
                     "example": 1
                 },
                 "email": {
+                    "description": "Student's email address (must be unique)",
                     "type": "string",
                     "example": "student@school.edu.tr"
                 },
                 "firstName": {
+                    "description": "Student's first name",
                     "type": "string",
                     "example": "John"
                 },
                 "graduationYear": {
+                    "description": "Student's expected graduation year (optional)",
                     "type": "integer",
+                    "minimum": 1900,
                     "example": 2025
                 },
                 "lastName": {
+                    "description": "Student's last name",
                     "type": "string",
                     "example": "Doe"
                 },
                 "password": {
+                    "description": "Student's password (min 8 characters, letter+number required by service)",
                     "type": "string",
-                    "minLength": 6,
+                    "minLength": 8,
                     "example": "Password123"
                 },
                 "studentId": {
+                    "description": "Student's unique 8-digit ID",
                     "type": "string",
                     "example": "12345678"
+                }
+            }
+        },
+        "dto.SuccessResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Resource deleted successfully"
+                }
+            }
+        },
+        "dto.UpdateClassNoteRequest": {
+            "type": "object",
+            "required": [
+                "content",
+                "courseCode",
+                "departmentId",
+                "term",
+                "title",
+                "year"
+            ],
+            "properties": {
+                "content": {
+                    "description": "Main content of the note",
+                    "type": "string",
+                    "minLength": 10,
+                    "example": "Updated detailed notes covering topic X..."
+                },
+                "courseCode": {
+                    "description": "Course code (e.g., CENG304)",
+                    "type": "string",
+                    "maxLength": 10,
+                    "minLength": 3,
+                    "example": "CENG304"
+                },
+                "departmentId": {
+                    "description": "ID of the department for the course",
+                    "type": "integer",
+                    "example": 1
+                },
+                "image": {
+                    "description": "Optional URL to an associated image",
+                    "type": "string",
+                    "example": "http://example.com/new_image.jpg"
+                },
+                "term": {
+                    "description": "Term (FALL or SPRING)",
+                    "type": "string",
+                    "enum": [
+                        "FALL",
+                        "SPRING"
+                    ],
+                    "example": "SPRING"
+                },
+                "title": {
+                    "description": "Title of the class note",
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 5,
+                    "example": "Updated Lecture Notes - Week 5"
+                },
+                "year": {
+                    "description": "Year the note corresponds to",
+                    "type": "integer",
+                    "minimum": 2000,
+                    "example": 2024
                 }
             }
         },
@@ -1319,65 +2565,278 @@ const docTemplate = `{
             ],
             "properties": {
                 "content": {
-                    "type": "string"
+                    "description": "Detailed content",
+                    "type": "string",
+                    "example": "Updated exam content..."
                 },
                 "courseCode": {
-                    "type": "string"
+                    "description": "Course code",
+                    "type": "string",
+                    "example": "CENG301"
                 },
                 "departmentId": {
+                    "description": "ID of the department",
                     "type": "integer",
-                    "minimum": 1
+                    "minimum": 1,
+                    "example": 1
                 },
                 "fileUrl": {
-                    "type": "string"
+                    "description": "Optional URL to the exam file",
+                    "type": "string",
+                    "example": "http://example.com/exam_v2.pdf"
                 },
                 "term": {
+                    "description": "Term the exam was held",
                     "type": "string",
                     "enum": [
                         "FALL",
                         "SPRING"
-                    ]
+                    ],
+                    "example": "FALL"
                 },
                 "title": {
-                    "type": "string"
+                    "description": "Title of the exam",
+                    "type": "string",
+                    "example": "Midterm 1 - Updated"
                 },
                 "year": {
+                    "description": "Year the exam was held",
                     "type": "integer",
                     "maximum": 2100,
-                    "minimum": 1900
+                    "minimum": 1900,
+                    "example": 2023
+                }
+            }
+        },
+        "dto.UpdateTitleRequest": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UserProfile": {
+            "type": "object",
+            "properties": {
+                "departmentId": {
+                    "description": "ID of the user's department",
+                    "type": "integer",
+                    "example": 1
+                },
+                "departmentName": {
+                    "description": "Name of the user's department",
+                    "type": "string",
+                    "example": "Computer Engineering"
+                },
+                "email": {
+                    "description": "User's email address",
+                    "type": "string",
+                    "example": "user@school.edu.tr"
+                },
+                "facultyId": {
+                    "description": "ID of the user's faculty",
+                    "type": "integer",
+                    "example": 1
+                },
+                "facultyName": {
+                    "description": "Name of the user's faculty",
+                    "type": "string",
+                    "example": "Engineering Faculty"
+                },
+                "firstName": {
+                    "description": "User's first name",
+                    "type": "string",
+                    "example": "John"
+                },
+                "graduationYear": {
+                    "description": "Student's expected graduation year (optional, only for students)",
+                    "type": "integer",
+                    "example": 2025
+                },
+                "id": {
+                    "description": "Unique identifier for the user",
+                    "type": "integer",
+                    "example": 1
+                },
+                "lastName": {
+                    "description": "User's last name",
+                    "type": "string",
+                    "example": "Doe"
+                },
+                "roleType": {
+                    "description": "User's role (STUDENT or INSTRUCTOR)",
+                    "type": "string",
+                    "enum": [
+                        "STUDENT",
+                        "INSTRUCTOR"
+                    ],
+                    "example": "STUDENT"
+                },
+                "studentId": {
+                    "description": "Student or instructor specific fields",
+                    "type": "string",
+                    "example": "12345678"
+                },
+                "title": {
+                    "description": "Instructor's academic title (only for instructors)",
+                    "type": "string",
+                    "example": "Professor"
                 }
             }
         },
         "models.Department": {
             "type": "object",
+            "required": [
+                "code",
+                "faculty_id",
+                "name"
+            ],
             "properties": {
                 "code": {
-                    "type": "string"
+                    "description": "Unique code for the department (e.g., CENG, EEE, MATH)",
+                    "type": "string",
+                    "example": "CENG"
                 },
                 "faculty": {
-                    "$ref": "#/definitions/models.Faculty"
+                    "description": "Associated faculty details (populated in some responses)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Faculty"
+                        }
+                    ]
                 },
                 "faculty_id": {
-                    "type": "integer"
+                    "description": "ID of the faculty this department belongs to (required)",
+                    "type": "integer",
+                    "example": 1
                 },
                 "id": {
-                    "type": "integer"
+                    "description": "Unique identifier for the department",
+                    "type": "integer",
+                    "example": 1
                 },
                 "name": {
-                    "type": "string"
+                    "description": "Name of the department (required)",
+                    "type": "string",
+                    "example": "Computer Engineering"
                 }
             }
         },
         "models.Faculty": {
             "type": "object",
+            "required": [
+                "code",
+                "name"
+            ],
             "properties": {
                 "code": {
+                    "description": "Unique code for the faculty (e.g., ENG, SCI)",
+                    "type": "string",
+                    "example": "ENG"
+                },
+                "description": {
+                    "description": "Optional description of the faculty",
+                    "type": "string",
+                    "example": "Faculty of Engineering and Natural Sciences"
+                },
+                "id": {
+                    "description": "Unique identifier for the faculty",
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "description": "Name of the faculty (required)",
+                    "type": "string",
+                    "example": "Engineering Faculty"
+                }
+            }
+        },
+        "models.Instructor": {
+            "type": "object",
+            "properties": {
+                "department": {
+                    "description": "Relation, no db tag",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Department"
+                        }
+                    ]
+                },
+                "departmentId": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "user": {
+                    "description": "Relation, no db tag",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.User"
+                        }
+                    ]
+                },
+                "userId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.RoleType": {
+            "type": "string",
+            "enum": [
+                "STUDENT",
+                "INSTRUCTOR"
+            ],
+            "x-enum-comments": {
+                "RoleInstructor": "Original name",
+                "RoleStudent": "Original name"
+            },
+            "x-enum-varnames": [
+                "RoleStudent",
+                "RoleInstructor"
+            ]
+        },
+        "models.User": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
-                "name": {
+                "isActive": {
+                    "type": "boolean"
+                },
+                "lastLoginAt": {
+                    "description": "Added LastLoginAt (nullable)",
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "roleType": {
+                    "description": "Uses RoleType from models.go",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.RoleType"
+                        }
+                    ]
+                },
+                "updatedAt": {
                     "type": "string"
                 }
             }

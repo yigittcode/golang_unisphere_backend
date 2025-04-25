@@ -4,47 +4,38 @@ import (
 	"time"
 )
 
-// RoleType defines the user role type
-type RoleType string
-
-const (
-	// RoleStudent represents a student role
-	RoleStudent RoleType = "STUDENT"
-	// RoleInstructor represents an instructor role
-	RoleInstructor RoleType = "INSTRUCTOR"
-)
-
-// User defines the user model
+// User defines the user model based on the 'users' table
 type User struct {
-	ID        int64     `json:"id"`
-	Email     string    `json:"email"`
-	Password  string    `json:"-"` // Exclude from JSON responses
-	FirstName string    `json:"firstName"`
-	LastName  string    `json:"lastName"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
-	RoleType  RoleType  `json:"roleType"`
-	IsActive  bool      `json:"isActive"`
+	ID          int64      `json:"id" db:"id"`
+	Email       string     `json:"email" db:"email"`
+	Password    string     `json:"-" db:"password"` // Exclude from JSON, but needed for DB mapping
+	FirstName   string     `json:"firstName" db:"first_name"`
+	LastName    string     `json:"lastName" db:"last_name"`
+	CreatedAt   time.Time  `json:"createdAt" db:"created_at"`
+	UpdatedAt   time.Time  `json:"updatedAt" db:"updated_at"`
+	RoleType    RoleType   `json:"roleType" db:"role_type"` // Uses RoleType from models.go
+	IsActive    bool       `json:"isActive" db:"is_active"`
+	LastLoginAt *time.Time `json:"lastLoginAt,omitempty" db:"last_login_at"` // Added LastLoginAt (nullable)
+	// last_login_at from DB is missing, add if needed
 }
 
-// Student defines the student model (extends User)
+// Student defines the student model based on the 'students' table
 type Student struct {
-	ID             int64       `json:"id"`
-	UserID         int64       `json:"userId"`
-	StudentID      string      `json:"studentId"`
-	DepartmentID   int64       `json:"departmentId"`
-	GraduationYear *int        `json:"graduationYear,omitempty"`
-	User           *User       `json:"user,omitempty"`
-	Department     *Department `json:"department,omitempty"`
+	ID             int64       `json:"id" db:"id"`
+	UserID         int64       `json:"userId" db:"user_id"`
+	StudentID      string      `json:"studentId" db:"student_id"`
+	DepartmentID   int64       `json:"departmentId" db:"department_id"`
+	GraduationYear *int        `json:"graduationYear,omitempty" db:"graduation_year"` // Pointer for potential NULL
+	User           *User       `json:"user,omitempty"`                                // Relation, no db tag
+	Department     *Department `json:"department,omitempty"`                          // Relation, no db tag
 }
 
-// Instructor defines the instructor model (extends User)
+// Instructor defines the instructor model based on the 'instructors' table
 type Instructor struct {
-	ID           int64       `json:"id"`
-	UserID       int64       `json:"userId"`
-	DepartmentID int64       `json:"departmentId"`
-	Title        string      `json:"title"`
-	User         *User       `json:"user,omitempty"`
-	Department   *Department `json:"department,omitempty"`
+	ID           int64       `json:"id" db:"id"`
+	UserID       int64       `json:"userId" db:"user_id"`
+	DepartmentID int64       `json:"departmentId" db:"department_id"`
+	Title        string      `json:"title" db:"title"`
+	User         *User       `json:"user,omitempty"`       // Relation, no db tag
+	Department   *Department `json:"department,omitempty"` // Relation, no db tag
 }
- 

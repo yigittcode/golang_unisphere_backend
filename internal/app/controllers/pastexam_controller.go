@@ -57,19 +57,20 @@ func handlePastExamError(ctx *gin.Context, err error) {
 
 // GetAllPastExams retrieves all past exams with pagination and filtering
 // @Summary Get all past exams
-// @Description Get a list of all past exams with optional filtering and pagination
+// @Description Get a list of all past exams. Supports filtering by faculty, department, course code, year, term and sorting by various fields.
 // @Tags pastexams
 // @Produce json
-// @Param facultyId query int false "Filter by faculty ID"
-// @Param departmentId query int false "Filter by department ID"
-// @Param courseCode query string false "Filter by course code"
-// @Param year query int false "Filter by year"
-// @Param term query string false "Filter by term (FALL or SPRING)"
-// @Param sortBy query string false "Sort field (default: createdAt)"
-// @Param sortOrder query string false "Sort order (ASC or DESC, default: DESC)"
-// @Param page query int false "Page number (0-based, default: 0)"
-// @Param size query int false "Page size (default: 10)"
-// @Success 200 {object} dto.APIResponse "Past exams retrieved successfully"
+// @Param facultyId query int false "Filter by faculty ID" Format(int64) example(1)
+// @Param departmentId query int false "Filter by department ID" Format(int64) example(1)
+// @Param courseCode query string false "Filter by course code (case-insensitive, partial match)" example(CENG)
+// @Param year query int false "Filter by exact year" example(2023)
+// @Param term query string false "Filter by term" Enums(FALL, SPRING) example(FALL)
+// @Param sortBy query string false "Sort field (year, term, courseCode, title, createdAt, updatedAt)" default(createdAt)
+// @Param sortOrder query string false "Sort order" Enums(ASC, DESC) default(DESC)
+// @Param page query int false "Page number for pagination (0-based)" default(0) minimum(0)
+// @Param size query int false "Number of items per page" default(10) minimum(1) maximum(100)
+// @Success 200 {object} dto.APIResponse{data=dto.PastExamListResponse} "Past exams retrieved successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid query parameter format or value"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /pastexams [get]
 func (c *PastExamController) GetAllPastExams(ctx *gin.Context) {
@@ -150,7 +151,7 @@ func (c *PastExamController) GetAllPastExams(ctx *gin.Context) {
 			CurrentPage: page - 1, // convert back to 0-based for API
 			TotalPages:  totalPages,
 			PageSize:    pageSize,
-			TotalItems:  totalItems,
+			TotalItems:  int64(totalItems),
 		},
 	}
 
@@ -164,11 +165,12 @@ func (c *PastExamController) GetAllPastExams(ctx *gin.Context) {
 
 // GetPastExamByID retrieves a past exam by ID
 // @Summary Get past exam by ID
-// @Description Get past exam information by ID
+// @Description Get detailed information for a specific past exam by its ID.
 // @Tags pastexams
 // @Produce json
-// @Param id path int true "Past Exam ID"
-// @Success 200 {object} dto.APIResponse "Past exam information retrieved successfully"
+// @Param id path int true "Past Exam ID" Format(int64) example(1)
+// @Success 200 {object} dto.APIResponse{data=dto.PastExamResponse} "Past exam information retrieved successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid Past Exam ID format"
 // @Failure 404 {object} dto.ErrorResponse "Past exam not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /pastexams/{id} [get]
@@ -198,15 +200,17 @@ func (c *PastExamController) GetPastExamByID(ctx *gin.Context) {
 }
 
 // CreatePastExam handles past exam creation
-// @Summary Create a new past exam
-// @Description Create a new past exam with the provided data
+// @Summary Create a new past exam (Instructor only)
+// @Description Create a new past exam. Requires instructor role.
 // @Tags pastexams
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param request body dto.CreatePastExamRequest true "Past exam information"
-// @Success 201 {object} dto.APIResponse "Past exam successfully created"
+// @Success 201 {object} dto.APIResponse{data=dto.PastExamResponse} "Past exam successfully created"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
-// @Failure 403 {object} dto.ErrorResponse "Permission denied or not an instructor"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden - User is not an instructor"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /pastexams [post]
 func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
@@ -264,16 +268,18 @@ func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
 }
 
 // UpdatePastExam updates an existing past exam
-// @Summary Update a past exam
-// @Description Update a past exam with the provided data
+// @Summary Update a past exam (Instructor only, Owner only)
+// @Description Update an existing past exam. Requires instructor role and ownership.
 // @Tags pastexams
 // @Accept json
 // @Produce json
-// @Param id path int true "Past Exam ID"
+// @Security BearerAuth
+// @Param id path int true "Past Exam ID" Format(int64) example(1)
 // @Param request body dto.UpdatePastExamRequest true "Updated past exam information"
-// @Success 200 {object} dto.APIResponse "Past exam successfully updated"
+// @Success 200 {object} dto.APIResponse{data=dto.PastExamResponse} "Past exam successfully updated"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
-// @Failure 403 {object} dto.ErrorResponse "Permission denied or not an instructor"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden - User is not an instructor or not the owner"
 // @Failure 404 {object} dto.ErrorResponse "Past exam not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /pastexams/{id} [put]
@@ -341,13 +347,16 @@ func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
 }
 
 // DeletePastExam deletes a past exam
-// @Summary Delete a past exam
-// @Description Delete a past exam by ID
+// @Summary Delete a past exam (Instructor only, Owner only)
+// @Description Delete a past exam by its ID. Requires instructor role and ownership.
 // @Tags pastexams
 // @Produce json
-// @Param id path int true "Past Exam ID"
+// @Security BearerAuth
+// @Param id path int true "Past Exam ID" Format(int64) example(1)
 // @Success 200 {object} dto.APIResponse "Past exam successfully deleted"
-// @Failure 403 {object} dto.ErrorResponse "Permission denied or not an instructor"
+// @Failure 400 {object} dto.ErrorResponse "Invalid Past Exam ID format"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden - User is not an instructor or not the owner"
 // @Failure 404 {object} dto.ErrorResponse "Past exam not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /pastexams/{id} [delete]

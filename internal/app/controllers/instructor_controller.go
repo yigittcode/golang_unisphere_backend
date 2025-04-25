@@ -44,6 +44,16 @@ func handleInstructorError(ctx *gin.Context, err error) {
 }
 
 // GetInstructorByID retrieves instructor information by ID
+// @Summary Get instructor by ID
+// @Description Get public information about an instructor by their user ID
+// @Tags instructors
+// @Produce json
+// @Param id path int true "Instructor User ID" Format(int64)
+// @Success 200 {object} dto.APIResponse{data=models.Instructor} "Instructor retrieved successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid Instructor ID format"
+// @Failure 404 {object} dto.ErrorResponse "Instructor not found"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Router /instructors/{id} [get]
 func (c *InstructorController) GetInstructorByID(ctx *gin.Context) {
 	// Get instructor ID from URL
 	idParam := ctx.Param("id")
@@ -72,6 +82,16 @@ func (c *InstructorController) GetInstructorByID(ctx *gin.Context) {
 }
 
 // GetInstructorsByDepartment retrieves instructors by department ID
+// @Summary Get instructors by department
+// @Description Get a list of instructors belonging to a specific department
+// @Tags instructors
+// @Produce json
+// @Param departmentId path int true "Department ID" Format(int64)
+// @Success 200 {object} dto.APIResponse{data=[]models.Instructor} "Instructors retrieved successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid Department ID format"
+// @Failure 404 {object} dto.ErrorResponse "Department not found"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Router /department-instructors/{departmentId} [get] // Note: Path defined in routes.go
 func (c *InstructorController) GetInstructorsByDepartment(ctx *gin.Context) {
 	// Get department ID from URL
 	departmentIdParam := ctx.Param("departmentId")
@@ -100,6 +120,17 @@ func (c *InstructorController) GetInstructorsByDepartment(ctx *gin.Context) {
 }
 
 // GetInstructorProfile retrieves the profile of authenticated instructor
+// @Summary Get instructor profile
+// @Description Get detailed profile information for the currently authenticated instructor (Requires instructor role)
+// @Tags instructors
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} dto.APIResponse{data=models.Instructor} "Instructor profile retrieved successfully"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden - User is not an instructor or token invalid"
+// @Failure 404 {object} dto.ErrorResponse "Instructor not found"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Router /instructors/profile [get]
 func (c *InstructorController) GetInstructorProfile(ctx *gin.Context) {
 	// Get user ID from context (set by auth middleware)
 	userIDInterface, exists := ctx.Get("userID")
@@ -135,6 +166,20 @@ func (c *InstructorController) GetInstructorProfile(ctx *gin.Context) {
 }
 
 // UpdateTitle updates the title of an instructor
+// @Summary Update instructor title
+// @Description Update the academic title for the currently authenticated instructor (Requires instructor role)
+// @Tags instructors
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.UpdateTitleRequest true "New title information"
+// @Success 200 {object} dto.APIResponse "Instructor title updated successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error (e.g., empty title)"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden - User is not an instructor or token invalid"
+// @Failure 404 {object} dto.ErrorResponse "Instructor not found"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Router /instructors/title [put]
 func (c *InstructorController) UpdateTitle(ctx *gin.Context) {
 	// Get user ID from context (set by auth middleware)
 	userIDInterface, exists := ctx.Get("userID")
@@ -154,7 +199,11 @@ func (c *InstructorController) UpdateTitle(ctx *gin.Context) {
 	}
 
 	// Parse request body
-	var req dto.UpdateTitleRequest
+	// Define UpdateTitleRequest DTO struct (Consider moving to dto package)
+	type UpdateTitleRequest struct {
+		Title string `json:"title" binding:"required" example:"Associate Professor"` // New academic title for the instructor
+	}
+	var req UpdateTitleRequest // Use the local definition
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Invalid title update request")
 		errorDetail = errorDetail.WithDetails(err.Error())

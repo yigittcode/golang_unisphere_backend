@@ -2,37 +2,182 @@ basePath: /api/v1
 definitions:
   dto.APIResponse:
     properties:
-      data: {}
-      error: {}
+      data:
+        description: Use specific DTOs for data structure
+      error:
+        allOf:
+        - $ref: '#/definitions/dto.ErrorDetail'
+        description: Include error details if Success is false
       message:
-        example: Operation successful
+        example: Operation completed successfully
         type: string
       success:
         example: true
         type: boolean
       timestamp:
+        description: Timestamp of the response
         example: "2025-04-23T12:01:05.123Z"
         type: string
+    type: object
+  dto.ClassNoteListResponse:
+    properties:
+      notes:
+        description: List of class note details for the current page
+        items:
+          $ref: '#/definitions/dto.ClassNoteResponse'
+        type: array
+      pagination:
+        allOf:
+        - $ref: '#/definitions/dto.PaginationInfo'
+        description: Pagination metadata
+    type: object
+  dto.ClassNoteResponse:
+    properties:
+      content:
+        description: Main content of the note
+        example: Detailed notes covering topic X...
+        type: string
+      courseCode:
+        description: Course code
+        example: CENG304
+        type: string
+      createdAt:
+        description: Timestamp when the note was created
+        example: "2024-01-15T10:00:00Z"
+        type: string
+      departmentId:
+        description: ID of the department for the course
+        example: 1
+        type: integer
+      departmentName:
+        description: Name of the department
+        example: Computer Engineering
+        type: string
+      facultyId:
+        description: ID of the faculty associated with the department
+        example: 1
+        type: integer
+      facultyName:
+        description: Name of the faculty
+        example: Engineering Faculty
+        type: string
+      id:
+        description: Unique identifier for the class note
+        example: 15
+        type: integer
+      image:
+        description: Optional URL to an associated image
+        example: http://example.com/image.jpg
+        type: string
+      term:
+        description: Term (FALL or SPRING)
+        example: SPRING
+        type: string
+      title:
+        description: Title of the class note
+        example: Lecture Notes - Week 5
+        type: string
+      updatedAt:
+        description: Timestamp when the note was last updated
+        example: "2024-01-16T11:30:00Z"
+        type: string
+      uploadedByStudent:
+        description: True if uploaded by a student, false if by an instructor
+        example: true
+        type: boolean
+      uploaderEmail:
+        description: Email of the user who uploaded the note
+        example: john.doe@example.com
+        type: string
+      uploaderName:
+        description: Name of the user who uploaded the note
+        example: John Doe
+        type: string
+      year:
+        description: Year the note corresponds to
+        example: 2024
+        type: integer
+    type: object
+  dto.CreateClassNoteRequest:
+    properties:
+      content:
+        description: Main content of the note
+        example: Detailed notes covering topic X...
+        minLength: 10
+        type: string
+      courseCode:
+        description: Course code (e.g., CENG304)
+        example: CENG304
+        maxLength: 10
+        minLength: 3
+        type: string
+      departmentId:
+        description: ID of the department for the course
+        example: 1
+        type: integer
+      image:
+        description: Optional URL to an associated image
+        example: http://example.com/image.jpg
+        type: string
+      term:
+        description: Term (FALL or SPRING)
+        enum:
+        - FALL
+        - SPRING
+        example: SPRING
+        type: string
+      title:
+        description: Title of the class note
+        example: Lecture Notes - Week 5
+        maxLength: 255
+        minLength: 5
+        type: string
+      year:
+        description: Year the note corresponds to
+        example: 2024
+        minimum: 2000
+        type: integer
+    required:
+    - content
+    - courseCode
+    - departmentId
+    - term
+    - title
+    - year
     type: object
   dto.CreatePastExamRequest:
     properties:
       content:
+        description: Detailed content or description of the exam
+        example: Exam content details...
         type: string
       courseCode:
+        description: Course code (e.g., CENG301)
+        example: CENG301
         type: string
       departmentId:
+        description: ID of the department for the course
+        example: 1
         minimum: 1
         type: integer
       fileUrl:
+        description: Optional URL to the exam file (PDF, image, etc.)
+        example: http://example.com/exam.pdf
         type: string
       term:
+        description: Term the exam was held (FALL or SPRING)
         enum:
         - FALL
         - SPRING
+        example: FALL
         type: string
       title:
+        description: Title of the exam (e.g., Midterm 1, Final Exam)
+        example: Midterm Exam
         type: string
       year:
+        description: Year the exam was held (e.g., 2023)
+        example: 2023
         maximum: 2100
         minimum: 1900
         type: integer
@@ -124,19 +269,108 @@ definitions:
   dto.LoginRequest:
     properties:
       email:
+        description: User's registered email address
         example: user@school.edu.tr
         type: string
       password:
+        description: User's password
         example: Password123
         type: string
     required:
     - email
     - password
     type: object
+  dto.PaginationInfo:
+    properties:
+      currentPage:
+        description: Current page number (0-based)
+        example: 0
+        type: integer
+      pageSize:
+        description: Number of items per page
+        example: 10
+        type: integer
+      totalItems:
+        description: Total number of items matching the query
+        example: 48
+        type: integer
+      totalPages:
+        description: Total number of pages available
+        example: 5
+        type: integer
+    type: object
+  dto.PastExamListResponse:
+    properties:
+      exams:
+        description: List of past exam details for the current page
+        items:
+          $ref: '#/definitions/dto.PastExamResponse'
+        type: array
+      pagination:
+        allOf:
+        - $ref: '#/definitions/dto.PaginationInfo'
+        description: Pagination metadata
+    type: object
+  dto.PastExamResponse:
+    properties:
+      content:
+        description: Detailed content or description of the exam
+        example: Exam content details...
+        type: string
+      courseCode:
+        description: Course code
+        example: CENG301
+        type: string
+      departmentId:
+        description: ID of the department for the course
+        example: 1
+        type: integer
+      departmentName:
+        description: Name of the department
+        example: Computer Engineering
+        type: string
+      facultyId:
+        description: ID of the faculty associated with the department
+        example: 1
+        type: integer
+      facultyName:
+        description: Name of the faculty
+        example: Engineering Faculty
+        type: string
+      fileUrl:
+        description: URL to the exam file, if available
+        example: http://example.com/exam.pdf
+        type: string
+      id:
+        description: Unique identifier for the past exam
+        example: 10
+        type: integer
+      instructorName:
+        description: Name of the instructor who uploaded the exam
+        example: Jane Smith
+        type: string
+      term:
+        description: Term the exam was held (FALL or SPRING)
+        example: FALL
+        type: string
+      title:
+        description: Title of the exam
+        example: Midterm 1
+        type: string
+      uploadedByEmail:
+        description: Email of the instructor who uploaded the exam
+        example: instructor@school.edu.tr
+        type: string
+      year:
+        description: Year the exam was held
+        example: 2023
+        type: integer
+    type: object
   dto.RefreshTokenRequest:
     properties:
       refreshToken:
-        example: 62a71580-9d9e-4884-a000-5dc497a3d1d8
+        description: The refresh token obtained during login
+        example: your_refresh_token_here
         type: string
     required:
     - refreshToken
@@ -144,22 +378,29 @@ definitions:
   dto.RegisterInstructorRequest:
     properties:
       departmentId:
+        description: ID of the department the instructor belongs to
         example: 1
         type: integer
       email:
+        description: Instructor's email address (must be unique)
         example: instructor@school.edu.tr
         type: string
       firstName:
+        description: Instructor's first name
         example: Jane
         type: string
       lastName:
+        description: Instructor's last name
         example: Smith
         type: string
       password:
+        description: Instructor's password (min 8 characters, letter+number required
+          by service)
         example: Password123
-        minLength: 6
+        minLength: 8
         type: string
       title:
+        description: Instructor's academic title (e.g., Professor, Dr.)
         example: Professor
         type: string
     required:
@@ -173,25 +414,34 @@ definitions:
   dto.RegisterStudentRequest:
     properties:
       departmentId:
+        description: ID of the department the student belongs to
         example: 1
         type: integer
       email:
+        description: Student's email address (must be unique)
         example: student@school.edu.tr
         type: string
       firstName:
+        description: Student's first name
         example: John
         type: string
       graduationYear:
+        description: Student's expected graduation year (optional)
         example: 2025
+        minimum: 1900
         type: integer
       lastName:
+        description: Student's last name
         example: Doe
         type: string
       password:
+        description: Student's password (min 8 characters, letter+number required
+          by service)
         example: Password123
-        minLength: 6
+        minLength: 8
         type: string
       studentId:
+        description: Student's unique 8-digit ID
         example: "12345678"
         type: string
     required:
@@ -202,25 +452,92 @@ definitions:
     - password
     - studentId
     type: object
-  dto.UpdatePastExamRequest:
+  dto.SuccessResponse:
+    properties:
+      message:
+        example: Resource deleted successfully
+        type: string
+    type: object
+  dto.UpdateClassNoteRequest:
     properties:
       content:
+        description: Main content of the note
+        example: Updated detailed notes covering topic X...
+        minLength: 10
         type: string
       courseCode:
+        description: Course code (e.g., CENG304)
+        example: CENG304
+        maxLength: 10
+        minLength: 3
         type: string
       departmentId:
-        minimum: 1
+        description: ID of the department for the course
+        example: 1
         type: integer
-      fileUrl:
+      image:
+        description: Optional URL to an associated image
+        example: http://example.com/new_image.jpg
         type: string
       term:
+        description: Term (FALL or SPRING)
         enum:
         - FALL
         - SPRING
+        example: SPRING
         type: string
       title:
+        description: Title of the class note
+        example: Updated Lecture Notes - Week 5
+        maxLength: 255
+        minLength: 5
         type: string
       year:
+        description: Year the note corresponds to
+        example: 2024
+        minimum: 2000
+        type: integer
+    required:
+    - content
+    - courseCode
+    - departmentId
+    - term
+    - title
+    - year
+    type: object
+  dto.UpdatePastExamRequest:
+    properties:
+      content:
+        description: Detailed content
+        example: Updated exam content...
+        type: string
+      courseCode:
+        description: Course code
+        example: CENG301
+        type: string
+      departmentId:
+        description: ID of the department
+        example: 1
+        minimum: 1
+        type: integer
+      fileUrl:
+        description: Optional URL to the exam file
+        example: http://example.com/exam_v2.pdf
+        type: string
+      term:
+        description: Term the exam was held
+        enum:
+        - FALL
+        - SPRING
+        example: FALL
+        type: string
+      title:
+        description: Title of the exam
+        example: Midterm 1 - Updated
+        type: string
+      year:
+        description: Year the exam was held
+        example: 2023
         maximum: 2100
         minimum: 1900
         type: integer
@@ -232,26 +549,168 @@ definitions:
     - title
     - year
     type: object
+  dto.UpdateTitleRequest:
+    properties:
+      title:
+        type: string
+    required:
+    - title
+    type: object
+  dto.UserProfile:
+    properties:
+      departmentId:
+        description: ID of the user's department
+        example: 1
+        type: integer
+      departmentName:
+        description: Name of the user's department
+        example: Computer Engineering
+        type: string
+      email:
+        description: User's email address
+        example: user@school.edu.tr
+        type: string
+      facultyId:
+        description: ID of the user's faculty
+        example: 1
+        type: integer
+      facultyName:
+        description: Name of the user's faculty
+        example: Engineering Faculty
+        type: string
+      firstName:
+        description: User's first name
+        example: John
+        type: string
+      graduationYear:
+        description: Student's expected graduation year (optional, only for students)
+        example: 2025
+        type: integer
+      id:
+        description: Unique identifier for the user
+        example: 1
+        type: integer
+      lastName:
+        description: User's last name
+        example: Doe
+        type: string
+      roleType:
+        description: User's role (STUDENT or INSTRUCTOR)
+        enum:
+        - STUDENT
+        - INSTRUCTOR
+        example: STUDENT
+        type: string
+      studentId:
+        description: Student or instructor specific fields
+        example: "12345678"
+        type: string
+      title:
+        description: Instructor's academic title (only for instructors)
+        example: Professor
+        type: string
+    type: object
   models.Department:
     properties:
       code:
+        description: Unique code for the department (e.g., CENG, EEE, MATH)
+        example: CENG
         type: string
       faculty:
-        $ref: '#/definitions/models.Faculty'
+        allOf:
+        - $ref: '#/definitions/models.Faculty'
+        description: Associated faculty details (populated in some responses)
       faculty_id:
+        description: ID of the faculty this department belongs to (required)
+        example: 1
         type: integer
       id:
+        description: Unique identifier for the department
+        example: 1
         type: integer
       name:
+        description: Name of the department (required)
+        example: Computer Engineering
         type: string
+    required:
+    - code
+    - faculty_id
+    - name
     type: object
   models.Faculty:
     properties:
       code:
+        description: Unique code for the faculty (e.g., ENG, SCI)
+        example: ENG
+        type: string
+      description:
+        description: Optional description of the faculty
+        example: Faculty of Engineering and Natural Sciences
+        type: string
+      id:
+        description: Unique identifier for the faculty
+        example: 1
+        type: integer
+      name:
+        description: Name of the faculty (required)
+        example: Engineering Faculty
+        type: string
+    required:
+    - code
+    - name
+    type: object
+  models.Instructor:
+    properties:
+      department:
+        allOf:
+        - $ref: '#/definitions/models.Department'
+        description: Relation, no db tag
+      departmentId:
+        type: integer
+      id:
+        type: integer
+      title:
+        type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/models.User'
+        description: Relation, no db tag
+      userId:
+        type: integer
+    type: object
+  models.RoleType:
+    enum:
+    - STUDENT
+    - INSTRUCTOR
+    type: string
+    x-enum-comments:
+      RoleInstructor: Original name
+      RoleStudent: Original name
+    x-enum-varnames:
+    - RoleStudent
+    - RoleInstructor
+  models.User:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      firstName:
         type: string
       id:
         type: integer
-      name:
+      isActive:
+        type: boolean
+      lastLoginAt:
+        description: Added LastLoginAt (nullable)
+        type: string
+      lastName:
+        type: string
+      roleType:
+        allOf:
+        - $ref: '#/definitions/models.RoleType'
+        description: Uses RoleType from models.go
+      updatedAt:
         type: string
     type: object
 host: localhost:8080
@@ -309,11 +768,16 @@ paths:
       - application/json
       responses:
         "200":
-          description: Profile retrieved successfully
+          description: User profile retrieved successfully
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.UserProfile'
+              type: object
         "401":
-          description: Authentication required
+          description: Unauthorized - Invalid or missing token
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
         "500":
@@ -427,6 +891,343 @@ paths:
       summary: Register a new student
       tags:
       - auth
+  /classNotes:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of class notes with optional filtering and pagination.
+      parameters:
+      - description: Filter by Faculty ID
+        example: 1
+        in: query
+        name: facultyId
+        type: integer
+      - description: Filter by Department ID
+        example: 1
+        in: query
+        name: departmentId
+        type: integer
+      - description: Filter by Course Code
+        example: CENG304
+        in: query
+        name: courseCode
+        type: string
+      - description: Filter by Year
+        example: 2024
+        in: query
+        name: year
+        type: integer
+      - description: Filter by Term (FALL or SPRING)
+        example: SPRING
+        in: query
+        name: term
+        type: string
+      - default: createdAt
+        description: Sort field (createdAt, year, term, courseCode, title)
+        in: query
+        name: sortBy
+        type: string
+      - default: DESC
+        description: Sort order (ASC or DESC)
+        in: query
+        name: sortOrder
+        type: string
+      - default: 0
+        description: Page number (0-based)
+        in: query
+        minimum: 0
+        name: page
+        type: integer
+      - default: 10
+        description: Page size
+        in: query
+        maximum: 100
+        minimum: 1
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Class notes retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ClassNoteListResponse'
+              type: object
+        "400":
+          description: Bad Request (e.g., invalid query parameters)
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get all class notes
+      tags:
+      - ClassNotes
+    post:
+      consumes:
+      - application/json
+      description: Adds a new class note to the system. Requires authentication.
+      parameters:
+      - description: Class Note Data
+        in: body
+        name: note
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateClassNoteRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Class note created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ClassNoteResponse'
+              type: object
+        "400":
+          description: Bad Request (e.g., validation errors)
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized (handled by middleware)" // Middleware should
+            handle this
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new class note
+      tags:
+      - ClassNotes
+  /classNotes/{noteId}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes an existing class note. Requires authentication and ownership.
+      parameters:
+      - description: Class Note ID to delete
+        example: 15
+        format: int64
+        in: path
+        name: noteId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Class note deleted successfully" // Changed data type
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.SuccessResponse'
+              type: object
+        "400":
+          description: Bad Request (e.g., invalid ID)
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized (handled by middleware)" // Middleware should
+            handle this
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden (not owner)
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a class note
+      tags:
+      - ClassNotes
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a specific class note by its ID.
+      parameters:
+      - description: Class Note ID
+        example: 15
+        format: int64
+        in: path
+        name: noteId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Class note retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ClassNoteResponse'
+              type: object
+        "400":
+          description: Bad Request (e.g., invalid ID)
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get class note by ID
+      tags:
+      - ClassNotes
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing class note. Requires authentication and ownership.
+      parameters:
+      - description: Class Note ID to update
+        example: 15
+        format: int64
+        in: path
+        name: noteId
+        required: true
+        type: integer
+      - description: Updated Class Note Data
+        in: body
+        name: note
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateClassNoteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Class note updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ClassNoteResponse'
+              type: object
+        "400":
+          description: Bad Request (e.g., validation errors, invalid ID)
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized (handled by middleware)" // Middleware should
+            handle this
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden (not owner)
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a class note
+      tags:
+      - ClassNotes
+  /classNotes/my-notes:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves all class notes uploaded by the currently authenticated
+        user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Your class notes retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.ClassNoteResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized (handled by middleware)" // Middleware should
+            handle this
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get my class notes
+      tags:
+      - ClassNotes
+  /department-instructors/{departmentId}:
+    get:
+      description: Get a list of instructors belonging to a specific department
+      parameters:
+      - description: Department ID
+        format: int64
+        in: path
+        name: departmentId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Instructors retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Instructor'
+                  type: array
+              type: object
+        "400":
+          description: Invalid Department ID format
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Department not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get instructors by department
+      tags:
+      - instructors
   /departments:
     get:
       description: Get a list of all departments
@@ -748,44 +1549,184 @@ paths:
       summary: Get departments by faculty ID
       tags:
       - departments
+  /instructors/{id}:
+    get:
+      description: Get public information about an instructor by their user ID
+      parameters:
+      - description: Instructor User ID
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Instructor retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Instructor'
+              type: object
+        "400":
+          description: Invalid Instructor ID format
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Instructor not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get instructor by ID
+      tags:
+      - instructors
+  /instructors/profile:
+    get:
+      description: Get detailed profile information for the currently authenticated
+        instructor (Requires instructor role)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Instructor profile retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Instructor'
+              type: object
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden - User is not an instructor or token invalid
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Instructor not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get instructor profile
+      tags:
+      - instructors
+  /instructors/title:
+    put:
+      consumes:
+      - application/json
+      description: Update the academic title for the currently authenticated instructor
+        (Requires instructor role)
+      parameters:
+      - description: New title information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateTitleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Instructor title updated successfully
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "400":
+          description: Invalid request format or validation error (e.g., empty title)
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden - User is not an instructor or token invalid
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Instructor not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update instructor title
+      tags:
+      - instructors
   /pastexams:
     get:
-      description: Get a list of all past exams with optional filtering and pagination
+      description: Get a list of all past exams. Supports filtering by faculty, department,
+        course code, year, term and sorting by various fields.
       parameters:
       - description: Filter by faculty ID
+        example: 1
+        format: int64
         in: query
         name: facultyId
         type: integer
       - description: Filter by department ID
+        example: 1
+        format: int64
         in: query
         name: departmentId
         type: integer
-      - description: Filter by course code
+      - description: Filter by course code (case-insensitive, partial match)
+        example: CENG
         in: query
         name: courseCode
         type: string
-      - description: Filter by year
+      - description: Filter by exact year
+        example: 2023
         in: query
         name: year
         type: integer
-      - description: Filter by term (FALL or SPRING)
+      - description: Filter by term
+        enum:
+        - FALL
+        - SPRING
+        example: FALL
         in: query
         name: term
         type: string
-      - description: 'Sort field (default: createdAt)'
+      - default: createdAt
+        description: Sort field (year, term, courseCode, title, createdAt, updatedAt)
         in: query
         name: sortBy
         type: string
-      - description: 'Sort order (ASC or DESC, default: DESC)'
+      - default: DESC
+        description: Sort order
+        enum:
+        - ASC
+        - DESC
         in: query
         name: sortOrder
         type: string
-      - description: 'Page number (0-based, default: 0)'
+      - default: 0
+        description: Page number for pagination (0-based)
         in: query
+        minimum: 0
         name: page
         type: integer
-      - description: 'Page size (default: 10)'
+      - default: 10
+        description: Number of items per page
         in: query
+        maximum: 100
+        minimum: 1
         name: size
         type: integer
       produces:
@@ -794,7 +1735,16 @@ paths:
         "200":
           description: Past exams retrieved successfully
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.PastExamListResponse'
+              type: object
+        "400":
+          description: Invalid query parameter format or value
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
@@ -805,7 +1755,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new past exam with the provided data
+      description: Create a new past exam. Requires instructor role.
       parameters:
       - description: Past exam information
         in: body
@@ -819,27 +1769,40 @@ paths:
         "201":
           description: Past exam successfully created
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.PastExamResponse'
+              type: object
         "400":
           description: Invalid request format or validation error
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
-          description: Permission denied or not an instructor
+          description: Forbidden - User is not an instructor
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
-      summary: Create a new past exam
+      security:
+      - BearerAuth: []
+      summary: Create a new past exam (Instructor only)
       tags:
       - pastexams
   /pastexams/{id}:
     delete:
-      description: Delete a past exam by ID
+      description: Delete a past exam by its ID. Requires instructor role and ownership.
       parameters:
       - description: Past Exam ID
+        example: 1
+        format: int64
         in: path
         name: id
         required: true
@@ -851,8 +1814,16 @@ paths:
           description: Past exam successfully deleted
           schema:
             $ref: '#/definitions/dto.APIResponse'
+        "400":
+          description: Invalid Past Exam ID format
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
-          description: Permission denied or not an instructor
+          description: Forbidden - User is not an instructor or not the owner
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
         "404":
@@ -863,13 +1834,17 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
-      summary: Delete a past exam
+      security:
+      - BearerAuth: []
+      summary: Delete a past exam (Instructor only, Owner only)
       tags:
       - pastexams
     get:
-      description: Get past exam information by ID
+      description: Get detailed information for a specific past exam by its ID.
       parameters:
       - description: Past Exam ID
+        example: 1
+        format: int64
         in: path
         name: id
         required: true
@@ -880,7 +1855,16 @@ paths:
         "200":
           description: Past exam information retrieved successfully
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.PastExamResponse'
+              type: object
+        "400":
+          description: Invalid Past Exam ID format
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: Past exam not found
           schema:
@@ -895,9 +1879,11 @@ paths:
     put:
       consumes:
       - application/json
-      description: Update a past exam with the provided data
+      description: Update an existing past exam. Requires instructor role and ownership.
       parameters:
       - description: Past Exam ID
+        example: 1
+        format: int64
         in: path
         name: id
         required: true
@@ -914,13 +1900,22 @@ paths:
         "200":
           description: Past exam successfully updated
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.PastExamResponse'
+              type: object
         "400":
           description: Invalid request format or validation error
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
-          description: Permission denied or not an instructor
+          description: Forbidden - User is not an instructor or not the owner
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
         "404":
@@ -931,7 +1926,9 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
-      summary: Update a past exam
+      security:
+      - BearerAuth: []
+      summary: Update a past exam (Instructor only, Owner only)
       tags:
       - pastexams
 schemes:
