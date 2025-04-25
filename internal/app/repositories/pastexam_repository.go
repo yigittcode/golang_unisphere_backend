@@ -12,6 +12,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yigit/unisphere/internal/app/models"
+	"github.com/yigit/unisphere/internal/app/models/dto"
+	"github.com/yigit/unisphere/internal/pkg/helpers"
 	"github.com/yigit/unisphere/internal/pkg/logger"
 )
 
@@ -59,8 +61,8 @@ func getNullInt64(i int64) sql.NullInt64 {
 }
 
 // GetAllPastExams retrieves all past exams with pagination and optional filtering/sorting
-func (r *PastExamRepository) GetAllPastExams(ctx context.Context, page, pageSize int, filters map[string]interface{}) ([]models.PastExam, int, error) {
-	offset := uint64((page - 1) * pageSize)
+func (r *PastExamRepository) GetAllPastExams(ctx context.Context, page, pageSize int, filters map[string]interface{}) ([]models.PastExam, dto.PaginationInfo, error) {
+	offset, limit := helpers.CalculateOffsetLimit(page, pageSize)
 
 	// Base select query
 	baseSelect := r.sb.Select(
@@ -117,18 +119,21 @@ func (r *PastExamRepository) GetAllPastExams(ctx context.Context, page, pageSize
 	countSql, countArgs, err := countSelect.ToSql()
 	if err != nil {
 		logger.Error().Err(err).Msg("Error building count past exams SQL")
-		return nil, 0, fmt.Errorf("failed to build count past exams query: %w", err)
+		return nil, dto.PaginationInfo{}, fmt.Errorf("failed to build count past exams query: %w", err)
 	}
 
-	var totalItems int
+	var totalItems int64
 	err = r.db.QueryRow(ctx, countSql, countArgs...).Scan(&totalItems)
 	if err != nil {
 		logger.Error().Err(err).Msg("Error executing count past exams query")
-		return nil, 0, fmt.Errorf("failed to count past exams: %w", err)
+		return nil, dto.PaginationInfo{}, fmt.Errorf("failed to count past exams: %w", err)
 	}
 
+	// Use helper for pagination info
+	pagnation := helpers.NewPaginationInfo(totalItems, page, pageSize)
+
 	if totalItems == 0 {
-		return []models.PastExam{}, 0, nil
+		return []models.PastExam{}, pagnation, nil
 	}
 
 	// --- Apply Sorting and Pagination ---
@@ -150,20 +155,20 @@ func (r *PastExamRepository) GetAllPastExams(ctx context.Context, page, pageSize
 	dbSortColumn := mapSortFieldToColumn(sortBy)
 
 	baseSelect = baseSelect.OrderBy(fmt.Sprintf("%s %s", dbSortColumn, sortOrder)).
-		Limit(uint64(pageSize)).
+		Limit(uint64(limit)).
 		Offset(offset)
 
 	// --- Execute Main Query ---
 	querySql, queryArgs, err := baseSelect.ToSql()
 	if err != nil {
 		logger.Error().Err(err).Msg("Error building get all past exams SQL")
-		return nil, 0, fmt.Errorf("failed to build get past exams query: %w", err)
+		return nil, dto.PaginationInfo{}, fmt.Errorf("failed to build get past exams query: %w", err)
 	}
 
 	rows, err := r.db.Query(ctx, querySql, queryArgs...)
 	if err != nil {
 		logger.Error().Err(err).Msg("Error executing get all past exams query")
-		return nil, 0, fmt.Errorf("failed to query past exams: %w", err)
+		return nil, dto.PaginationInfo{}, fmt.Errorf("failed to query past exams: %w", err)
 	}
 	defer rows.Close()
 
@@ -182,7 +187,7 @@ func (r *PastExamRepository) GetAllPastExams(ctx context.Context, page, pageSize
 		)
 		if err != nil {
 			logger.Error().Err(err).Msg("Error scanning past exam row")
-			return nil, 0, fmt.Errorf("failed to scan past exam row: %w", err)
+			return nil, dto.PaginationInfo{}, fmt.Errorf("failed to scan past exam row: %w", err)
 		}
 
 		if departmentName.Valid {
@@ -209,11 +214,11 @@ func (r *PastExamRepository) GetAllPastExams(ctx context.Context, page, pageSize
 
 	if err := rows.Err(); err != nil {
 		logger.Error().Err(err).Msg("Error iterating past exam rows")
-		return nil, 0, fmt.Errorf("error iterating past exam rows: %w", err)
+		return nil, dto.PaginationInfo{}, fmt.Errorf("error iterating past exam rows: %w", err)
 	}
 
-	logger.Info().Int("page", page).Int("pageSize", pageSize).Int("totalItems", totalItems).Int("returnedItems", len(pastExams)).Msg("Successfully fetched past exams")
-	return pastExams, totalItems, nil
+	logger.Info().Int("page", page).Int("pageSize", pageSize).Int64("totalItems", totalItems).Int("returnedItems", len(pastExams)).Msg("Successfully fetched past exams")
+	return pastExams, pagnation, nil
 }
 
 // GetPastExamByID retrieves a past exam by its ID including related data

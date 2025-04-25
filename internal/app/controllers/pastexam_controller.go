@@ -10,6 +10,7 @@ import (
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/services"
+	"github.com/yigit/unisphere/internal/pkg/helpers"
 )
 
 // PastExamController handles past exam related operations
@@ -74,17 +75,16 @@ func handlePastExamError(ctx *gin.Context, err error) {
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /pastexams [get]
 func (c *PastExamController) GetAllPastExams(ctx *gin.Context) {
-	// Parse pagination parameters
-	page, err := strconv.Atoi(ctx.DefaultQuery("page", "0"))
+	// Parse pagination parameters (0-based)
+	page, err := strconv.Atoi(ctx.DefaultQuery("page", strconv.Itoa(helpers.DefaultPage)))
 	if err != nil || page < 0 {
-		page = 0
+		page = helpers.DefaultPage
 	}
-	// API is 0-based, but service expects 1-based pagination
-	page += 1
+	// page = page + 1 // REMOVED 1-based conversion
 
-	pageSize, err := strconv.Atoi(ctx.DefaultQuery("size", "10"))
-	if err != nil || pageSize <= 0 {
-		pageSize = 10
+	pageSize, err := strconv.Atoi(ctx.DefaultQuery("size", strconv.Itoa(helpers.DefaultPageSize)))
+	if err != nil || pageSize <= 0 || pageSize > helpers.MaxPageSize {
+		pageSize = helpers.DefaultPageSize
 	}
 
 	// Parse filters
@@ -130,8 +130,8 @@ func (c *PastExamController) GetAllPastExams(ctx *gin.Context) {
 		filters["sortOrder"] = sortOrder
 	}
 
-	// Get past exams from service
-	pastExams, totalItems, err := c.pastExamService.GetAllPastExams(ctx, page, pageSize, filters)
+	// Get past exams from service (page is 0-based)
+	pastExams, paginationInfo, err := c.pastExamService.GetAllPastExams(ctx, page, pageSize, filters)
 	if err != nil {
 		handlePastExamError(ctx, err)
 		return
@@ -143,24 +143,14 @@ func (c *PastExamController) GetAllPastExams(ctx *gin.Context) {
 		examResponses = append(examResponses, dto.FromPastExam(&exam))
 	}
 
-	// Create response with pagination info
-	totalPages := (totalItems + pageSize - 1) / pageSize
+	// Create response with pagination info from service
 	response := dto.PastExamListResponse{
 		Exams: examResponses,
-		Pagination: dto.PaginationInfo{
-			CurrentPage: page - 1, // convert back to 0-based for API
-			TotalPages:  totalPages,
-			PageSize:    pageSize,
-			TotalItems:  int64(totalItems),
-		},
+		// Pagination info is now directly from the service response (which uses the helper)
+		Pagination: paginationInfo,
 	}
 
-	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Success:   true,
-		Message:   "Past exams retrieved successfully",
-		Data:      response,
-		Timestamp: time.Now(),
-	})
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response, "Past exams retrieved successfully"))
 }
 
 // GetPastExamByID retrieves a past exam by ID

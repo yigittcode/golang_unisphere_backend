@@ -5,7 +5,6 @@ import (
 	"github.com/yigit/unisphere/internal/app/controllers"
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/models/dto"
-	"github.com/yigit/unisphere/internal/app/services"
 	"github.com/yigit/unisphere/internal/middleware"
 )
 
@@ -113,16 +112,16 @@ func SetupRouter(
 		}
 
 		// Class Note routes (now under authenticated group)
-		classNotes := authenticated.Group("/classNotes")
+		classNotes := authenticated.Group("/class-notes")
 		{
 			classNotes.GET("", classNoteController.GetAllClassNotes)
 			classNotes.GET("/:noteId", classNoteController.GetClassNoteByID)
 
 			// Create, Update, Delete, My Notes require auth (already handled by parent group)
-			createNoteReq := &services.CreateClassNoteRequest{}
+			createNoteReq := &dto.CreateClassNoteRequest{}
 			classNotes.POST("", middleware.ValidateRequest(createNoteReq), classNoteController.CreateClassNote)
 
-			updateNoteReq := &services.UpdateClassNoteRequest{}
+			updateNoteReq := &dto.UpdateClassNoteRequest{}
 			classNotes.PUT("/:noteId", middleware.ValidateRequest(updateNoteReq), classNoteController.UpdateClassNote)
 
 			classNotes.DELETE("/:noteId", classNoteController.DeleteClassNote)

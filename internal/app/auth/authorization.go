@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/repositories"
 	"github.com/yigit/unisphere/internal/pkg/logger"
@@ -125,25 +126,29 @@ func (s *AuthorizationService) ValidatePastExamOwnership(ctx context.Context, pa
 
 // CanModifyClassNote checks if the user can modify (update/delete) a class note.
 func (s *AuthorizationService) CanModifyClassNote(ctx context.Context, noteID int64, userID int64) (bool, error) {
-	isOwner, err := s.classNoteRepo.CheckNoteOwner(ctx, noteID, userID)
+	// Fetch only the user_id of the note owner
+	var ownerID int64
+	sql := "SELECT user_id FROM class_notes WHERE id = $1"
+	err := s.classNoteRepo.DB.QueryRow(ctx, sql, noteID).Scan(&ownerID) // Use the DB pool from the injected repo
+
 	if err != nil {
-		if errors.Is(err, repositories.ErrNotFound) {
-			return false, ErrResourceNotFound
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, ErrResourceNotFound // Use the common error
 		}
-		logger.Error().Err(err).Int64("noteID", noteID).Int64("userID", userID).Msg("Error checking class note owner")
+		logger.Error().Err(err).Int64("noteID", noteID).Int64("userID", userID).Msg("Error fetching class note owner ID")
 		return false, fmt.Errorf("failed to check class note ownership: %w", err)
 	}
-	return isOwner, nil
+	return ownerID == userID, nil
 }
 
 // ValidateClassNoteOwnership validates if the user owns the class note or returns an error.
 func (s *AuthorizationService) ValidateClassNoteOwnership(ctx context.Context, noteID int64, userID int64) error {
 	canModify, err := s.CanModifyClassNote(ctx, noteID, userID)
 	if err != nil {
-		return err
+		return err // Propagate ErrResourceNotFound or other errors
 	}
 	if !canModify {
-		return ErrPermissionDenied
+		return ErrPermissionDenied // Use the common error
 	}
 	return nil
 }
