@@ -4,24 +4,26 @@ import "github.com/yigit/unisphere/internal/app/models"
 
 // CreatePastExamRequest represents the request to create a past exam
 type CreatePastExamRequest struct {
-	Year         int     `json:"year" validate:"required,min=1900,max=2100" example:"2023"`                        // Year the exam was held (e.g., 2023)
-	Term         string  `json:"term" validate:"required,oneof=FALL SPRING" example:"FALL"`                        // Term the exam was held (FALL or SPRING)
-	DepartmentID int64   `json:"departmentId" validate:"required,min=1" example:"1"`                               // ID of the department for the course
-	CourseCode   string  `json:"courseCode" validate:"required" example:"CENG301"`                                 // Course code (e.g., CENG301)
-	Title        string  `json:"title" validate:"required" example:"Midterm Exam"`                                 // Title of the exam (e.g., Midterm 1, Final Exam)
-	Content      string  `json:"content" validate:"required" example:"Exam content details..."`                    // Detailed content or description of the exam
-	FileURL      *string `json:"fileUrl,omitempty" validate:"omitempty,url" example:"http://example.com/exam.pdf"` // Optional URL to the exam file (PDF, image, etc.)
+	Year         int    `json:"year" validate:"required,min=1900,max=2100" example:"2023"`     // Year the exam was held (e.g., 2023)
+	Term         string `json:"term" validate:"required,oneof=FALL SPRING" example:"FALL"`     // Term the exam was held (FALL or SPRING)
+	DepartmentID int64  `json:"departmentId" validate:"required,min=1" example:"1"`            // ID of the department for the course
+	CourseCode   string `json:"courseCode" validate:"required" example:"CENG301"`              // Course code (e.g., CENG301)
+	Title        string `json:"title" validate:"required" example:"Midterm Exam"`              // Title of the exam (e.g., Midterm 1, Final Exam)
+	Content      string `json:"content" validate:"required" example:"Exam content details..."` // Detailed content or description of the exam
+	// FileURL is removed, file should be sent via multipart/form-data
+	// FileURL      *string `json:"fileUrl,omitempty" validate:"omitempty,url" example:"http://example.com/exam.pdf"`
 }
 
 // UpdatePastExamRequest represents the request to update a past exam
 type UpdatePastExamRequest struct {
-	Year         int     `json:"year" validate:"required,min=1900,max=2100" example:"2023"`                           // Year the exam was held
-	Term         string  `json:"term" validate:"required,oneof=FALL SPRING" example:"FALL"`                           // Term the exam was held
-	DepartmentID int64   `json:"departmentId" validate:"required,min=1" example:"1"`                                  // ID of the department
-	CourseCode   string  `json:"courseCode" validate:"required" example:"CENG301"`                                    // Course code
-	Title        string  `json:"title" validate:"required" example:"Midterm 1 - Updated"`                             // Title of the exam
-	Content      string  `json:"content" validate:"required" example:"Updated exam content..."`                       // Detailed content
-	FileURL      *string `json:"fileUrl,omitempty" validate:"omitempty,url" example:"http://example.com/exam_v2.pdf"` // Optional URL to the exam file
+	Year         int    `json:"year" validate:"required,min=1900,max=2100" example:"2023"`     // Year the exam was held
+	Term         string `json:"term" validate:"required,oneof=FALL SPRING" example:"FALL"`     // Term the exam was held
+	DepartmentID int64  `json:"departmentId" validate:"required,min=1" example:"1"`            // ID of the department
+	CourseCode   string `json:"courseCode" validate:"required" example:"CENG301"`              // Course code
+	Title        string `json:"title" validate:"required" example:"Midterm 1 - Updated"`       // Title of the exam
+	Content      string `json:"content" validate:"required" example:"Updated exam content..."` // Detailed content
+	// FileURL is removed, file should be sent via multipart/form-data
+	// FileURL      *string `json:"fileUrl,omitempty" validate:"omitempty,url" example:"http://example.com/exam_v2.pdf"`
 }
 
 // PastExamResponse represents the response for a past exam including related entity names

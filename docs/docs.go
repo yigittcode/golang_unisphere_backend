@@ -125,6 +125,120 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/profile/photo": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upload or update a user's profile photo",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Update profile photo",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Profile photo",
+                        "name": "photo",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Profile photo updated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.UserProfile"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid file format",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or missing token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove a user's profile photo",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Delete profile photo",
+                "responses": {
+                    "200": {
+                        "description": "Profile photo deleted successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.UserProfile"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or missing token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/refresh": {
             "post": {
                 "description": "Generate new access and refresh tokens using refresh token",
@@ -281,6 +395,255 @@ const docTemplate = `{
                 }
             }
         },
+        "/class-notes": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Adds a new class note to the system. Requires authentication. Supports optional image upload.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ClassNotes"
+                ],
+                "summary": "Create a new class note",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 2024,
+                        "description": "Year",
+                        "name": "year",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "SPRING",
+                        "description": "Term (FALL or SPRING)",
+                        "name": "term",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "Department ID",
+                        "name": "departmentId",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "CENG304",
+                        "description": "Course Code",
+                        "name": "courseCode",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"Lecture Notes - Week 5\"",
+                        "description": "Title",
+                        "name": "title",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"Detailed notes covering topic X...\"",
+                        "description": "Content",
+                        "name": "content",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Optional image file (jpg, png, gif)",
+                        "name": "image",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Class note created successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ClassNoteResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request (e.g., validation errors)",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/class-notes/{noteId}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates an existing class note. Requires authentication and ownership. Supports optional image upload (replaces existing).",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ClassNotes"
+                ],
+                "summary": "Update a class note",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 15,
+                        "description": "Class Note ID to update",
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "example": 2024,
+                        "description": "Year",
+                        "name": "year",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "SPRING",
+                        "description": "Term (FALL or SPRING)",
+                        "name": "term",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "Department ID",
+                        "name": "departmentId",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "CENG304",
+                        "description": "Course Code",
+                        "name": "courseCode",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"Updated Lecture Notes - Week 5\"",
+                        "description": "Title",
+                        "name": "title",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"Updated detailed notes covering topic X...\"",
+                        "description": "Content",
+                        "name": "content",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Optional new image file (replaces existing one)",
+                        "name": "image",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Class note updated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ClassNoteResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request (e.g., validation errors, invalid ID)",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden (not owner)",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/classNotes": {
             "get": {
                 "description": "Retrieves a list of class notes with optional filtering and pagination.",
@@ -394,73 +757,6 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Adds a new class note to the system. Requires authentication.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ClassNotes"
-                ],
-                "summary": "Create a new class note",
-                "parameters": [
-                    {
-                        "description": "Class Note Data",
-                        "name": "note",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.CreateClassNoteRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Class note created successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.ClassNoteResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request (e.g., validation errors)",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized (handled by middleware)\" // Middleware should handle this",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
             }
         },
         "/classNotes/my-notes": {
@@ -563,94 +859,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request (e.g., invalid ID)",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Updates an existing class note. Requires authentication and ownership.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ClassNotes"
-                ],
-                "summary": "Update a class note",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "format": "int64",
-                        "example": 15,
-                        "description": "Class Note ID to update",
-                        "name": "noteId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Updated Class Note Data",
-                        "name": "note",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.UpdateClassNoteRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Class note updated successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.ClassNoteResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request (e.g., validation errors, invalid ID)",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized (handled by middleware)\" // Middleware should handle this",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden (not owner)",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -1614,9 +1822,9 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new past exam. Requires instructor role.",
+                "description": "Create a new past exam with the provided data and optional file upload.",
                 "consumes": [
-                    "application/json"
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
@@ -1627,13 +1835,58 @@ const docTemplate = `{
                 "summary": "Create a new past exam (Instructor only)",
                 "parameters": [
                     {
-                        "description": "Past exam information",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.CreatePastExamRequest"
-                        }
+                        "type": "integer",
+                        "example": 2023,
+                        "description": "Year",
+                        "name": "year",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "FALL",
+                        "description": "Term (FALL or SPRING)",
+                        "name": "term",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "Department ID",
+                        "name": "departmentId",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "CENG301",
+                        "description": "Course Code",
+                        "name": "courseCode",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"Midterm Exam\"",
+                        "description": "Title",
+                        "name": "title",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"Exam content details...\"",
+                        "description": "Content",
+                        "name": "content",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Optional exam file (PDF, image, etc.)",
+                        "name": "file",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
@@ -1662,7 +1915,7 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "Unauthorized - Invalid or missing token",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -1748,9 +2001,9 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update an existing past exam. Requires instructor role and ownership.",
+                "description": "Update an existing past exam. Requires instructor role and ownership. Can optionally include a new file.",
                 "consumes": [
-                    "application/json"
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
@@ -1770,13 +2023,58 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Updated past exam information",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.UpdatePastExamRequest"
-                        }
+                        "type": "integer",
+                        "example": 2023,
+                        "description": "Year",
+                        "name": "year",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "FALL",
+                        "description": "Term (FALL or SPRING)",
+                        "name": "term",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "Department ID",
+                        "name": "departmentId",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "CENG301",
+                        "description": "Course Code",
+                        "name": "courseCode",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"Midterm 1 - Updated\"",
+                        "description": "Title",
+                        "name": "title",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"Updated exam content...\"",
+                        "description": "Content",
+                        "name": "content",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Optional new exam file (replaces existing one)",
+                        "name": "file",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
@@ -1805,7 +2103,7 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "Unauthorized - Invalid or missing token",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -2028,119 +2326,6 @@ const docTemplate = `{
                     "description": "Year the note corresponds to",
                     "type": "integer",
                     "example": 2024
-                }
-            }
-        },
-        "dto.CreateClassNoteRequest": {
-            "type": "object",
-            "required": [
-                "content",
-                "courseCode",
-                "departmentId",
-                "term",
-                "title",
-                "year"
-            ],
-            "properties": {
-                "content": {
-                    "description": "Main content of the note",
-                    "type": "string",
-                    "minLength": 10,
-                    "example": "Detailed notes covering topic X..."
-                },
-                "courseCode": {
-                    "description": "Course code (e.g., CENG304)",
-                    "type": "string",
-                    "maxLength": 10,
-                    "minLength": 3,
-                    "example": "CENG304"
-                },
-                "departmentId": {
-                    "description": "ID of the department for the course",
-                    "type": "integer",
-                    "example": 1
-                },
-                "image": {
-                    "description": "Optional URL to an associated image",
-                    "type": "string",
-                    "example": "http://example.com/image.jpg"
-                },
-                "term": {
-                    "description": "Term (FALL or SPRING)",
-                    "type": "string",
-                    "enum": [
-                        "FALL",
-                        "SPRING"
-                    ],
-                    "example": "SPRING"
-                },
-                "title": {
-                    "description": "Title of the class note",
-                    "type": "string",
-                    "maxLength": 255,
-                    "minLength": 5,
-                    "example": "Lecture Notes - Week 5"
-                },
-                "year": {
-                    "description": "Year the note corresponds to",
-                    "type": "integer",
-                    "minimum": 2000,
-                    "example": 2024
-                }
-            }
-        },
-        "dto.CreatePastExamRequest": {
-            "type": "object",
-            "required": [
-                "content",
-                "courseCode",
-                "departmentId",
-                "term",
-                "title",
-                "year"
-            ],
-            "properties": {
-                "content": {
-                    "description": "Detailed content or description of the exam",
-                    "type": "string",
-                    "example": "Exam content details..."
-                },
-                "courseCode": {
-                    "description": "Course code (e.g., CENG301)",
-                    "type": "string",
-                    "example": "CENG301"
-                },
-                "departmentId": {
-                    "description": "ID of the department for the course",
-                    "type": "integer",
-                    "minimum": 1,
-                    "example": 1
-                },
-                "fileUrl": {
-                    "description": "Optional URL to the exam file (PDF, image, etc.)",
-                    "type": "string",
-                    "example": "http://example.com/exam.pdf"
-                },
-                "term": {
-                    "description": "Term the exam was held (FALL or SPRING)",
-                    "type": "string",
-                    "enum": [
-                        "FALL",
-                        "SPRING"
-                    ],
-                    "example": "FALL"
-                },
-                "title": {
-                    "description": "Title of the exam (e.g., Midterm 1, Final Exam)",
-                    "type": "string",
-                    "example": "Midterm Exam"
-                },
-                "year": {
-                    "description": "Year the exam was held (e.g., 2023)",
-                    "type": "integer",
-                    "maximum": 2100,
-                    "minimum": 1900,
-                    "example": 2023
                 }
             }
         },
@@ -2495,119 +2680,6 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.UpdateClassNoteRequest": {
-            "type": "object",
-            "required": [
-                "content",
-                "courseCode",
-                "departmentId",
-                "term",
-                "title",
-                "year"
-            ],
-            "properties": {
-                "content": {
-                    "description": "Main content of the note",
-                    "type": "string",
-                    "minLength": 10,
-                    "example": "Updated detailed notes covering topic X..."
-                },
-                "courseCode": {
-                    "description": "Course code (e.g., CENG304)",
-                    "type": "string",
-                    "maxLength": 10,
-                    "minLength": 3,
-                    "example": "CENG304"
-                },
-                "departmentId": {
-                    "description": "ID of the department for the course",
-                    "type": "integer",
-                    "example": 1
-                },
-                "image": {
-                    "description": "Optional URL to an associated image",
-                    "type": "string",
-                    "example": "http://example.com/new_image.jpg"
-                },
-                "term": {
-                    "description": "Term (FALL or SPRING)",
-                    "type": "string",
-                    "enum": [
-                        "FALL",
-                        "SPRING"
-                    ],
-                    "example": "SPRING"
-                },
-                "title": {
-                    "description": "Title of the class note",
-                    "type": "string",
-                    "maxLength": 255,
-                    "minLength": 5,
-                    "example": "Updated Lecture Notes - Week 5"
-                },
-                "year": {
-                    "description": "Year the note corresponds to",
-                    "type": "integer",
-                    "minimum": 2000,
-                    "example": 2024
-                }
-            }
-        },
-        "dto.UpdatePastExamRequest": {
-            "type": "object",
-            "required": [
-                "content",
-                "courseCode",
-                "departmentId",
-                "term",
-                "title",
-                "year"
-            ],
-            "properties": {
-                "content": {
-                    "description": "Detailed content",
-                    "type": "string",
-                    "example": "Updated exam content..."
-                },
-                "courseCode": {
-                    "description": "Course code",
-                    "type": "string",
-                    "example": "CENG301"
-                },
-                "departmentId": {
-                    "description": "ID of the department",
-                    "type": "integer",
-                    "minimum": 1,
-                    "example": 1
-                },
-                "fileUrl": {
-                    "description": "Optional URL to the exam file",
-                    "type": "string",
-                    "example": "http://example.com/exam_v2.pdf"
-                },
-                "term": {
-                    "description": "Term the exam was held",
-                    "type": "string",
-                    "enum": [
-                        "FALL",
-                        "SPRING"
-                    ],
-                    "example": "FALL"
-                },
-                "title": {
-                    "description": "Title of the exam",
-                    "type": "string",
-                    "example": "Midterm 1 - Updated"
-                },
-                "year": {
-                    "description": "Year the exam was held",
-                    "type": "integer",
-                    "maximum": 2100,
-                    "minimum": 1900,
-                    "example": 2023
-                }
-            }
-        },
         "dto.UpdateTitleRequest": {
             "type": "object",
             "required": [
@@ -2666,6 +2738,11 @@ const docTemplate = `{
                     "description": "User's last name",
                     "type": "string",
                     "example": "Doe"
+                },
+                "profilePhotoUrl": {
+                    "description": "URL of the user's profile photo (null if not set)",
+                    "type": "string",
+                    "example": "uploads/profile.jpg"
                 },
                 "roleType": {
                     "description": "User's role (STUDENT or INSTRUCTOR)",
@@ -2807,37 +2884,58 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "createdAt": {
-                    "type": "string"
+                    "description": "Timestamp when the user was created",
+                    "type": "string",
+                    "example": "2024-01-01T10:00:00Z"
                 },
                 "email": {
-                    "type": "string"
+                    "description": "User's email address",
+                    "type": "string",
+                    "example": "user@school.edu.tr"
                 },
                 "firstName": {
-                    "type": "string"
+                    "description": "User's first name",
+                    "type": "string",
+                    "example": "John"
                 },
                 "id": {
-                    "type": "integer"
+                    "description": "Unique identifier for the user",
+                    "type": "integer",
+                    "example": 1
                 },
                 "isActive": {
-                    "type": "boolean"
+                    "description": "Whether the user account is active",
+                    "type": "boolean",
+                    "example": true
                 },
                 "lastLoginAt": {
-                    "description": "Added LastLoginAt (nullable)",
-                    "type": "string"
+                    "description": "Timestamp of the last login (nullable)",
+                    "type": "string",
+                    "example": "2024-04-20T18:00:00Z"
                 },
                 "lastName": {
-                    "type": "string"
+                    "description": "User's last name",
+                    "type": "string",
+                    "example": "Doe"
+                },
+                "profilePhotoUrl": {
+                    "description": "URL of the user's profile photo (nullable)",
+                    "type": "string",
+                    "example": "uploads/profile.jpg"
                 },
                 "roleType": {
-                    "description": "Uses RoleType from models.go",
+                    "description": "User's role (STUDENT or INSTRUCTOR)",
                     "allOf": [
                         {
                             "$ref": "#/definitions/models.RoleType"
                         }
-                    ]
+                    ],
+                    "example": "STUDENT"
                 },
                 "updatedAt": {
-                    "type": "string"
+                    "description": "Timestamp when the user was last updated",
+                    "type": "string",
+                    "example": "2024-01-02T15:30:00Z"
                 }
             }
         }

@@ -27,7 +27,8 @@ import (
 	"github.com/yigit/unisphere/internal/db"
 	appMiddleware "github.com/yigit/unisphere/internal/middleware"
 	pkgAuth "github.com/yigit/unisphere/internal/pkg/auth"
-	"github.com/yigit/unisphere/internal/pkg/helpers" // Import the new helpers package
+	"github.com/yigit/unisphere/internal/pkg/filestorage" // Import filestorage
+	"github.com/yigit/unisphere/internal/pkg/helpers"     // Import the new helpers package
 	"github.com/yigit/unisphere/internal/pkg/logger"
 	"github.com/yigit/unisphere/internal/seed" // Import the new seed package
 )
@@ -51,6 +52,7 @@ type Dependencies struct {
 	JWTService           *pkgAuth.JWTService
 	AuthzService         *appAuth.AuthorizationService
 	Logger               zerolog.Logger
+	FileStorage          *filestorage.LocalStorage // Add FileStorage
 }
 
 // LoadConfigAndSetupLogger loads configuration and initializes the logger.
@@ -124,6 +126,15 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 
 	deps.Repos = appRepos.NewRepositories(dbPool)
 
+	// Initialize File Storage
+	// Assuming baseURL is empty for now, adjust if files are served from a specific URL prefix
+	var err error
+	deps.FileStorage, err = filestorage.NewLocalStorage(cfg.Server.StoragePath, "")
+	if err != nil {
+		lgr.Error().Err(err).Msg("Failed to initialize file storage")
+		return nil, fmt.Errorf("failed to initialize file storage: %w", err)
+	}
+
 	deps.JWTService = pkgAuth.NewJWTService(pkgAuth.JWTConfig{
 		SecretKey:       cfg.JWT.Secret,
 		AccessTokenExp:  helpers.ParseDuration(cfg.JWT.AccessTokenExpiration, 1*time.Hour),
@@ -138,6 +149,7 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 		deps.Repos.TokenRepository,
 		deps.Repos.DepartmentRepository,
 		deps.Repos.FacultyRepository,
+		deps.FileStorage,
 		deps.JWTService,
 		lgr,
 	)
@@ -153,8 +165,8 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 	deps.FacultyController = appControllers.NewFacultyController(deps.FacultyService)
 	deps.DepartmentController = appControllers.NewDepartmentController(deps.DepartmentService)
 	deps.InstructorController = appControllers.NewInstructorController(deps.InstructorService)
-	deps.PastExamController = appControllers.NewPastExamController(deps.PastExamService)
-	deps.ClassNoteController = appControllers.NewClassNoteController(deps.ClassNoteService)
+	deps.PastExamController = appControllers.NewPastExamController(deps.PastExamService, deps.FileStorage)
+	deps.ClassNoteController = appControllers.NewClassNoteController(deps.ClassNoteService, deps.FileStorage)
 
 	return deps, nil
 }
@@ -192,5 +204,3 @@ func SetupRouter(cfg *config.Config, deps *Dependencies, lgr zerolog.Logger) *gi
 
 	return router
 }
-
-// --- Helper Functions (Private to bootstrap package) ---

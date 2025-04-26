@@ -13,8 +13,9 @@ import (
 // Config structure represents the application configuration
 type Config struct {
 	Server struct {
-		Port string `yaml:"port" env:"SERVER_PORT"`
-		Mode string `yaml:"mode" env:"SERVER_MODE"`
+		Port        string `yaml:"port" env:"SERVER_PORT"`
+		Mode        string `yaml:"mode" env:"SERVER_MODE"`
+		StoragePath string `yaml:"storage_path" env:"STORAGE_PATH"`
 	} `yaml:"server"`
 
 	Database struct {
@@ -49,10 +50,10 @@ func LoadConfig(configPath string) (*Config, error) {
 	setDefaults(config)
 
 	if _, err := os.Stat(configPath); err == nil {
-	file, err := os.ReadFile(configPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
-	}
+		file, err := os.ReadFile(configPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read config file: %w", err)
+		}
 		err = yaml.Unmarshal(file, config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse config: %w", err)
@@ -75,6 +76,7 @@ func LoadConfig(configPath string) (*Config, error) {
 func setDefaults(config *Config) {
 	config.Server.Port = "8080"
 	config.Server.Mode = "development"
+	config.Server.StoragePath = "./uploads"
 
 	config.Database.Driver = "postgres"
 	config.Database.Host = "localhost"

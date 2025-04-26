@@ -37,21 +37,7 @@ func ValidateRequest(obj interface{}) gin.HandlerFunc {
 
 		// Only validate if the object implements validation
 		if err := validate.Struct(value.Interface()); err != nil {
-			validationErrors := err.(validator.ValidationErrors)
-			details := make([]string, 0, len(validationErrors))
-
-			for _, e := range validationErrors {
-				details = append(details, formatValidationError(e))
-			}
-
-			errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Request validation failed")
-			if len(details) > 0 {
-				errorMessage := details[0]
-				for i := 1; i < len(details); i++ {
-					errorMessage += "; " + details[i]
-				}
-				errorDetail = errorDetail.WithDetails(errorMessage)
-			}
+			errorDetail := dto.HandleValidationError(err)
 			c.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
 			c.Abort()
 			return

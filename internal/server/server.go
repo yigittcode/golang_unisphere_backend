@@ -129,5 +129,3 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	}
 	return nil
 }
-
-// Removed setup functions, Dependencies struct, and helper functions as they were moved to the bootstrap package.

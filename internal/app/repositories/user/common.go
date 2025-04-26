@@ -67,7 +67,11 @@ func (r *Repository) CreateUser(ctx context.Context, user *models.User) (int64, 
 // GetUserByEmail retrieves a user by email
 func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
-	sql, args, err := r.sb.Select("id", "email", "password", "first_name", "last_name", "created_at", "updated_at", "role_type", "is_active", "last_login_at").
+	sql, args, err := r.sb.Select(
+		"id", "email", "password", "first_name", "last_name",
+		"created_at", "updated_at", "role_type", "is_active", "last_login_at",
+		"profile_photo_url",
+	).
 		From("users").
 		Where(squirrel.Eq{"email": email}).
 		Limit(1).
@@ -79,9 +83,11 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*models.
 	}
 
 	var lastLoginAt pgtype.Timestamp
+	var profilePhotoURL pgtype.Text
 	err = r.db.QueryRow(ctx, sql, args...).Scan(
 		&user.ID, &user.Email, &user.Password, &user.FirstName, &user.LastName,
 		&user.CreatedAt, &user.UpdatedAt, &user.RoleType, &user.IsActive, &lastLoginAt,
+		&profilePhotoURL,
 	)
 
 	if err != nil {
@@ -93,9 +99,11 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*models.
 		return nil, fmt.Errorf("error retrieving user by email: %w", err)
 	}
 
-	// Assign lastLoginAt if it's valid
 	if lastLoginAt.Valid {
-		user.LastLoginAt = &lastLoginAt.Time // Assign address of Time
+		user.LastLoginAt = &lastLoginAt.Time
+	}
+	if profilePhotoURL.Valid {
+		user.ProfilePhotoURL = &profilePhotoURL.String
 	}
 
 	return &user, nil
@@ -104,7 +112,11 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*models.
 // GetUserByID retrieves a user by ID
 func (r *Repository) GetUserByID(ctx context.Context, id int64) (*models.User, error) {
 	var user models.User
-	sql, args, err := r.sb.Select("id", "email", "password", "first_name", "last_name", "created_at", "updated_at", "role_type", "is_active", "last_login_at").
+	sql, args, err := r.sb.Select(
+		"id", "email", "password", "first_name", "last_name",
+		"created_at", "updated_at", "role_type", "is_active", "last_login_at",
+		"profile_photo_url",
+	).
 		From("users").
 		Where(squirrel.Eq{"id": id}).
 		Limit(1).
@@ -116,9 +128,11 @@ func (r *Repository) GetUserByID(ctx context.Context, id int64) (*models.User, e
 	}
 
 	var lastLoginAt pgtype.Timestamp
+	var profilePhotoURL pgtype.Text
 	err = r.db.QueryRow(ctx, sql, args...).Scan(
 		&user.ID, &user.Email, &user.Password, &user.FirstName, &user.LastName,
 		&user.CreatedAt, &user.UpdatedAt, &user.RoleType, &user.IsActive, &lastLoginAt,
+		&profilePhotoURL,
 	)
 
 	if err != nil {
@@ -130,9 +144,11 @@ func (r *Repository) GetUserByID(ctx context.Context, id int64) (*models.User, e
 		return nil, fmt.Errorf("error retrieving user by ID: %w", err)
 	}
 
-	// Assign lastLoginAt if it's valid
 	if lastLoginAt.Valid {
-		user.LastLoginAt = &lastLoginAt.Time // Assign address of Time
+		user.LastLoginAt = &lastLoginAt.Time
+	}
+	if profilePhotoURL.Valid {
+		user.ProfilePhotoURL = &profilePhotoURL.String
 	}
 
 	return &user, nil
@@ -213,5 +229,41 @@ func (r *Repository) UpdateLastLogin(ctx context.Context, userID int64) error {
 	}
 
 	logger.Info().Int64("userID", userID).Msg("Last login time updated")
+	return nil
+}
+
+// UpdateUserProfilePhotoURL updates only the profile photo URL for a given user.
+// If photoURL is nil or empty, it sets the database column to NULL.
+func (r *Repository) UpdateUserProfilePhotoURL(ctx context.Context, userID int64, photoURL *string) error {
+	var photoURLArg interface{}
+	if photoURL != nil && *photoURL != "" {
+		photoURLArg = *photoURL
+	} else {
+		photoURLArg = nil // Set to SQL NULL
+	}
+
+	sql, args, err := r.sb.Update("users").
+		Set("profile_photo_url", photoURLArg).
+		Set("updated_at", time.Now()). // Also update the updated_at timestamp
+		Where(squirrel.Eq{"id": userID}).
+		ToSql()
+
+	if err != nil {
+		logger.Error().Err(err).Int64("userID", userID).Msg("Error building update profile photo URL SQL")
+		return fmt.Errorf("failed to build update profile photo URL query: %w", err)
+	}
+
+	cmdTag, err := r.db.Exec(ctx, sql, args...)
+	if err != nil {
+		logger.Error().Err(err).Int64("userID", userID).Msg("Error executing update profile photo URL query")
+		return fmt.Errorf("failed to update profile photo URL: %w", err)
+	}
+
+	if cmdTag.RowsAffected() == 0 {
+		logger.Warn().Int64("userID", userID).Msg("Attempted to update profile photo for non-existent user")
+		return ErrUserNotFound
+	}
+
+	logger.Info().Int64("userID", userID).Msg("User profile photo URL updated successfully")
 	return nil
 }

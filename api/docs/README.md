@@ -1,41 +1,41 @@
-# API Belgelendirmesi
+# API Documentation
 
-Bu dizin, REST API'nin belgelendirmesini içerir. OpenAPI/Swagger tanımları, postman koleksiyonları veya diğer API belgelendirme araçlarını burada bulabilirsiniz.
+This directory contains documentation for the REST API. You can find OpenAPI/Swagger definitions, Postman collections, or other API documentation tools here.
 
 ## Endpoints
 
-### Kullanıcılar
+### Users
 
-#### Tüm kullanıcıları getir
+#### Get all users
 
 ```
 GET /api/users
 ```
 
-#### Belirli bir kullanıcıyı getir
+#### Get a specific user
 
 ```
 GET /api/users/:id
 ```
 
-#### Yeni kullanıcı oluştur
+#### Create a new user
 
 ```
 POST /api/users
 ```
 
-#### Kullanıcı güncelle
+#### Update a user
 
 ```
 PUT /api/users/:id
 ```
 
-#### Kullanıcı sil
+#### Delete a user
 
 ```
 DELETE /api/users/:id
 ```
 
-## Örnekler
+## Examples
 
-API çağrılarına örnekler burada olacak. 
+API call examples will be placed here. 

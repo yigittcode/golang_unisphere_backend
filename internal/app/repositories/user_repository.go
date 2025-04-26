@@ -96,3 +96,9 @@ func (r *UserRepository) GetDepartmentNameByID(ctx context.Context, departmentID
 func (r *UserRepository) UpdateLastLogin(ctx context.Context, userID int64) error {
 	return r.common.UpdateLastLogin(ctx, userID)
 }
+
+// UpdateUserProfilePhotoURL updates only the profile photo URL for a given user.
+func (r *UserRepository) UpdateUserProfilePhotoURL(ctx context.Context, userID int64, photoURL *string) error {
+	// Delegate to the common repository
+	return r.common.UpdateUserProfilePhotoURL(ctx, userID, photoURL)
+}

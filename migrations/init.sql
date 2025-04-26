@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     role_type role_type NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
-    last_login_at TIMESTAMP NULL
+    last_login_at TIMESTAMP NULL,
+    profile_photo_url VARCHAR(255) NULL
 );
 
 -- Create a trigger to update the updated_at field

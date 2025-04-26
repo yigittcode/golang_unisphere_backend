@@ -5,6 +5,9 @@ configs/config.yaml
 .env.*
 !.env.example
 
+*.json
+
+
 # IDE settings
 .idea/
 .vscode/

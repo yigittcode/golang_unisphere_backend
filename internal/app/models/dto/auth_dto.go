@@ -43,11 +43,12 @@ type TokenResponse struct {
 
 // UserProfile represents user profile information returned by the API
 type UserProfile struct {
-	ID        int64  `json:"id" example:"1"`                                        // Unique identifier for the user
-	Email     string `json:"email" example:"user@school.edu.tr"`                    // User's email address
-	FirstName string `json:"firstName" example:"John"`                              // User's first name
-	LastName  string `json:"lastName" example:"Doe"`                                // User's last name
-	RoleType  string `json:"roleType" example:"STUDENT" enums:"STUDENT,INSTRUCTOR"` // User's role (STUDENT or INSTRUCTOR)
+	ID              int64   `json:"id" example:"1"`                                          // Unique identifier for the user
+	Email           string  `json:"email" example:"user@school.edu.tr"`                      // User's email address
+	FirstName       string  `json:"firstName" example:"John"`                                // User's first name
+	LastName        string  `json:"lastName" example:"Doe"`                                  // User's last name
+	RoleType        string  `json:"roleType" example:"STUDENT" enums:"STUDENT,INSTRUCTOR"`   // User's role (STUDENT or INSTRUCTOR)
+	ProfilePhotoUrl *string `json:"profilePhotoUrl,omitempty" example:"uploads/profile.jpg"` // URL of the user's profile photo (null if not set)
 	// Student or instructor specific fields
 	StudentID      *string `json:"studentId,omitempty" example:"12345678"`                  // Student's unique 8-digit ID (only for students)
 	GraduationYear *int    `json:"graduationYear,omitempty" example:"2025"`                 // Student's expected graduation year (optional, only for students)

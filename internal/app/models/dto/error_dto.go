@@ -1,8 +1,11 @@
 package dto
 
 import (
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/go-playground/validator/v10"
 )
 
 // ErrorCode represents standardized error codes
@@ -10,28 +13,21 @@ type ErrorCode string
 
 // Standard error codes for the application
 const (
-	// Authentication errors
-	ErrorCodeInvalidCredentials ErrorCode = "AUTH_001"
-	ErrorCodeInvalidEmail       ErrorCode = "AUTH_002"
-	ErrorCodeInvalidPassword    ErrorCode = "AUTH_003"
-	ErrorCodeInvalidStudentID   ErrorCode = "AUTH_004"
-	ErrorCodeInvalidToken       ErrorCode = "AUTH_005"
-	ErrorCodeExpiredToken       ErrorCode = "AUTH_006"
-	ErrorCodeTokenNotFound      ErrorCode = "AUTH_007"
-	ErrorCodeUnauthorized       ErrorCode = "AUTH_008"
-
-	// Resource errors
+	ErrorCodeInvalidCredentials    ErrorCode = "AUTH_001"
+	ErrorCodeInvalidEmail          ErrorCode = "AUTH_002"
+	ErrorCodeInvalidPassword       ErrorCode = "AUTH_003"
+	ErrorCodeInvalidStudentID      ErrorCode = "AUTH_004"
+	ErrorCodeInvalidToken          ErrorCode = "AUTH_005"
+	ErrorCodeExpiredToken          ErrorCode = "AUTH_006"
+	ErrorCodeTokenNotFound         ErrorCode = "AUTH_007"
+	ErrorCodeUnauthorized          ErrorCode = "AUTH_008"
 	ErrorCodeResourceNotFound      ErrorCode = "RES_001"
 	ErrorCodeResourceAlreadyExists ErrorCode = "RES_002"
 	ErrorCodeResourceInvalid       ErrorCode = "RES_003"
-
-	// Validation errors
-	ErrorCodeValidationFailed ErrorCode = "VAL_001"
-
-	// Server errors
-	ErrorCodeInternalServer       ErrorCode = "SRV_001"
-	ErrorCodeDatabaseError        ErrorCode = "SRV_002"
-	ErrorCodeExternalServiceError ErrorCode = "SRV_003"
+	ErrorCodeValidationFailed      ErrorCode = "VAL_001"
+	ErrorCodeInternalServer        ErrorCode = "SRV_001"
+	ErrorCodeDatabaseError         ErrorCode = "SRV_002"
+	ErrorCodeExternalServiceError  ErrorCode = "SRV_003"
 )
 
 // ErrorSeverity represents the severity level of an error
@@ -62,12 +58,14 @@ type ErrorResponse struct {
 	Timestamp time.Time    `json:"timestamp" example:"2025-04-23T12:01:05.123Z"`
 }
 
+// --- Error Helper Functions ---
+
 // NewErrorDetail creates a new error detail
 func NewErrorDetail(code ErrorCode, message string) *ErrorDetail {
 	return &ErrorDetail{
 		Code:     code,
 		Message:  message,
-		Severity: ErrorSeverityError,
+		Severity: ErrorSeverityError, // Default to Error severity
 	}
 }
 
@@ -104,44 +102,54 @@ func NewErrorResponse(errorDetail *ErrorDetail) *ErrorResponse {
 	}
 }
 
-// ValidationErrors represents multiple validation errors
-type ValidationErrors struct {
-	Errors []ErrorDetail `json:"errors"`
-}
+// --- Validation Error Handling Helpers ---
 
-// NewValidationErrors creates a new validation errors container
-func NewValidationErrors() *ValidationErrors {
-	return &ValidationErrors{
-		Errors: make([]ErrorDetail, 0),
+// formatValidationError creates a human-readable validation error message
+func formatValidationError(e validator.FieldError) string { // Keep internal (lowercase)
+	switch e.Tag() {
+	case "required":
+		return e.Field() + " is required"
+	case "min":
+		return e.Field() + " must be at least " + e.Param()
+	case "max":
+		return e.Field() + " must be at most " + e.Param()
+	case "email":
+		return e.Field() + " must be a valid email address"
+	case "oneof":
+		return e.Field() + " must be one of: " + e.Param()
+	case "len":
+		return e.Field() + " must have a length of " + e.Param()
+	case "numeric":
+		return e.Field() + " must contain only numeric characters"
+	case "alphanum":
+		return e.Field() + " must contain only alphanumeric characters"
+	case "uppercase":
+		return e.Field() + " must be in uppercase"
+	case "url":
+		return e.Field() + " must be a valid URL"
+	case "gte":
+		return e.Field() + " must be greater than or equal to " + e.Param()
+	case "gt":
+		return e.Field() + " must be greater than " + e.Param()
+	default:
+		return e.Field() + " validation failed: " + e.Tag()
 	}
-}
-
-// AddError adds a validation error to the container
-func (v *ValidationErrors) AddError(field, message string) *ValidationErrors {
-	v.Errors = append(v.Errors, ErrorDetail{
-		Code:     ErrorCodeValidationFailed,
-		Message:  message,
-		Field:    field,
-		Severity: ErrorSeverityError,
-	})
-	return v
-}
-
-// HasErrors checks if there are any validation errors
-func (v *ValidationErrors) HasErrors() bool {
-	return len(v.Errors) > 0
 }
 
 // HandleValidationError attempts to parse validation errors (e.g., from Gin binding)
 // and convert them into a structured ErrorDetail.
-// This is a basic implementation and might need adjustments based on the specific
-// error types returned by the validator library used (e.g., go-playground/validator).
 func HandleValidationError(err error) *ErrorDetail {
-	// TODO: Implement proper parsing of validation errors.
-	// This requires inspecting the 'err' type and structure provided by the validator.
-	// For go-playground/validator, you might iterate through err.(validator.ValidationErrors)
-	// and extract field names, tags, and generate user-friendly messages.
-
-	// Placeholder implementation:
+	var validationErrors validator.ValidationErrors
+	if errors.As(err, &validationErrors) {
+		// Handle multiple validation errors
+		if len(validationErrors) > 0 {
+			// For simplicity, return details of the first error
+			firstErr := validationErrors[0]
+			fieldName := firstErr.Field()
+			message := formatValidationError(firstErr) // Use internal helper
+			return NewErrorDetail(ErrorCodeValidationFailed, message).WithField(fieldName)
+		}
+	}
+	// Fallback for non-validator errors or if parsing fails
 	return NewErrorDetail(ErrorCodeValidationFailed, "Input validation failed").WithDetails(err.Error())
 }

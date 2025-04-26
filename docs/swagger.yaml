@@ -98,97 +98,6 @@ definitions:
         example: 2024
         type: integer
     type: object
-  dto.CreateClassNoteRequest:
-    properties:
-      content:
-        description: Main content of the note
-        example: Detailed notes covering topic X...
-        minLength: 10
-        type: string
-      courseCode:
-        description: Course code (e.g., CENG304)
-        example: CENG304
-        maxLength: 10
-        minLength: 3
-        type: string
-      departmentId:
-        description: ID of the department for the course
-        example: 1
-        type: integer
-      image:
-        description: Optional URL to an associated image
-        example: http://example.com/image.jpg
-        type: string
-      term:
-        description: Term (FALL or SPRING)
-        enum:
-        - FALL
-        - SPRING
-        example: SPRING
-        type: string
-      title:
-        description: Title of the class note
-        example: Lecture Notes - Week 5
-        maxLength: 255
-        minLength: 5
-        type: string
-      year:
-        description: Year the note corresponds to
-        example: 2024
-        minimum: 2000
-        type: integer
-    required:
-    - content
-    - courseCode
-    - departmentId
-    - term
-    - title
-    - year
-    type: object
-  dto.CreatePastExamRequest:
-    properties:
-      content:
-        description: Detailed content or description of the exam
-        example: Exam content details...
-        type: string
-      courseCode:
-        description: Course code (e.g., CENG301)
-        example: CENG301
-        type: string
-      departmentId:
-        description: ID of the department for the course
-        example: 1
-        minimum: 1
-        type: integer
-      fileUrl:
-        description: Optional URL to the exam file (PDF, image, etc.)
-        example: http://example.com/exam.pdf
-        type: string
-      term:
-        description: Term the exam was held (FALL or SPRING)
-        enum:
-        - FALL
-        - SPRING
-        example: FALL
-        type: string
-      title:
-        description: Title of the exam (e.g., Midterm 1, Final Exam)
-        example: Midterm Exam
-        type: string
-      year:
-        description: Year the exam was held (e.g., 2023)
-        example: 2023
-        maximum: 2100
-        minimum: 1900
-        type: integer
-    required:
-    - content
-    - courseCode
-    - departmentId
-    - term
-    - title
-    - year
-    type: object
   dto.ErrorCode:
     enum:
     - AUTH_001
@@ -458,97 +367,6 @@ definitions:
         example: Resource deleted successfully
         type: string
     type: object
-  dto.UpdateClassNoteRequest:
-    properties:
-      content:
-        description: Main content of the note
-        example: Updated detailed notes covering topic X...
-        minLength: 10
-        type: string
-      courseCode:
-        description: Course code (e.g., CENG304)
-        example: CENG304
-        maxLength: 10
-        minLength: 3
-        type: string
-      departmentId:
-        description: ID of the department for the course
-        example: 1
-        type: integer
-      image:
-        description: Optional URL to an associated image
-        example: http://example.com/new_image.jpg
-        type: string
-      term:
-        description: Term (FALL or SPRING)
-        enum:
-        - FALL
-        - SPRING
-        example: SPRING
-        type: string
-      title:
-        description: Title of the class note
-        example: Updated Lecture Notes - Week 5
-        maxLength: 255
-        minLength: 5
-        type: string
-      year:
-        description: Year the note corresponds to
-        example: 2024
-        minimum: 2000
-        type: integer
-    required:
-    - content
-    - courseCode
-    - departmentId
-    - term
-    - title
-    - year
-    type: object
-  dto.UpdatePastExamRequest:
-    properties:
-      content:
-        description: Detailed content
-        example: Updated exam content...
-        type: string
-      courseCode:
-        description: Course code
-        example: CENG301
-        type: string
-      departmentId:
-        description: ID of the department
-        example: 1
-        minimum: 1
-        type: integer
-      fileUrl:
-        description: Optional URL to the exam file
-        example: http://example.com/exam_v2.pdf
-        type: string
-      term:
-        description: Term the exam was held
-        enum:
-        - FALL
-        - SPRING
-        example: FALL
-        type: string
-      title:
-        description: Title of the exam
-        example: Midterm 1 - Updated
-        type: string
-      year:
-        description: Year the exam was held
-        example: 2023
-        maximum: 2100
-        minimum: 1900
-        type: integer
-    required:
-    - content
-    - courseCode
-    - departmentId
-    - term
-    - title
-    - year
-    type: object
   dto.UpdateTitleRequest:
     properties:
       title:
@@ -593,6 +411,10 @@ definitions:
       lastName:
         description: User's last name
         example: Doe
+        type: string
+      profilePhotoUrl:
+        description: URL of the user's profile photo (null if not set)
+        example: uploads/profile.jpg
         type: string
       roleType:
         description: User's role (STUDENT or INSTRUCTOR)
@@ -692,25 +514,45 @@ definitions:
   models.User:
     properties:
       createdAt:
+        description: Timestamp when the user was created
+        example: "2024-01-01T10:00:00Z"
         type: string
       email:
+        description: User's email address
+        example: user@school.edu.tr
         type: string
       firstName:
+        description: User's first name
+        example: John
         type: string
       id:
+        description: Unique identifier for the user
+        example: 1
         type: integer
       isActive:
+        description: Whether the user account is active
+        example: true
         type: boolean
       lastLoginAt:
-        description: Added LastLoginAt (nullable)
+        description: Timestamp of the last login (nullable)
+        example: "2024-04-20T18:00:00Z"
         type: string
       lastName:
+        description: User's last name
+        example: Doe
+        type: string
+      profilePhotoUrl:
+        description: URL of the user's profile photo (nullable)
+        example: uploads/profile.jpg
         type: string
       roleType:
         allOf:
         - $ref: '#/definitions/models.RoleType'
-        description: Uses RoleType from models.go
+        description: User's role (STUDENT or INSTRUCTOR)
+        example: STUDENT
       updatedAt:
+        description: Timestamp when the user was last updated
+        example: "2024-01-02T15:30:00Z"
         type: string
     type: object
 host: localhost:8080
@@ -787,6 +629,73 @@ paths:
       security:
       - BearerAuth: []
       summary: Get user profile
+      tags:
+      - auth
+  /auth/profile/photo:
+    delete:
+      description: Remove a user's profile photo
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Profile photo deleted successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.UserProfile'
+              type: object
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete profile photo
+      tags:
+      - auth
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload or update a user's profile photo
+      parameters:
+      - description: Profile photo
+        in: formData
+        name: photo
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Profile photo updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.UserProfile'
+              type: object
+        "400":
+          description: Invalid file format
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update profile photo
       tags:
       - auth
   /auth/refresh:
@@ -891,6 +800,173 @@ paths:
       summary: Register a new student
       tags:
       - auth
+  /class-notes:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Adds a new class note to the system. Requires authentication. Supports
+        optional image upload.
+      parameters:
+      - description: Year
+        example: 2024
+        in: formData
+        name: year
+        required: true
+        type: integer
+      - description: Term (FALL or SPRING)
+        example: SPRING
+        in: formData
+        name: term
+        required: true
+        type: string
+      - description: Department ID
+        example: 1
+        in: formData
+        name: departmentId
+        required: true
+        type: integer
+      - description: Course Code
+        example: CENG304
+        in: formData
+        name: courseCode
+        required: true
+        type: string
+      - description: Title
+        example: '"Lecture Notes - Week 5"'
+        in: formData
+        name: title
+        required: true
+        type: string
+      - description: Content
+        example: '"Detailed notes covering topic X..."'
+        in: formData
+        name: content
+        required: true
+        type: string
+      - description: Optional image file (jpg, png, gif)
+        in: formData
+        name: image
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Class note created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ClassNoteResponse'
+              type: object
+        "400":
+          description: Bad Request (e.g., validation errors)
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new class note
+      tags:
+      - ClassNotes
+  /class-notes/{noteId}:
+    put:
+      consumes:
+      - multipart/form-data
+      description: Updates an existing class note. Requires authentication and ownership.
+        Supports optional image upload (replaces existing).
+      parameters:
+      - description: Class Note ID to update
+        example: 15
+        format: int64
+        in: path
+        name: noteId
+        required: true
+        type: integer
+      - description: Year
+        example: 2024
+        in: formData
+        name: year
+        required: true
+        type: integer
+      - description: Term (FALL or SPRING)
+        example: SPRING
+        in: formData
+        name: term
+        required: true
+        type: string
+      - description: Department ID
+        example: 1
+        in: formData
+        name: departmentId
+        required: true
+        type: integer
+      - description: Course Code
+        example: CENG304
+        in: formData
+        name: courseCode
+        required: true
+        type: string
+      - description: Title
+        example: '"Updated Lecture Notes - Week 5"'
+        in: formData
+        name: title
+        required: true
+        type: string
+      - description: Content
+        example: '"Updated detailed notes covering topic X..."'
+        in: formData
+        name: content
+        required: true
+        type: string
+      - description: Optional new image file (replaces existing one)
+        in: formData
+        name: image
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Class note updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ClassNoteResponse'
+              type: object
+        "400":
+          description: Bad Request (e.g., validation errors, invalid ID)
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden (not owner)
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a class note
+      tags:
+      - ClassNotes
   /classNotes:
     get:
       consumes:
@@ -966,47 +1042,6 @@ paths:
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
       summary: Get all class notes
-      tags:
-      - ClassNotes
-    post:
-      consumes:
-      - application/json
-      description: Adds a new class note to the system. Requires authentication.
-      parameters:
-      - description: Class Note Data
-        in: body
-        name: note
-        required: true
-        schema:
-          $ref: '#/definitions/dto.CreateClassNoteRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Class note created successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.ClassNoteResponse'
-              type: object
-        "400":
-          description: Bad Request (e.g., validation errors)
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "401":
-          description: Unauthorized (handled by middleware)" // Middleware should
-            handle this
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create a new class note
       tags:
       - ClassNotes
   /classNotes/{noteId}:
@@ -1097,62 +1132,6 @@ paths:
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
       summary: Get class note by ID
-      tags:
-      - ClassNotes
-    put:
-      consumes:
-      - application/json
-      description: Updates an existing class note. Requires authentication and ownership.
-      parameters:
-      - description: Class Note ID to update
-        example: 15
-        format: int64
-        in: path
-        name: noteId
-        required: true
-        type: integer
-      - description: Updated Class Note Data
-        in: body
-        name: note
-        required: true
-        schema:
-          $ref: '#/definitions/dto.UpdateClassNoteRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Class note updated successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.ClassNoteResponse'
-              type: object
-        "400":
-          description: Bad Request (e.g., validation errors, invalid ID)
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "401":
-          description: Unauthorized (handled by middleware)" // Middleware should
-            handle this
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden (not owner)
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update a class note
       tags:
       - ClassNotes
   /classNotes/my-notes:
@@ -1754,15 +1733,50 @@ paths:
       - pastexams
     post:
       consumes:
-      - application/json
-      description: Create a new past exam. Requires instructor role.
+      - multipart/form-data
+      description: Create a new past exam with the provided data and optional file
+        upload.
       parameters:
-      - description: Past exam information
-        in: body
-        name: request
+      - description: Year
+        example: 2023
+        in: formData
+        name: year
         required: true
-        schema:
-          $ref: '#/definitions/dto.CreatePastExamRequest'
+        type: integer
+      - description: Term (FALL or SPRING)
+        example: FALL
+        in: formData
+        name: term
+        required: true
+        type: string
+      - description: Department ID
+        example: 1
+        in: formData
+        name: departmentId
+        required: true
+        type: integer
+      - description: Course Code
+        example: CENG301
+        in: formData
+        name: courseCode
+        required: true
+        type: string
+      - description: Title
+        example: '"Midterm Exam"'
+        in: formData
+        name: title
+        required: true
+        type: string
+      - description: Content
+        example: '"Exam content details..."'
+        in: formData
+        name: content
+        required: true
+        type: string
+      - description: Optional exam file (PDF, image, etc.)
+        in: formData
+        name: file
+        type: file
       produces:
       - application/json
       responses:
@@ -1780,7 +1794,7 @@ paths:
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
         "401":
-          description: Unauthorized - Invalid or missing token
+          description: Unauthorized
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
         "403":
@@ -1878,8 +1892,9 @@ paths:
       - pastexams
     put:
       consumes:
-      - application/json
+      - multipart/form-data
       description: Update an existing past exam. Requires instructor role and ownership.
+        Can optionally include a new file.
       parameters:
       - description: Past Exam ID
         example: 1
@@ -1888,12 +1903,46 @@ paths:
         name: id
         required: true
         type: integer
-      - description: Updated past exam information
-        in: body
-        name: request
+      - description: Year
+        example: 2023
+        in: formData
+        name: year
         required: true
-        schema:
-          $ref: '#/definitions/dto.UpdatePastExamRequest'
+        type: integer
+      - description: Term (FALL or SPRING)
+        example: FALL
+        in: formData
+        name: term
+        required: true
+        type: string
+      - description: Department ID
+        example: 1
+        in: formData
+        name: departmentId
+        required: true
+        type: integer
+      - description: Course Code
+        example: CENG301
+        in: formData
+        name: courseCode
+        required: true
+        type: string
+      - description: Title
+        example: '"Midterm 1 - Updated"'
+        in: formData
+        name: title
+        required: true
+        type: string
+      - description: Content
+        example: '"Updated exam content..."'
+        in: formData
+        name: content
+        required: true
+        type: string
+      - description: Optional new exam file (replaces existing one)
+        in: formData
+        name: file
+        type: file
       produces:
       - application/json
       responses:
@@ -1911,7 +1960,7 @@ paths:
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
         "401":
-          description: Unauthorized - Invalid or missing token
+          description: Unauthorized
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
         "403":

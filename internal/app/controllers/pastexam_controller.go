@@ -10,18 +10,22 @@ import (
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/services"
+	"github.com/yigit/unisphere/internal/pkg/filestorage"
 	"github.com/yigit/unisphere/internal/pkg/helpers"
+	"github.com/yigit/unisphere/internal/pkg/logger"
 )
 
 // PastExamController handles past exam related operations
 type PastExamController struct {
 	pastExamService *services.PastExamService
+	fileStorage     *filestorage.LocalStorage
 }
 
 // NewPastExamController creates a new PastExamController
-func NewPastExamController(pastExamService *services.PastExamService) *PastExamController {
+func NewPastExamController(pastExamService *services.PastExamService, fileStorage *filestorage.LocalStorage) *PastExamController {
 	return &PastExamController{
 		pastExamService: pastExamService,
+		fileStorage:     fileStorage,
 	}
 }
 
@@ -191,28 +195,57 @@ func (c *PastExamController) GetPastExamByID(ctx *gin.Context) {
 
 // CreatePastExam handles past exam creation
 // @Summary Create a new past exam (Instructor only)
-// @Description Create a new past exam. Requires instructor role.
+// @Description Create a new past exam with the provided data and optional file upload.
 // @Tags pastexams
-// @Accept json
+// @Accept multipart/form-data
 // @Produce json
 // @Security BearerAuth
-// @Param request body dto.CreatePastExamRequest true "Past exam information"
+// @Param year formData int true "Year" example(2023)
+// @Param term formData string true "Term (FALL or SPRING)" example(FALL)
+// @Param departmentId formData int true "Department ID" example(1)
+// @Param courseCode formData string true "Course Code" example(CENG301)
+// @Param title formData string true "Title" example("Midterm Exam")
+// @Param content formData string true "Content" example("Exam content details...")
+// @Param file formData file false "Optional exam file (PDF, image, etc.)"
 // @Success 201 {object} dto.APIResponse{data=dto.PastExamResponse} "Past exam successfully created"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
 // @Failure 403 {object} dto.ErrorResponse "Forbidden - User is not an instructor"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /pastexams [post]
 func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
-	// Get validated request from context
-	validatedObj, exists := ctx.Get("validatedBody")
-	if !exists {
-		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Validation failed")
+	// Parse form data instead of JSON
+	var req dto.CreatePastExamRequest
+	// Bind form values to the struct (note: file needs separate handling)
+	if err := ctx.ShouldBind(&req); err != nil {
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Invalid form data")
+		errorDetail = errorDetail.WithDetails(err.Error())
 		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
 		return
 	}
 
-	createRequest := validatedObj.(*dto.CreatePastExamRequest)
+	// Handle file upload separately
+	fileHeader, err := ctx.FormFile("file")
+	if err != nil && !errors.Is(err, http.ErrMissingFile) {
+		logger.Error().Err(err).Msg("Error retrieving uploaded file")
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Error processing file upload")
+		errorDetail = errorDetail.WithDetails(err.Error())
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(errorDetail))
+		return
+	}
+
+	// Save file if it exists
+	var savedFilePath string
+	if fileHeader != nil {
+		savedFilePath, err = c.fileStorage.SaveFile(fileHeader)
+		if err != nil {
+			logger.Error().Err(err).Msg("Error saving uploaded file")
+			errorDetail := dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to save uploaded file")
+			errorDetail = errorDetail.WithDetails(err.Error())
+			ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(errorDetail))
+			return
+		}
+	}
 
 	// Get user ID from context
 	userID, exists := ctx.Get("userID")
@@ -221,21 +254,29 @@ func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
 		ctx.JSON(http.StatusUnauthorized, dto.NewErrorResponse(errorDetail))
 		return
 	}
+	userIDInt, ok := userID.(int64)
+	if !ok {
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "Invalid userID type")
+		ctx.JSON(http.StatusUnauthorized, dto.NewErrorResponse(errorDetail))
+		return
+	}
 
-	// Convert request to model
+	// Convert request to model, including the saved file path
 	pastExam := &models.PastExam{
-		Year:         createRequest.Year,
-		Term:         models.Term(createRequest.Term),
-		DepartmentID: createRequest.DepartmentID,
-		CourseCode:   createRequest.CourseCode,
-		Title:        createRequest.Title,
-		Content:      createRequest.Content,
-		FileURL:      createRequest.FileURL,
-		// InstructorID will be set in the service based on user's instructor record
+		Year:         req.Year,
+		Term:         models.Term(req.Term),
+		DepartmentID: req.DepartmentID,
+		CourseCode:   req.CourseCode,
+		Title:        req.Title,
+		Content:      req.Content,
+		FileURL:      &savedFilePath,
+	}
+	if savedFilePath == "" {
+		pastExam.FileURL = nil
 	}
 
 	// Call service to create past exam
-	id, err := c.pastExamService.CreatePastExam(ctx, pastExam, userID.(int64))
+	id, err := c.pastExamService.CreatePastExam(ctx, pastExam, userIDInt)
 	if err != nil {
 		handlePastExamError(ctx, err)
 		return
@@ -259,16 +300,22 @@ func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
 
 // UpdatePastExam updates an existing past exam
 // @Summary Update a past exam (Instructor only, Owner only)
-// @Description Update an existing past exam. Requires instructor role and ownership.
+// @Description Update an existing past exam. Requires instructor role and ownership. Can optionally include a new file.
 // @Tags pastexams
-// @Accept json
+// @Accept multipart/form-data
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "Past Exam ID" Format(int64) example(1)
-// @Param request body dto.UpdatePastExamRequest true "Updated past exam information"
+// @Param year formData int true "Year" example(2023)
+// @Param term formData string true "Term (FALL or SPRING)" example(FALL)
+// @Param departmentId formData int true "Department ID" example(1)
+// @Param courseCode formData string true "Course Code" example(CENG301)
+// @Param title formData string true "Title" example("Midterm 1 - Updated")
+// @Param content formData string true "Content" example("Updated exam content...")
+// @Param file formData file false "Optional new exam file (replaces existing one)"
 // @Success 200 {object} dto.APIResponse{data=dto.PastExamResponse} "Past exam successfully updated"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
 // @Failure 403 {object} dto.ErrorResponse "Forbidden - User is not an instructor or not the owner"
 // @Failure 404 {object} dto.ErrorResponse "Past exam not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
@@ -283,20 +330,47 @@ func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
 		return
 	}
 
-	// Get validated request from context
-	validatedObj, exists := ctx.Get("validatedBody")
-	if !exists {
-		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Validation failed")
+	var req dto.UpdatePastExamRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Invalid form data")
+		errorDetail = errorDetail.WithDetails(err.Error())
 		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
 		return
 	}
 
-	updateRequest := validatedObj.(*dto.UpdatePastExamRequest)
+	// Handle file upload
+	fileHeader, err := ctx.FormFile("file")
+	if err != nil && !errors.Is(err, http.ErrMissingFile) {
+		logger.Error().Err(err).Msg("Error retrieving uploaded file")
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Error processing file upload")
+		errorDetail = errorDetail.WithDetails(err.Error())
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(errorDetail))
+		return
+	}
 
-	// Get user ID from context
+	// Save file if it exists
+	var savedFilePath string
+	if fileHeader != nil {
+		savedFilePath, err = c.fileStorage.SaveFile(fileHeader)
+		if err != nil {
+			logger.Error().Err(err).Msg("Error saving uploaded file")
+			errorDetail := dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to save uploaded file")
+			errorDetail = errorDetail.WithDetails(err.Error())
+			ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(errorDetail))
+			return
+		}
+	}
+
+	// Get userID from context
 	userID, exists := ctx.Get("userID")
 	if !exists {
 		errorDetail := dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "User not authenticated")
+		ctx.JSON(http.StatusUnauthorized, dto.NewErrorResponse(errorDetail))
+		return
+	}
+	userIDInt, ok := userID.(int64)
+	if !ok {
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "Invalid userID type")
 		ctx.JSON(http.StatusUnauthorized, dto.NewErrorResponse(errorDetail))
 		return
 	}
@@ -304,17 +378,23 @@ func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
 	// Convert request to model
 	pastExam := &models.PastExam{
 		ID:           id,
-		Year:         updateRequest.Year,
-		Term:         models.Term(updateRequest.Term),
-		DepartmentID: updateRequest.DepartmentID,
-		CourseCode:   updateRequest.CourseCode,
-		Title:        updateRequest.Title,
-		Content:      updateRequest.Content,
-		FileURL:      updateRequest.FileURL,
+		Year:         req.Year,
+		Term:         models.Term(req.Term),
+		DepartmentID: req.DepartmentID,
+		CourseCode:   req.CourseCode,
+		Title:        req.Title,
+		Content:      req.Content,
+		// FileURL is set in the service based on whether a new file was uploaded
+	}
+
+	// Determine the file path argument for the service
+	var newFilePathPtr *string
+	if savedFilePath != "" {
+		newFilePathPtr = &savedFilePath
 	}
 
 	// Call service to update past exam
-	err = c.pastExamService.UpdatePastExam(ctx, pastExam, userID.(int64))
+	err = c.pastExamService.UpdatePastExam(ctx, pastExam, userIDInt, newFilePathPtr) // Pass pointer to path or nil
 	if err != nil {
 		handlePastExamError(ctx, err)
 		return

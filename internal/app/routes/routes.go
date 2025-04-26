@@ -38,6 +38,8 @@ func SetupRouter(
 	{
 		// Auth Profile route (moved here)
 		authenticated.GET("/auth/profile", authController.GetProfile)
+		authenticated.POST("/auth/profile/photo", authController.UpdateProfilePhoto)
+		authenticated.DELETE("/auth/profile/photo", authController.DeleteProfilePhoto)
 
 		// Faculty routes (now under authenticated group)
 		faculties := authenticated.Group("/faculties")
