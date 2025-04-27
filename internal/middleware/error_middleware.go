@@ -55,8 +55,9 @@ func HandleAPIError(ctx *gin.Context, err error) {
 		errDetail = errDetail.WithDetails(err.Error())
 
 	// Conflict Errors (Already Exists)
-	case errors.Is(err, appServices.ErrEmailAlreadyExists), errors.Is(err, appServices.ErrStudentIDAlreadyExists),
-		errors.Is(err, appRepos.ErrFacultyAlreadyExists), errors.Is(err, appRepos.ErrDepartmentAlreadyExists):
+	case errors.Is(err, appServices.ErrEmailAlreadyExists), errors.Is(err, appServices.ErrIdentifierAlreadyExists),
+		errors.Is(err, appServices.ErrStudentIDAlreadyExists), errors.Is(err, appRepos.ErrFacultyAlreadyExists),
+		errors.Is(err, appRepos.ErrDepartmentAlreadyExists):
 		statusCode = http.StatusConflict
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeResourceAlreadyExists, "Resource Already Exists")
 		errDetail = errDetail.WithDetails(err.Error())
@@ -78,7 +79,8 @@ func HandleAPIError(ctx *gin.Context, err error) {
 		statusCode = http.StatusBadRequest
 		errDetail = dto.HandleValidationError(err) // Use dto.HandleValidationError
 	case errors.Is(err, appServices.ErrInvalidEmail), errors.Is(err, appServices.ErrInvalidPassword),
-		errors.Is(err, appServices.ErrInvalidStudentID), errors.Is(err, appServices.ErrNoteDepartmentNotFound):
+		errors.Is(err, appServices.ErrInvalidIdentifier), errors.Is(err, appServices.ErrInvalidStudentID),
+		errors.Is(err, appServices.ErrNoteDepartmentNotFound):
 		statusCode = http.StatusBadRequest
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Validation Failed")
 		errDetail = errDetail.WithDetails(err.Error())

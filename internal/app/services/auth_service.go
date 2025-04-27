@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"mime/multipart"
-	"regexp"
 	"strings"
 	"time"
 	"unicode"
@@ -16,6 +15,7 @@ import (
 	"github.com/yigit/unisphere/internal/app/repositories"
 	"github.com/yigit/unisphere/internal/pkg/auth"
 	"github.com/yigit/unisphere/internal/pkg/filestorage"
+	"github.com/yigit/unisphere/internal/pkg/validation"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -24,10 +24,10 @@ var (
 	ErrInvalidEmail            = errors.New("invalid email format")
 	ErrInvalidPassword         = errors.New("invalid password format")
 	ErrInvalidIdentifier       = errors.New("invalid student identifier format")
-	ErrInvalidStudentID        = errors.New("invalid student identifier format") // Alias for ErrInvalidIdentifier
+	ErrInvalidStudentID        = ErrInvalidIdentifier
 	ErrEmailAlreadyExists      = errors.New("email already exists")
 	ErrIdentifierAlreadyExists = errors.New("student identifier already in use")
-	ErrStudentIDAlreadyExists  = errors.New("student identifier already in use") // Alias for ErrIdentifierAlreadyExists
+	ErrStudentIDAlreadyExists  = ErrIdentifierAlreadyExists
 	ErrTokenNotFound           = errors.New("token not found")
 	ErrTokenExpired            = errors.New("token has expired")
 	ErrTokenRevoked            = errors.New("token has been revoked")
@@ -77,8 +77,10 @@ func (s *AuthService) validateEmail(email string) error {
 	}
 
 	// Email should have a valid format
-	emailRegex := regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
-	if !emailRegex.MatchString(email) {
+	validator := validation.NewStringValidation(email).
+		WithPattern(validation.CompiledPatterns.Email)
+
+	if !validator.Validate() {
 		return ErrInvalidEmail
 	}
 
@@ -91,9 +93,13 @@ func (s *AuthService) validatePassword(password string) error {
 		return fmt.Errorf("%w: password cannot be empty", ErrAuthValidation)
 	}
 
-	// Check length
-	if len(password) < 8 {
-		return fmt.Errorf("%w: password must be at least 8 characters long", ErrInvalidPassword)
+	// Minimum uzunluk kontrolü
+	validator := validation.NewStringValidation(password).
+		WithMinLength(validation.PasswordMinLength)
+
+	if !validator.Validate() {
+		return fmt.Errorf("%w: password must be at least %d characters long",
+			ErrInvalidPassword, validation.PasswordMinLength)
 	}
 
 	// Check for at least one letter
@@ -130,8 +136,10 @@ func (s *AuthService) validateIdentifier(identifier string) error {
 	}
 
 	// Student identifier should match the pattern (8 digits)
-	identifierRegex := regexp.MustCompile(`^\d{8}$`)
-	if !identifierRegex.MatchString(identifier) {
+	validator := validation.NewStringValidation(identifier).
+		WithPattern(validation.CompiledPatterns.Identifier)
+
+	if !validator.Validate() {
 		return ErrInvalidIdentifier
 	}
 
@@ -510,17 +518,50 @@ func (s *AuthService) DeleteProfilePhoto(ctx context.Context, userID int64) (*dt
 
 // UpdateUserProfile updates a user's profile information
 func (s *AuthService) UpdateUserProfile(ctx context.Context, userID int64, req *dto.UpdateUserProfileRequest) (*dto.UserProfile, error) {
+	// Validate user ID
+	if err := s.validateUserID(userID); err != nil {
+		return nil, err
+	}
+
 	// Validate email
 	if err := s.validateEmail(req.Email); err != nil {
 		return nil, err
 	}
 
-	// Validate first name and last name (simple validation, can be expanded)
-	if strings.TrimSpace(req.FirstName) == "" {
-		return nil, fmt.Errorf("%w: first name cannot be empty", ErrAuthValidation)
+	// Validate first name
+	firstName := strings.TrimSpace(req.FirstName)
+	firstNameValidator := validation.NewStringValidation(firstName).
+		WithMinLength(validation.NameMinLength).
+		WithMaxLength(validation.NameMaxLength)
+
+	if !firstNameValidator.Validate() {
+		if firstName == "" {
+			return nil, fmt.Errorf("%w: first name cannot be empty", ErrAuthValidation)
+		} else if len(firstName) < validation.NameMinLength {
+			return nil, fmt.Errorf("%w: first name must be at least %d characters",
+				ErrAuthValidation, validation.NameMinLength)
+		} else {
+			return nil, fmt.Errorf("%w: first name cannot exceed %d characters",
+				ErrAuthValidation, validation.NameMaxLength)
+		}
 	}
-	if strings.TrimSpace(req.LastName) == "" {
-		return nil, fmt.Errorf("%w: last name cannot be empty", ErrAuthValidation)
+
+	// Validate last name
+	lastName := strings.TrimSpace(req.LastName)
+	lastNameValidator := validation.NewStringValidation(lastName).
+		WithMinLength(validation.NameMinLength).
+		WithMaxLength(validation.NameMaxLength)
+
+	if !lastNameValidator.Validate() {
+		if lastName == "" {
+			return nil, fmt.Errorf("%w: last name cannot be empty", ErrAuthValidation)
+		} else if len(lastName) < validation.NameMinLength {
+			return nil, fmt.Errorf("%w: last name must be at least %d characters",
+				ErrAuthValidation, validation.NameMinLength)
+		} else {
+			return nil, fmt.Errorf("%w: last name cannot exceed %d characters",
+				ErrAuthValidation, validation.NameMaxLength)
+		}
 	}
 
 	// Check if the email is different from the current one and already exists
@@ -544,7 +585,7 @@ func (s *AuthService) UpdateUserProfile(ctx context.Context, userID int64, req *
 	}
 
 	// Update the user profile
-	err = s.userRepo.UpdateUserProfile(ctx, userID, req.FirstName, req.LastName, req.Email)
+	err = s.userRepo.UpdateUserProfile(ctx, userID, firstName, lastName, req.Email)
 	if err != nil {
 		if errors.Is(err, repositories.ErrUserNotFound) {
 			return nil, ErrUserNotFound

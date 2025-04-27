@@ -35,10 +35,8 @@ func NewLocalStorage(basePath, baseURL string) (*LocalStorage, error) {
 	}, nil
 }
 
-// SaveFile saves an uploaded file to the configured local storage path.
-// It generates a unique filename and returns the accessible path/URL for the file.
-// Returns an empty string and nil error if fileHeader is nil.
-func (ls *LocalStorage) SaveFile(fileHeader *multipart.FileHeader) (string, error) {
+// SaveFileWithPath saves a file to a specified subdirectory
+func (ls *LocalStorage) SaveFileWithPath(fileHeader *multipart.FileHeader, subPath string) (string, error) {
 	if fileHeader == nil {
 		return "", nil // No file uploaded
 	}
@@ -51,12 +49,22 @@ func (ls *LocalStorage) SaveFile(fileHeader *multipart.FileHeader) (string, erro
 	}
 	defer file.Close()
 
+	// Ensure the subdirectory exists
+	fullDirPath := ls.basePath
+	if subPath != "" {
+		fullDirPath = filepath.Join(ls.basePath, subPath)
+		if err := os.MkdirAll(fullDirPath, os.ModePerm); err != nil {
+			logger.Error().Err(err).Str("path", fullDirPath).Msg("Failed to create subdirectory")
+			return "", fmt.Errorf("failed to create subdirectory: %w", err)
+		}
+	}
+
 	// Generate a unique filename to prevent collisions
 	ext := filepath.Ext(fileHeader.Filename)
 	uniqueFilename := uuid.New().String() + ext
 
 	// Construct the full destination path
-	dstPath := filepath.Join(ls.basePath, uniqueFilename)
+	dstPath := filepath.Join(fullDirPath, uniqueFilename)
 
 	// Create the destination file
 	dst, err := os.Create(dstPath)
@@ -76,18 +84,31 @@ func (ls *LocalStorage) SaveFile(fileHeader *multipart.FileHeader) (string, erro
 
 	// Construct the accessible path/URL
 	var accessiblePath string
-	
+
 	if ls.baseURL != "" {
 		// If baseURL is provided, use it to construct a URL
 		// Make sure we don't have double slashes
-		accessiblePath = strings.TrimRight(ls.baseURL, "/") + "/" + uniqueFilename
+		if subPath != "" {
+			accessiblePath = strings.TrimRight(ls.baseURL, "/") + "/" + subPath + "/" + uniqueFilename
+		} else {
+			accessiblePath = strings.TrimRight(ls.baseURL, "/") + "/" + uniqueFilename
+		}
 	} else {
 		// If no baseURL, use the relative path to uploads directory
-		accessiblePath = filepath.Join("uploads", uniqueFilename)
+		if subPath != "" {
+			accessiblePath = filepath.Join("uploads", subPath, uniqueFilename)
+		} else {
+			accessiblePath = filepath.Join("uploads", uniqueFilename)
+		}
 	}
 
 	logger.Info().Str("filename", fileHeader.Filename).Str("saved_as", uniqueFilename).Str("accessible_path", accessiblePath).Msg("File saved successfully")
 	return accessiblePath, nil
+}
+
+// SaveFile saves an uploaded file using the default path
+func (ls *LocalStorage) SaveFile(fileHeader *multipart.FileHeader) (string, error) {
+	return ls.SaveFileWithPath(fileHeader, "")
 }
 
 // DeleteFile removes a file from the storage filesystem.
@@ -140,4 +161,3 @@ func (ls *LocalStorage) GetFullPath(fileURL string) string {
 
 // TODO: Add DeleteFile method if needed
 // func (ls *LocalStorage) DeleteFile(filePath string) error { ... }
- 

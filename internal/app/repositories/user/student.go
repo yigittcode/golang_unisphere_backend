@@ -9,13 +9,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yigit/unisphere/internal/app/models"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/dberrors"
 	"github.com/yigit/unisphere/internal/pkg/logger"
-)
-
-var (
-	ErrIdentifierExists = errors.New("student identifier already in use")
-	ErrStudentNotFound  = ErrUserNotFound
 )
 
 // StudentRepository handles student database operations
@@ -48,7 +44,7 @@ func (r *StudentRepository) CreateStudent(ctx context.Context, student *models.S
 	if err != nil {
 		if dberrors.IsDuplicateConstraintError(err, "students_identifier_key") {
 			logger.Warn().Str("identifier", student.Identifier).Msg("Attempted to create student with duplicate identifier")
-			return ErrIdentifierExists
+			return apperrors.ErrIdentifierExists
 		}
 		logger.Error().Err(err).Int64("userID", student.UserID).Str("identifier", student.Identifier).Msg("Error executing create student query")
 		return fmt.Errorf("error creating student: %w", err)
@@ -78,7 +74,7 @@ func (r *StudentRepository) GetStudentByUserID(ctx context.Context, userID int64
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			logger.Warn().Int64("userID", userID).Msg("Student not found by user ID")
-			return nil, ErrStudentNotFound
+			return nil, apperrors.ErrStudentNotFound
 		}
 		logger.Error().Err(err).Int64("userID", userID).Msg("Error scanning student row")
 		return nil, fmt.Errorf("error retrieving student: %w", err)

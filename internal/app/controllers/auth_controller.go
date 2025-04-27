@@ -46,14 +46,14 @@ func handleError(ctx *gin.Context, err error) {
 	case errors.Is(err, services.ErrInvalidPassword):
 		statusCode = http.StatusBadRequest
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeInvalidPassword, "Invalid password format")
-	case errors.Is(err, services.ErrInvalidStudentID):
+	case errors.Is(err, services.ErrInvalidIdentifier), errors.Is(err, services.ErrInvalidStudentID):
 		statusCode = http.StatusBadRequest
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeInvalidStudentID, "Invalid student ID format")
 	// Conflict errors
 	case errors.Is(err, services.ErrEmailAlreadyExists):
 		statusCode = http.StatusConflict
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeResourceAlreadyExists, "Email already exists")
-	case errors.Is(err, services.ErrStudentIDAlreadyExists):
+	case errors.Is(err, services.ErrIdentifierAlreadyExists), errors.Is(err, services.ErrStudentIDAlreadyExists):
 		statusCode = http.StatusConflict
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeResourceAlreadyExists, "Student ID already exists")
 	// Authentication errors
