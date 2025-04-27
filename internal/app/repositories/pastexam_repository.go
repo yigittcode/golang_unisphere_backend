@@ -67,7 +67,7 @@ func (r *PastExamRepository) GetAllPastExams(ctx context.Context, page, pageSize
 	// Base select query
 	baseSelect := r.sb.Select(
 		"pe.id", "pe.year", "pe.term", "pe.department_id", "pe.course_code",
-		"pe.title", "pe.content", "pe.file_url", "pe.instructor_id",
+		"pe.title", "pe.content", "pe.instructor_id",
 		"pe.created_at", "pe.updated_at",
 		"d.name as department_name",
 		"f.id as faculty_id", "f.name as faculty_name",
@@ -180,7 +180,7 @@ func (r *PastExamRepository) GetAllPastExams(ctx context.Context, page, pageSize
 
 		err := rows.Scan(
 			&pastExam.ID, &pastExam.Year, &pastExam.Term, &pastExam.DepartmentID,
-			&pastExam.CourseCode, &pastExam.Title, &pastExam.Content, &pastExam.FileURL,
+			&pastExam.CourseCode, &pastExam.Title, &pastExam.Content,
 			&nullableInstructorID,
 			&pastExam.CreatedAt, &pastExam.UpdatedAt,
 			&departmentName, &facultyID, &facultyName, &instructorName, &uploadedByEmail,
@@ -225,7 +225,7 @@ func (r *PastExamRepository) GetAllPastExams(ctx context.Context, page, pageSize
 func (r *PastExamRepository) GetPastExamByID(ctx context.Context, id int64) (*models.PastExam, error) {
 	selectBuilder := r.sb.Select(
 		"pe.id", "pe.year", "pe.term", "pe.department_id", "pe.course_code",
-		"pe.title", "pe.content", "pe.file_url", "pe.instructor_id",
+		"pe.title", "pe.content", "pe.instructor_id",
 		"pe.created_at", "pe.updated_at",
 		"d.name as department_name",
 		"f.id as faculty_id", "f.name as faculty_name",
@@ -252,7 +252,7 @@ func (r *PastExamRepository) GetPastExamByID(ctx context.Context, id int64) (*mo
 
 	err = r.db.QueryRow(ctx, sqlQuery, args...).Scan(
 		&pastExam.ID, &pastExam.Year, &pastExam.Term, &pastExam.DepartmentID,
-		&pastExam.CourseCode, &pastExam.Title, &pastExam.Content, &pastExam.FileURL,
+		&pastExam.CourseCode, &pastExam.Title, &pastExam.Content,
 		&nullableInstructorID,
 		&pastExam.CreatedAt, &pastExam.UpdatedAt,
 		&departmentName, &facultyID, &facultyName, &instructorName, &uploadedByEmail,
@@ -301,11 +301,11 @@ func (r *PastExamRepository) CreatePastExam(ctx context.Context, pastExam *model
 	sql, args, err := r.sb.Insert("past_exams").
 		Columns(
 			"year", "term", "department_id", "course_code", "title", "content",
-			"file_url", "instructor_id",
+			"instructor_id",
 		).
 		Values(
 			pastExam.Year, pastExam.Term, pastExam.DepartmentID, pastExam.CourseCode,
-			pastExam.Title, pastExam.Content, getNullString(pastExam.FileURL),
+			pastExam.Title, pastExam.Content,
 			instructorIDArg,
 		).
 		Suffix("RETURNING id").
@@ -344,7 +344,6 @@ func (r *PastExamRepository) UpdatePastExam(ctx context.Context, pastExam *model
 			"course_code":   pastExam.CourseCode,
 			"title":         pastExam.Title,
 			"content":       getContentNullString(pastExam.Content),
-			"file_url":      getNullString(pastExam.FileURL),
 			"instructor_id": instructorIDArg,
 			"updated_at":    time.Now(),
 		}).
@@ -444,4 +443,9 @@ func isValidSortField(field string) bool {
 	}
 
 	return false
+}
+
+// GetFileRepository returns the file repository
+func (r *PastExamRepository) GetFileRepository() *FileRepository {
+	return NewFileRepository(r.db)
 }

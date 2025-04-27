@@ -62,8 +62,16 @@ CREATE TABLE IF NOT EXISTS departments (
     CONSTRAINT unique_department_code UNIQUE (code)
 );
 
--- Add foreign key constraint for user-department relationship
-ALTER TABLE users ADD CONSTRAINT fk_user_department FOREIGN KEY (department_id) REFERENCES departments(id);
+-- Add foreign key constraint for user-department relationship (only if it doesn't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_user_department' AND conrelid = 'users'::regclass
+    ) THEN
+        ALTER TABLE users ADD CONSTRAINT fk_user_department FOREIGN KEY (department_id) REFERENCES departments(id);
+    END IF;
+END$$;
 
 -- Student table (extends User)
 CREATE TABLE IF NOT EXISTS students (

@@ -1,37 +1,49 @@
-configs/config.yaml
+# If .gitignore doesn't exist, create it with standard Go entries
+# If it exists, ensure Swagger docs aren't ignored
 
-# Environment variables
-.env
-.env.*
-!.env.example
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+unisphere-api
 
-*.json
+# Test binary, built with `go test -c`
+*.test
 
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
 
-# IDE settings
+# Go workspace file
+go.work
+
+# IDE files
 .idea/
 .vscode/
+*.swp
+*.swo
 
-# Build output
-/build/
-/dist/
+# Dependency directories (remove if vendoring is used)
+/vendor/
 
-# Compiled binaries in root
-unisphere
-unisphere_api
-app
+# Environment files
+.env
+.env.local
 
-# Log files
+# Logs
 *.log
 
-# OS generated files
-.DS_Store
-Thumbs.db 
+# Build and temporary files
+/tmp/
+/dist/
 
-# Go
-*.out
-*.test
-*.test.out
-*.test.out.tmp
-*.test.out.tmp.tmp
-*.test.out.tmp.tmp.tmpconfigs/config.yaml
+# Keep Swagger docs
+!/docs/
+!/docs/swagger.json
+!/docs/swagger.yaml
+!/docs/docs.go
+
+# OS files
+.DS_Store
+Thumbs.db

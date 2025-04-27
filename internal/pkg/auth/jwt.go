@@ -120,13 +120,6 @@ func ExtractBearerToken(authHeader string) (string, error) {
 		return strings.TrimPrefix(authHeader, "Bearer "), nil
 	}
 
-	// If in Swagger UI, the user might paste just the token without "Bearer " prefix
-	// To be more user-friendly, check if the header looks like a JWT token (three dot-separated parts)
-	if strings.Count(authHeader, ".") == 2 {
-		// It looks like a JWT token, so return it directly
-		return authHeader, nil
-	}
-
 	// Otherwise, reject it as an invalid format
 	return "", fmt.Errorf("%w: authorization header must start with 'Bearer '", apperrors.ErrInvalidFormat)
 }

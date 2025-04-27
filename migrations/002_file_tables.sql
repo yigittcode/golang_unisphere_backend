@@ -51,9 +51,27 @@ CREATE TABLE IF NOT EXISTS class_note_files (
 -- Create an index for better query performance
 CREATE INDEX IF NOT EXISTS idx_class_note_files_class_note_id ON class_note_files(class_note_id);
 
--- Add profile_photo_file_id column to users table for profile photos
-ALTER TABLE users ADD COLUMN profile_photo_file_id BIGINT NULL;
-ALTER TABLE users ADD CONSTRAINT fk_user_profile_photo FOREIGN KEY (profile_photo_file_id) REFERENCES files(id);
+-- Add profile_photo_file_id column to users table if it doesn't exist yet
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name = 'profile_photo_file_id'
+    ) THEN
+        ALTER TABLE users ADD COLUMN profile_photo_file_id BIGINT NULL;
+    END IF;
+END$$;
+
+-- Add foreign key constraint if it doesn't exist yet
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_user_profile_photo' AND conrelid = 'users'::regclass
+    ) THEN
+        ALTER TABLE users ADD CONSTRAINT fk_user_profile_photo FOREIGN KEY (profile_photo_file_id) REFERENCES files(id);
+    END IF;
+END$$;
 
 -- Create an index for better query performance
 CREATE INDEX IF NOT EXISTS idx_users_profile_photo_file_id ON users(profile_photo_file_id);

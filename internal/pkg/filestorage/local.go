@@ -159,5 +159,14 @@ func (ls *LocalStorage) GetFullPath(fileURL string) string {
 	return filepath.Join(ls.basePath, filename)
 }
 
+// GetFileURL returns the public URL for a saved file
+func (ls *LocalStorage) GetFileURL(filePath string) string {
+	// Extract only the filename from the path
+	fileName := filepath.Base(filePath)
+
+	// Combine base URL with filename
+	return strings.TrimRight(ls.baseURL, "/") + "/" + fileName
+}
+
 // TODO: Add DeleteFile method if needed
 // func (ls *LocalStorage) DeleteFile(filePath string) error { ... }

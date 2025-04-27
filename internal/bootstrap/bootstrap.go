@@ -156,6 +156,7 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 		deps.Repos.TokenRepository,
 		deps.Repos.DepartmentRepository,
 		deps.Repos.FacultyRepository,
+		deps.Repos.FileRepository,
 		deps.FileStorage,
 		deps.JWTService,
 		lgr,
@@ -191,7 +192,7 @@ func SetupRouter(cfg *config.Config, deps *Dependencies, lgr zerolog.Logger) *gi
 	router := gin.Default()
 
 	// Setup Swagger
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json"), ginSwagger.DefaultModelsExpandDepth(1)))
 
 	// Setup API routes using the dependencies
 	appRoutes.SetupRouter(router,

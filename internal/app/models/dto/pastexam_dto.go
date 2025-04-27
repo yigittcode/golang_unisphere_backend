@@ -1,6 +1,10 @@
 package dto
 
-import "github.com/yigit/unisphere/internal/app/models"
+import (
+	"time"
+
+	"github.com/yigit/unisphere/internal/app/models"
+)
 
 // CreatePastExamRequest represents the request to create a past exam
 type CreatePastExamRequest struct {
@@ -11,7 +15,6 @@ type CreatePastExamRequest struct {
 	Title        string `json:"title" validate:"required" example:"Midterm Exam"`              // Title of the exam (e.g., Midterm 1, Final Exam)
 	Content      string `json:"content" validate:"required" example:"Exam content details..."` // Detailed content or description of the exam
 	// FileURL is removed, file should be sent via multipart/form-data
-	// FileURL      *string `json:"fileUrl,omitempty" validate:"omitempty,url" example:"http://example.com/exam.pdf"`
 }
 
 // UpdatePastExamRequest represents the request to update a past exam
@@ -23,24 +26,25 @@ type UpdatePastExamRequest struct {
 	Title        string `json:"title" validate:"required" example:"Midterm 1 - Updated"`       // Title of the exam
 	Content      string `json:"content" validate:"required" example:"Updated exam content..."` // Detailed content
 	// FileURL is removed, file should be sent via multipart/form-data
-	// FileURL      *string `json:"fileUrl,omitempty" validate:"omitempty,url" example:"http://example.com/exam_v2.pdf"`
 }
 
 // PastExamResponse represents the response for a past exam including related entity names
 type PastExamResponse struct {
-	ID              int64  `json:"id" example:"10"`                                         // Unique identifier for the past exam
-	Year            int    `json:"year" example:"2023"`                                     // Year the exam was held
-	Term            string `json:"term" example:"FALL"`                                     // Term the exam was held (FALL or SPRING)
-	FacultyID       int64  `json:"facultyId" example:"1"`                                   // ID of the faculty associated with the department
-	FacultyName     string `json:"facultyName" example:"Engineering Faculty"`               // Name of the faculty
-	DepartmentID    int64  `json:"departmentId" example:"1"`                                // ID of the department for the course
-	DepartmentName  string `json:"departmentName" example:"Computer Engineering"`           // Name of the department
-	CourseCode      string `json:"courseCode" example:"CENG301"`                            // Course code
-	InstructorName  string `json:"instructorName" example:"Jane Smith"`                     // Name of the instructor who uploaded the exam
-	Title           string `json:"title" example:"Midterm 1"`                               // Title of the exam
-	Content         string `json:"content" example:"Exam content details..."`               // Detailed content or description of the exam
-	FileURL         string `json:"fileUrl,omitempty" example:"http://example.com/exam.pdf"` // URL to the exam file, if available
-	UploadedByEmail string `json:"uploadedByEmail" example:"instructor@school.edu.tr"`      // Email of the instructor who uploaded the exam
+	ID              int64          `json:"id" example:"10"`                                    // Unique identifier for the past exam
+	Year            int            `json:"year" example:"2023"`                                // Year the exam was held
+	Term            string         `json:"term" example:"FALL"`                                // Term the exam was held (FALL or SPRING)
+	FacultyID       int64          `json:"facultyId" example:"1"`                              // ID of the faculty associated with the department
+	FacultyName     string         `json:"facultyName" example:"Engineering Faculty"`          // Name of the faculty
+	DepartmentID    int64          `json:"departmentId" example:"1"`                           // ID of the department for the course
+	DepartmentName  string         `json:"departmentName" example:"Computer Engineering"`      // Name of the department
+	CourseCode      string         `json:"courseCode" example:"CENG301"`                       // Course code
+	InstructorName  string         `json:"instructorName" example:"Jane Smith"`                // Name of the instructor who uploaded the exam
+	Title           string         `json:"title" example:"Midterm 1"`                          // Title of the exam
+	Content         string         `json:"content" example:"Exam content details..."`          // Detailed content or description of the exam
+	Files           []FileResponse `json:"files,omitempty"`                                    // Files attached to the exam (new field for multiple files)
+	UploadedByEmail string         `json:"uploadedByEmail" example:"instructor@school.edu.tr"` // Email of the instructor who uploaded the exam
+	CreatedAt       string         `json:"createdAt,omitempty" example:"2024-01-15T10:00:00Z"` // Creation timestamp
+	UpdatedAt       string         `json:"updatedAt,omitempty" example:"2024-01-16T11:30:00Z"` // Last update timestamp
 }
 
 // PastExamListResponse represents the response for a list of past exams with pagination metadata
@@ -75,9 +79,20 @@ func FromPastExam(exam *models.PastExam) PastExamResponse {
 		departmentName = exam.Department.Name
 	}
 
-	fileURL := ""
-	if exam.FileURL != nil {
-		fileURL = *exam.FileURL
+	// Convert model files to DTO files
+	files := make([]FileResponse, 0)
+	if exam.Files != nil {
+		for _, file := range exam.Files {
+			files = append(files, FileResponse{
+				ID:           file.ID,
+				FileName:     file.FileName,
+				FileURL:      file.FileURL,
+				FileSize:     file.FileSize,
+				FileType:     file.FileType,
+				ResourceType: string(file.ResourceType),
+				CreatedAt:    file.CreatedAt.Format(time.RFC3339),
+			})
+		}
 	}
 
 	return PastExamResponse{
@@ -92,7 +107,9 @@ func FromPastExam(exam *models.PastExam) PastExamResponse {
 		InstructorName:  exam.UploadedByName,
 		Title:           exam.Title,
 		Content:         exam.Content,
-		FileURL:         fileURL,
+		Files:           files,
 		UploadedByEmail: exam.UploadedByEmail,
+		CreatedAt:       exam.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:       exam.UpdatedAt.Format(time.RFC3339),
 	}
 }

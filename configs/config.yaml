@@ -1,0 +1,28 @@
+# Server yapılandırması
+server:
+  port: 8080
+  mode: development # development, production
+
+# Veritabanı yapılandırması
+database:
+  driver: postgres
+  host: localhost
+  port: 5432
+  user: postgres
+  password: postgrestudent
+  dbname: unisphere_backend_golang
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 1h
+
+# JWT yapılandırması
+jwt:
+  secret: "X9KV8JsfpTW3z6CEHqNr5uAyBD2PZgL7XGm4RtF8vQc1YSj0KxM" # More secure random value
+  access_token_expiration: 1h # Access token should be short-lived
+  refresh_token_expiration: 720h # 30 days for refresh token
+  issuer: "unisphere.app"
+
+# Loglama yapılandırması
+logging:
+  level: debug # debug, info, warn, error
+  format: text # text, json 

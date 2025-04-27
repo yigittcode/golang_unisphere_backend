@@ -1,5 +1,7 @@
 package main
 
+//go:generate swag init -g main.go -d ./,../../internal/app -o ../../docs --parseDependency
+
 import (
 	"os"
 
@@ -26,7 +28,7 @@ import (
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-// @description Type "Bearer" followed by a space and the JWT token
+// @description Enter your JWT token (without Bearer prefix)
 
 func main() {
 	// Initialize the server with all its dependencies

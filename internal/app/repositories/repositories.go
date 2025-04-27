@@ -26,6 +26,7 @@ type Repositories struct {
 	TokenRepository      *TokenRepository
 	PastExamRepository   *PastExamRepository
 	ClassNoteRepository  *ClassNoteRepository
+	FileRepository       *FileRepository
 }
 
 // NewRepositories initializes all repositories
@@ -37,5 +38,6 @@ func NewRepositories(db *pgxpool.Pool) *Repositories {
 		TokenRepository:      NewTokenRepository(db),
 		PastExamRepository:   NewPastExamRepository(db),
 		ClassNoteRepository:  NewClassNoteRepository(db),
+		FileRepository:       NewFileRepository(db),
 	}
 }

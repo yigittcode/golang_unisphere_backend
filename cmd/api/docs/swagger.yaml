@@ -1,0 +1,25 @@
+basePath: /api/v1
+host: localhost:8080
+info:
+  contact:
+    email: support@unisphere.com
+    name: API Support
+    url: https://www.unisphere.com/support
+  description: API for UniSphere university social platform
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: UniSphere API
+  version: "1.0"
+paths: {}
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    description: Enter your JWT token (without Bearer prefix)
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

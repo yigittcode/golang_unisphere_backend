@@ -3,6 +3,7 @@ package middleware
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yigit/unisphere/internal/app/models/dto"
@@ -25,8 +26,25 @@ func NewAuthMiddleware(jwtService *auth.JWTService) *AuthMiddleware {
 // JWTAuth middleware for JWT token validation
 func (m *AuthMiddleware) JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get Authorization header
+		var tokenString string
+		var err error
+
+		// Get Authorization header (standard method)
 		authHeader := c.GetHeader("Authorization")
+
+		// Check authorization query parameter if header is missing (for Swagger UI)
+		if authHeader == "" {
+			// Check if token is in query parameters (Swagger UI sometimes puts it here)
+			if queryToken := c.Query("authorization"); queryToken != "" {
+				authHeader = queryToken
+			} else if queryToken := c.Query("Authorization"); queryToken != "" {
+				authHeader = queryToken
+			} else if queryToken := c.Query("token"); queryToken != "" {
+				authHeader = queryToken
+			}
+		}
+
+		// If still no token found, return unauthorized
 		if authHeader == "" {
 			errorDetail := dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "Authentication required")
 			errorDetail = errorDetail.WithDetails("Authorization header missing")
@@ -35,14 +53,31 @@ func (m *AuthMiddleware) JWTAuth() gin.HandlerFunc {
 			return
 		}
 
-		// Extract token using the utility function
-		tokenString, err := auth.ExtractBearerToken(authHeader)
-		if err != nil {
-			errorDetail := dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "Authentication required")
-			errorDetail = errorDetail.WithDetails("Invalid token format")
+		// Extract token - Handle different token formats
 
-			c.AbortWithStatusJSON(http.StatusUnauthorized, dto.NewErrorResponse(errorDetail))
-			return
+		// Check if it's a raw JWT token (for Swagger UI convenience)
+		if strings.Count(authHeader, ".") == 2 && !strings.HasPrefix(authHeader, "Bearer ") {
+			// It looks like a raw JWT token, use it directly
+			tokenString = authHeader
+		} else {
+			// Try normal extraction (requires Bearer prefix)
+			tokenString, err = auth.ExtractBearerToken(authHeader)
+			if err != nil {
+				// One more attempt - maybe token is wrapped in quotes (happens with some clients)
+				authHeader = strings.Trim(authHeader, "\"'")
+				if strings.HasPrefix(authHeader, "Bearer ") {
+					tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+				} else if strings.Count(authHeader, ".") == 2 {
+					// It might still be a raw token
+					tokenString = authHeader
+				} else {
+					errorDetail := dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "Authentication required")
+					errorDetail = errorDetail.WithDetails("Invalid token format")
+
+					c.AbortWithStatusJSON(http.StatusUnauthorized, dto.NewErrorResponse(errorDetail))
+					return
+				}
+			}
 		}
 
 		// Validate and extract claims using the new method

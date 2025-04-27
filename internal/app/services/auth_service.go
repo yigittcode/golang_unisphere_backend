@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"mime/multipart"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 	"unicode"
@@ -26,6 +28,7 @@ type AuthService struct {
 	tokenRepo      *repositories.TokenRepository
 	departmentRepo *repositories.DepartmentRepository
 	facultyRepo    *repositories.FacultyRepository
+	fileRepo       *repositories.FileRepository
 	fileStorage    *filestorage.LocalStorage
 	jwtService     *auth.JWTService
 	logger         zerolog.Logger
@@ -37,6 +40,7 @@ func NewAuthService(
 	tokenRepo *repositories.TokenRepository,
 	departmentRepo *repositories.DepartmentRepository,
 	facultyRepo *repositories.FacultyRepository,
+	fileRepo *repositories.FileRepository,
 	fileStorage *filestorage.LocalStorage,
 	jwtService *auth.JWTService,
 	logger zerolog.Logger,
@@ -46,6 +50,7 @@ func NewAuthService(
 		tokenRepo:      tokenRepo,
 		departmentRepo: departmentRepo,
 		facultyRepo:    facultyRepo,
+		fileRepo:       fileRepo,
 		fileStorage:    fileStorage,
 		jwtService:     jwtService,
 		logger:         logger,
@@ -458,14 +463,27 @@ func (s *AuthService) UpdateProfilePhoto(ctx context.Context, userID int64, file
 		return nil, fmt.Errorf("failed to get user information: %w", err)
 	}
 
+	// Validate file type - only allow image formats for profile photos
+	if !s.isValidImageFile(fileHeader.Filename) {
+		return nil, fmt.Errorf("%w: only image files (jpg, jpeg, png, gif) are allowed for profile photos", apperrors.ErrValidationFailed)
+	}
+
 	// We don't need to open the file manually, the SaveFile method will handle that
 	newFilePath, err := s.fileStorage.SaveFile(fileHeader)
 	if err != nil {
 		return nil, fmt.Errorf("error saving file: %w", err)
 	}
 
-	// Update user's profile photo URL
-	if err := s.userRepo.UpdateUserProfilePhotoFileID(ctx, userID, nil); err != nil {
+	// Create file record in database
+	fileID, err := s.createFileRecord(ctx, fileHeader.Filename, newFilePath, "profile_photo")
+	if err != nil {
+		// Try to delete the file if the database insertion fails
+		_ = s.fileStorage.DeleteFile(newFilePath)
+		return nil, fmt.Errorf("error creating file record: %w", err)
+	}
+
+	// Update user's profile photo file ID with the new file ID
+	if err := s.userRepo.UpdateUserProfilePhotoFileID(ctx, userID, &fileID); err != nil {
 		// Try to delete the file if the update fails
 		_ = s.fileStorage.DeleteFile(newFilePath)
 		return nil, fmt.Errorf("error updating profile photo: %w", err)
@@ -475,6 +493,62 @@ func (s *AuthService) UpdateProfilePhoto(ctx context.Context, userID int64, file
 	return s.GetProfile(ctx, userID)
 }
 
+// Helper method to check if file is a valid image
+func (s *AuthService) isValidImageFile(filename string) bool {
+	ext := strings.ToLower(filepath.Ext(filename))
+	validExtensions := map[string]bool{
+		".jpg":  true,
+		".jpeg": true,
+		".png":  true,
+		".gif":  true,
+	}
+	return validExtensions[ext]
+}
+
+// Helper method to create a file record in the database
+func (s *AuthService) createFileRecord(ctx context.Context, originalName, filePath, fileType string) (int64, error) {
+	// Determine MIME type based on file extension
+	ext := strings.ToLower(filepath.Ext(originalName))
+	var mimeType string
+
+	switch ext {
+	case ".jpg", ".jpeg":
+		mimeType = "image/jpeg"
+	case ".png":
+		mimeType = "image/png"
+	case ".gif":
+		mimeType = "image/gif"
+	case ".pdf":
+		mimeType = "application/pdf"
+	default:
+		mimeType = "application/octet-stream" // Default
+	}
+
+	// For file size, we need to get the actual file size
+	// This assumes filePath contains the path relative to uploads directory
+	baseDir := "./uploads" // This should match your storage configuration
+	fullPath := filepath.Join(baseDir, filepath.Base(filePath))
+
+	fileInfo, err := os.Stat(fullPath)
+	if err != nil {
+		return 0, fmt.Errorf("error getting file info: %w", err)
+	}
+
+	fileSize := fileInfo.Size()
+
+	// Create the file record in the database
+	file := &models.File{
+		FileName: originalName,
+		FilePath: filePath,
+		FileURL:  s.fileStorage.GetFileURL(filePath),
+		FileSize: fileSize,
+		FileType: mimeType,
+		// For profile photos, we're not setting ResourceType or ResourceID as they're referenced directly from user table
+	}
+
+	return s.fileRepo.CreateFile(ctx, file)
+}
+
 // DeleteProfilePhoto deletes a user's profile photo
 func (s *AuthService) DeleteProfilePhoto(ctx context.Context, userID int64) (*dto.UserProfile, error) {
 	// Validate user ID
@@ -482,17 +556,34 @@ func (s *AuthService) DeleteProfilePhoto(ctx context.Context, userID int64) (*dt
 		return nil, err
 	}
 
-	// Verify user exists
-	if _, err := s.userRepo.GetUserByID(ctx, userID); err != nil {
+	// Get the user to access the profilePhotoFileID
+	user, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
 		if errors.Is(err, apperrors.ErrUserNotFound) {
 			return nil, apperrors.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user information: %w", err)
 	}
 
-	// Update user's profile photo file ID to NULL
-	if err := s.userRepo.UpdateUserProfilePhotoFileID(ctx, userID, nil); err != nil {
-		return nil, fmt.Errorf("error updating profile photo: %w", err)
+	// If there's a profile photo file, delete it from the files table and filesystem
+	if user.ProfilePhotoFileID != nil {
+		fileID := *user.ProfilePhotoFileID
+
+		// First set the user's profile photo file ID to NULL to remove the reference
+		if err := s.userRepo.UpdateUserProfilePhotoFileID(ctx, userID, nil); err != nil {
+			return nil, fmt.Errorf("error updating profile photo: %w", err)
+		}
+
+		// Then delete the file from the files table and filesystem
+		if err := s.fileRepo.DeleteFile(ctx, fileID); err != nil {
+			// Log the error but continue, as we've already removed the reference
+			s.logger.Error().Err(err).Int64("fileID", fileID).Int64("userID", userID).Msg("Error deleting profile photo file")
+		}
+	} else {
+		// If there's no profile photo file ID, just update to make sure it's NULL
+		if err := s.userRepo.UpdateUserProfilePhotoFileID(ctx, userID, nil); err != nil {
+			return nil, fmt.Errorf("error updating profile photo: %w", err)
+		}
 	}
 
 	// Return updated profile

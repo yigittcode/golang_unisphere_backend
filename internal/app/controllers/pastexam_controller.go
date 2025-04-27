@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -206,7 +207,7 @@ func (c *PastExamController) GetPastExamByID(ctx *gin.Context) {
 // @Param courseCode formData string true "Course Code" example(CENG301)
 // @Param title formData string true "Title" example("Midterm Exam")
 // @Param content formData string true "Content" example("Exam content details...")
-// @Param file formData file false "Optional exam file (PDF, image, etc.)"
+// @Param files formData file false "Exam files (PDF, image, etc.)" collectionFormat(multi)
 // @Success 201 {object} dto.APIResponse{data=dto.PastExamResponse} "Past exam successfully created"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized"
@@ -224,29 +225,6 @@ func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
 		return
 	}
 
-	// Handle file upload separately
-	fileHeader, err := ctx.FormFile("file")
-	if err != nil && !errors.Is(err, http.ErrMissingFile) {
-		logger.Error().Err(err).Msg("Error retrieving uploaded file")
-		errorDetail := dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Error processing file upload")
-		errorDetail = errorDetail.WithDetails(err.Error())
-		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(errorDetail))
-		return
-	}
-
-	// Save file if it exists
-	var savedFilePath string
-	if fileHeader != nil {
-		savedFilePath, err = c.fileStorage.SaveFile(fileHeader)
-		if err != nil {
-			logger.Error().Err(err).Msg("Error saving uploaded file")
-			errorDetail := dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to save uploaded file")
-			errorDetail = errorDetail.WithDetails(err.Error())
-			ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(errorDetail))
-			return
-		}
-	}
-
 	// Get user ID from context
 	userID, exists := ctx.Get("userID")
 	if !exists {
@@ -261,7 +239,7 @@ func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
 		return
 	}
 
-	// Convert request to model, including the saved file path
+	// Convert request to model
 	pastExam := &models.PastExam{
 		Year:         req.Year,
 		Term:         models.Term(req.Term),
@@ -269,10 +247,6 @@ func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
 		CourseCode:   req.CourseCode,
 		Title:        req.Title,
 		Content:      req.Content,
-		FileURL:      &savedFilePath,
-	}
-	if savedFilePath == "" {
-		pastExam.FileURL = nil
 	}
 
 	// Call service to create past exam
@@ -280,6 +254,56 @@ func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
 	if err != nil {
 		handlePastExamError(ctx, err)
 		return
+	}
+
+	// Handle multiple file uploads
+	form, err := ctx.MultipartForm()
+	if err != nil && !errors.Is(err, http.ErrNotMultipart) {
+		logger.Error().Err(err).Msg("Error retrieving multipart form")
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Error processing file upload")
+		errorDetail = errorDetail.WithDetails(err.Error())
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(errorDetail))
+		return
+	}
+
+	// If we have files, process them
+	uploadedFiles := []*models.File{}
+	if form != nil && form.File != nil {
+		files := form.File["files"]
+		for _, fileHeader := range files {
+			// Save the file
+			savedFilePath, err := c.fileStorage.SaveFile(fileHeader)
+			if err != nil {
+				logger.Error().Err(err).Str("filename", fileHeader.Filename).Msg("Error saving uploaded file")
+				// Continue with next file if one fails
+				continue
+			}
+
+			// Create file record in database
+			savedFile := &models.File{
+				FileName:     fileHeader.Filename,
+				FilePath:     savedFilePath,
+				FileURL:      c.fileStorage.GetFileURL(savedFilePath),
+				FileSize:     fileHeader.Size,
+				FileType:     fileHeader.Header.Get("Content-Type"),
+				ResourceType: models.FileTypePastExam,
+				ResourceID:   id,
+				UploadedBy:   userIDInt,
+			}
+
+			// Add file to uploaded files collection
+			uploadedFiles = append(uploadedFiles, savedFile)
+		}
+	}
+
+	// If we have any files, associate them with the past exam
+	for _, file := range uploadedFiles {
+		fileID, err := c.pastExamService.AddFileToPastExam(ctx, id, file)
+		if err != nil {
+			logger.Error().Err(err).Int64("examId", id).Str("filename", file.FileName).Msg("Error attaching file to past exam")
+			// Continue with next file if one fails
+		}
+		file.ID = fileID
 	}
 
 	// Get the created past exam with all details
@@ -298,9 +322,9 @@ func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
 	})
 }
 
-// UpdatePastExam updates an existing past exam
-// @Summary Update a past exam (Instructor only, Owner only)
-// @Description Update an existing past exam. Requires instructor role and ownership. Can optionally include a new file.
+// UpdatePastExam handles past exam updates
+// @Summary Update a past exam (Instructor only)
+// @Description Update an existing past exam with the provided data and optional new file upload.
 // @Tags pastexams
 // @Accept multipart/form-data
 // @Produce json
@@ -312,15 +336,17 @@ func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
 // @Param courseCode formData string true "Course Code" example(CENG301)
 // @Param title formData string true "Title" example("Midterm 1 - Updated")
 // @Param content formData string true "Content" example("Updated exam content...")
-// @Param file formData file false "Optional new exam file (replaces existing one)"
+// @Param files formData file false "Exam files (PDF, image, etc.)" collectionFormat(multi)
+// @Param removeFileIds formData string false "Comma-separated list of file IDs to remove" example("1,2,3")
 // @Success 200 {object} dto.APIResponse{data=dto.PastExamResponse} "Past exam successfully updated"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 403 {object} dto.ErrorResponse "Forbidden - User is not an instructor or not the owner"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden - User does not have permission to update this exam"
 // @Failure 404 {object} dto.ErrorResponse "Past exam not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /pastexams/{id} [put]
 func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
+	// Get exam ID from URL
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -330,7 +356,9 @@ func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
 		return
 	}
 
+	// Parse form data instead of JSON
 	var req dto.UpdatePastExamRequest
+	// Bind form values to the struct (note: file needs separate handling)
 	if err := ctx.ShouldBind(&req); err != nil {
 		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Invalid form data")
 		errorDetail = errorDetail.WithDetails(err.Error())
@@ -338,30 +366,7 @@ func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
 		return
 	}
 
-	// Handle file upload
-	fileHeader, err := ctx.FormFile("file")
-	if err != nil && !errors.Is(err, http.ErrMissingFile) {
-		logger.Error().Err(err).Msg("Error retrieving uploaded file")
-		errorDetail := dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Error processing file upload")
-		errorDetail = errorDetail.WithDetails(err.Error())
-		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(errorDetail))
-		return
-	}
-
-	// Save file if it exists
-	var savedFilePath string
-	if fileHeader != nil {
-		savedFilePath, err = c.fileStorage.SaveFile(fileHeader)
-		if err != nil {
-			logger.Error().Err(err).Msg("Error saving uploaded file")
-			errorDetail := dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to save uploaded file")
-			errorDetail = errorDetail.WithDetails(err.Error())
-			ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(errorDetail))
-			return
-		}
-	}
-
-	// Get userID from context
+	// Get user ID from context
 	userID, exists := ctx.Get("userID")
 	if !exists {
 		errorDetail := dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "User not authenticated")
@@ -384,20 +389,81 @@ func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
 		CourseCode:   req.CourseCode,
 		Title:        req.Title,
 		Content:      req.Content,
-		// FileURL is set in the service based on whether a new file was uploaded
-	}
-
-	// Determine the file path argument for the service
-	var newFilePathPtr *string
-	if savedFilePath != "" {
-		newFilePathPtr = &savedFilePath
 	}
 
 	// Call service to update past exam
-	err = c.pastExamService.UpdatePastExam(ctx, pastExam, userIDInt, newFilePathPtr) // Pass pointer to path or nil
+	err = c.pastExamService.UpdatePastExam(ctx, pastExam, userIDInt, nil)
 	if err != nil {
 		handlePastExamError(ctx, err)
 		return
+	}
+
+	// Process file removals
+	if removeFileIdsStr := ctx.PostForm("removeFileIds"); removeFileIdsStr != "" {
+		fileIdStrs := strings.Split(removeFileIdsStr, ",")
+		for _, fileIdStr := range fileIdStrs {
+			fileId, err := strconv.ParseInt(strings.TrimSpace(fileIdStr), 10, 64)
+			if err != nil {
+				logger.Warn().Err(err).Str("fileIdStr", fileIdStr).Msg("Invalid file ID for removal")
+				continue
+			}
+
+			err = c.pastExamService.RemoveFileFromPastExam(ctx, id, fileId, userIDInt)
+			if err != nil {
+				logger.Error().Err(err).Int64("examId", id).Int64("fileId", fileId).Msg("Error removing file from past exam")
+				// Continue with other files if one removal fails
+			}
+		}
+	}
+
+	// Handle multiple file uploads
+	form, err := ctx.MultipartForm()
+	if err != nil && !errors.Is(err, http.ErrNotMultipart) {
+		logger.Error().Err(err).Msg("Error retrieving multipart form")
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Error processing file upload")
+		errorDetail = errorDetail.WithDetails(err.Error())
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(errorDetail))
+		return
+	}
+
+	// If we have files, process them
+	uploadedFiles := []*models.File{}
+	if form != nil && form.File != nil {
+		files := form.File["files"]
+		for _, fileHeader := range files {
+			// Save the file
+			savedFilePath, err := c.fileStorage.SaveFile(fileHeader)
+			if err != nil {
+				logger.Error().Err(err).Str("filename", fileHeader.Filename).Msg("Error saving uploaded file")
+				// Continue with next file if one fails
+				continue
+			}
+
+			// Create file record in database
+			savedFile := &models.File{
+				FileName:     fileHeader.Filename,
+				FilePath:     savedFilePath,
+				FileURL:      c.fileStorage.GetFileURL(savedFilePath),
+				FileSize:     fileHeader.Size,
+				FileType:     fileHeader.Header.Get("Content-Type"),
+				ResourceType: models.FileTypePastExam,
+				ResourceID:   id,
+				UploadedBy:   userIDInt,
+			}
+
+			// Add file to uploaded files collection
+			uploadedFiles = append(uploadedFiles, savedFile)
+		}
+	}
+
+	// If we have any files, associate them with the past exam
+	for _, file := range uploadedFiles {
+		fileID, err := c.pastExamService.AddFileToPastExam(ctx, id, file)
+		if err != nil {
+			logger.Error().Err(err).Int64("examId", id).Str("filename", file.FileName).Msg("Error attaching file to past exam")
+			// Continue with next file if one fails
+		}
+		file.ID = fileID
 	}
 
 	// Get the updated past exam with all details
@@ -468,13 +534,15 @@ func (c *PastExamController) DeletePastExam(ctx *gin.Context) {
 	}
 
 	// If we have the exam details and it had a file, delete the file
-	if pastExam != nil && pastExam.FileURL != nil && *pastExam.FileURL != "" {
-		fileErr := c.fileStorage.DeleteFile(*pastExam.FileURL)
-		if fileErr != nil {
-			// Log the error but don't fail the operation since the database record is already deleted
-			logger.Error().Err(fileErr).Str("filePath", *pastExam.FileURL).Msg("Failed to delete file from filesystem")
-		} else {
-			logger.Info().Str("filePath", *pastExam.FileURL).Msg("Successfully deleted file from filesystem")
+	if pastExam != nil && pastExam.Files != nil && len(pastExam.Files) > 0 {
+		for _, file := range pastExam.Files {
+			fileErr := c.fileStorage.DeleteFile(file.FilePath)
+			if fileErr != nil {
+				// Log the error but don't fail the operation since the database record is already deleted
+				logger.Error().Err(fileErr).Str("filePath", file.FilePath).Msg("Failed to delete file from filesystem")
+			} else {
+				logger.Info().Str("filePath", file.FilePath).Msg("Successfully deleted file from filesystem")
+			}
 		}
 	}
 
