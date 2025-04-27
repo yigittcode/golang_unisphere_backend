@@ -9,13 +9,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yigit/unisphere/internal/app/models"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/dberrors"
 	"github.com/yigit/unisphere/internal/pkg/logger"
-)
-
-var (
-	ErrInstructorNotFound      = ErrUserNotFound
-	ErrInstructorAlreadyExists = errors.New("instructor entry for this user already exists")
 )
 
 // InstructorRepository handles instructor database operations
@@ -48,7 +44,7 @@ func (r *InstructorRepository) CreateInstructor(ctx context.Context, instructor 
 	if err != nil {
 		if dberrors.IsDuplicateConstraintError(err, "instructors_user_id_key") {
 			logger.Warn().Int64("userID", instructor.UserID).Msg("Attempted to create duplicate instructor entry")
-			return ErrInstructorAlreadyExists
+			return fmt.Errorf("instructor entry for this user already exists")
 		}
 		logger.Error().Err(err).Int64("userID", instructor.UserID).Msg("Error executing create instructor query")
 		return fmt.Errorf("error creating instructor: %w", err)
@@ -78,7 +74,7 @@ func (r *InstructorRepository) GetInstructorByUserID(ctx context.Context, userID
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			logger.Warn().Int64("userID", userID).Msg("Instructor not found by user ID")
-			return nil, ErrInstructorNotFound
+			return nil, apperrors.ErrUserNotFound
 		}
 		logger.Error().Err(err).Int64("userID", userID).Msg("Error scanning instructor row")
 		return nil, fmt.Errorf("error retrieving instructor: %w", err)
@@ -161,7 +157,7 @@ func (r *InstructorRepository) UpdateInstructorTitle(ctx context.Context, userID
 
 	if cmdTag.RowsAffected() == 0 {
 		logger.Warn().Int64("userID", userID).Msg("Attempted to update title for non-existent instructor/user")
-		return ErrInstructorNotFound
+		return apperrors.ErrUserNotFound
 	}
 
 	logger.Info().Int64("userID", userID).Msg("Instructor title updated successfully")

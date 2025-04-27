@@ -13,28 +13,11 @@ import (
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/repositories"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/auth"
 	"github.com/yigit/unisphere/internal/pkg/filestorage"
 	"github.com/yigit/unisphere/internal/pkg/validation"
 	"golang.org/x/crypto/bcrypt"
-)
-
-// Define custom error types for auth service
-var (
-	ErrInvalidEmail            = errors.New("invalid email format")
-	ErrInvalidPassword         = errors.New("invalid password format")
-	ErrInvalidIdentifier       = errors.New("invalid student identifier format")
-	ErrInvalidStudentID        = ErrInvalidIdentifier
-	ErrEmailAlreadyExists      = errors.New("email already exists")
-	ErrIdentifierAlreadyExists = errors.New("student identifier already in use")
-	ErrStudentIDAlreadyExists  = ErrIdentifierAlreadyExists
-	ErrTokenNotFound           = errors.New("token not found")
-	ErrTokenExpired            = errors.New("token has expired")
-	ErrTokenRevoked            = errors.New("token has been revoked")
-	ErrTokenInvalid            = errors.New("invalid token")
-	ErrUserNotFound            = errors.New("user not found")
-	ErrInvalidCredentials      = errors.New("invalid credentials")
-	ErrAuthValidation          = errors.New("auth validation failed")
 )
 
 // AuthService handles authentication operations
@@ -73,7 +56,7 @@ func NewAuthService(
 func (s *AuthService) validateEmail(email string) error {
 	// Email should be non-empty
 	if strings.TrimSpace(email) == "" {
-		return fmt.Errorf("%w: email cannot be empty", ErrAuthValidation)
+		return fmt.Errorf("%w: email cannot be empty", apperrors.ErrValidationFailed)
 	}
 
 	// Email should have a valid format
@@ -81,7 +64,7 @@ func (s *AuthService) validateEmail(email string) error {
 		WithPattern(validation.CompiledPatterns.Email)
 
 	if !validator.Validate() {
-		return ErrInvalidEmail
+		return apperrors.ErrInvalidEmail
 	}
 
 	return nil
@@ -90,7 +73,7 @@ func (s *AuthService) validateEmail(email string) error {
 // validatePassword checks if password meets requirements
 func (s *AuthService) validatePassword(password string) error {
 	if password == "" {
-		return fmt.Errorf("%w: password cannot be empty", ErrAuthValidation)
+		return fmt.Errorf("%w: password cannot be empty", apperrors.ErrValidationFailed)
 	}
 
 	// Minimum uzunluk kontrolü
@@ -99,7 +82,7 @@ func (s *AuthService) validatePassword(password string) error {
 
 	if !validator.Validate() {
 		return fmt.Errorf("%w: password must be at least %d characters long",
-			ErrInvalidPassword, validation.PasswordMinLength)
+			apperrors.ErrInvalidPassword, validation.PasswordMinLength)
 	}
 
 	// Check for at least one letter
@@ -111,7 +94,7 @@ func (s *AuthService) validatePassword(password string) error {
 		}
 	}
 	if !hasLetter {
-		return fmt.Errorf("%w: password must contain at least one letter", ErrInvalidPassword)
+		return fmt.Errorf("%w: password must contain at least one letter", apperrors.ErrInvalidPassword)
 	}
 
 	// Check for at least one digit
@@ -123,7 +106,7 @@ func (s *AuthService) validatePassword(password string) error {
 		}
 	}
 	if !hasDigit {
-		return fmt.Errorf("%w: password must contain at least one digit", ErrInvalidPassword)
+		return fmt.Errorf("%w: password must contain at least one digit", apperrors.ErrInvalidPassword)
 	}
 
 	return nil
@@ -132,7 +115,7 @@ func (s *AuthService) validatePassword(password string) error {
 // validateIdentifier validates a student identifier
 func (s *AuthService) validateIdentifier(identifier string) error {
 	if identifier == "" {
-		return fmt.Errorf("%w: student identifier cannot be empty", ErrAuthValidation)
+		return fmt.Errorf("%w: student identifier cannot be empty", apperrors.ErrValidationFailed)
 	}
 
 	// Student identifier should match the pattern (8 digits)
@@ -140,7 +123,7 @@ func (s *AuthService) validateIdentifier(identifier string) error {
 		WithPattern(validation.CompiledPatterns.Identifier)
 
 	if !validator.Validate() {
-		return ErrInvalidIdentifier
+		return apperrors.ErrInvalidIdentifier
 	}
 
 	return nil
@@ -149,7 +132,7 @@ func (s *AuthService) validateIdentifier(identifier string) error {
 // validateUserID validates a user ID
 func (s *AuthService) validateUserID(userID int64) error {
 	if userID <= 0 {
-		return fmt.Errorf("%w: user ID must be positive", ErrAuthValidation)
+		return fmt.Errorf("%w: user ID must be positive", apperrors.ErrValidationFailed)
 	}
 	return nil
 }
@@ -158,7 +141,7 @@ func (s *AuthService) validateUserID(userID int64) error {
 func (s *AuthService) validateToken(token string) error {
 	// Token should be non-empty
 	if strings.TrimSpace(token) == "" {
-		return ErrTokenInvalid
+		return apperrors.ErrTokenInvalid
 	}
 
 	return nil
@@ -187,7 +170,7 @@ func (s *AuthService) RegisterStudent(ctx context.Context, req *dto.RegisterStud
 		return nil, fmt.Errorf("error checking if student identifier exists: %w", err)
 	}
 	if exists {
-		return nil, ErrIdentifierAlreadyExists
+		return nil, apperrors.ErrIdentifierExists
 	}
 
 	// Check if email already exists
@@ -196,7 +179,7 @@ func (s *AuthService) RegisterStudent(ctx context.Context, req *dto.RegisterStud
 		return nil, fmt.Errorf("error checking if email exists: %w", err)
 	}
 	if exists {
-		return nil, ErrEmailAlreadyExists
+		return nil, apperrors.ErrEmailAlreadyExists
 	}
 
 	// Hash password
@@ -264,7 +247,7 @@ func (s *AuthService) RegisterInstructor(ctx context.Context, req *dto.RegisterI
 		return nil, fmt.Errorf("error checking if email exists: %w", err)
 	}
 	if exists {
-		return nil, ErrEmailAlreadyExists
+		return nil, apperrors.ErrEmailAlreadyExists
 	}
 
 	// Hash password
@@ -317,18 +300,18 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.To
 
 	// Validate password format (not content)
 	if req.Password == "" {
-		return nil, fmt.Errorf("%w: password cannot be empty", ErrAuthValidation)
+		return nil, fmt.Errorf("%w: password cannot be empty", apperrors.ErrValidationFailed)
 	}
 
 	// Find user by email
 	user, err := s.userRepo.GetUserByEmail(ctx, req.Email)
 	if err != nil {
-		return nil, ErrInvalidCredentials
+		return nil, apperrors.ErrInvalidCredentials
 	}
 
 	// Password validation
 	if !auth.CheckPassword(user.Password, req.Password) {
-		return nil, ErrInvalidCredentials
+		return nil, apperrors.ErrInvalidCredentials
 	}
 
 	// Generate token
@@ -345,14 +328,14 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*d
 	// Get token information with additional validation
 	userID, expiryDate, isRevoked, err := s.tokenRepo.GetTokenByValue(ctx, refreshToken)
 	if err != nil {
-		if errors.Is(err, repositories.ErrTokenNotFound) {
-			return nil, ErrTokenNotFound
+		if errors.Is(err, apperrors.ErrTokenNotFound) {
+			return nil, apperrors.ErrTokenNotFound
 		}
-		if errors.Is(err, repositories.ErrTokenExpired) {
-			return nil, ErrTokenExpired
+		if errors.Is(err, apperrors.ErrTokenExpired) {
+			return nil, apperrors.ErrTokenExpired
 		}
-		if errors.Is(err, repositories.ErrTokenRevoked) {
-			return nil, ErrTokenRevoked
+		if errors.Is(err, apperrors.ErrTokenRevoked) {
+			return nil, apperrors.ErrTokenRevoked
 		}
 		return nil, fmt.Errorf("token validation error: %w", err)
 	}
@@ -362,12 +345,12 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*d
 	if expiryDate.Before(time.Now()) {
 		// Also revoke expired token
 		_ = s.tokenRepo.RevokeToken(ctx, refreshToken)
-		return nil, ErrTokenExpired
+		return nil, apperrors.ErrTokenExpired
 	}
 
 	// 2. Check revocation status explicitly
 	if isRevoked {
-		return nil, ErrTokenRevoked
+		return nil, apperrors.ErrTokenRevoked
 	}
 
 	// Get user information
@@ -395,7 +378,7 @@ func (s *AuthService) GetProfile(ctx context.Context, userID int64) (*dto.UserPr
 	// Get user from DB
 	user, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
-		return nil, ErrUserNotFound
+		return nil, apperrors.ErrUserNotFound
 	}
 
 	// Create profile response
@@ -469,8 +452,8 @@ func (s *AuthService) UpdateProfilePhoto(ctx context.Context, userID int64, file
 
 	// Verify user exists
 	if _, err := s.userRepo.GetUserByID(ctx, userID); err != nil {
-		if errors.Is(err, repositories.ErrUserNotFound) {
-			return nil, ErrUserNotFound
+		if errors.Is(err, apperrors.ErrUserNotFound) {
+			return nil, apperrors.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user information: %w", err)
 	}
@@ -501,8 +484,8 @@ func (s *AuthService) DeleteProfilePhoto(ctx context.Context, userID int64) (*dt
 
 	// Verify user exists
 	if _, err := s.userRepo.GetUserByID(ctx, userID); err != nil {
-		if errors.Is(err, repositories.ErrUserNotFound) {
-			return nil, ErrUserNotFound
+		if errors.Is(err, apperrors.ErrUserNotFound) {
+			return nil, apperrors.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user information: %w", err)
 	}
@@ -536,13 +519,13 @@ func (s *AuthService) UpdateUserProfile(ctx context.Context, userID int64, req *
 
 	if !firstNameValidator.Validate() {
 		if firstName == "" {
-			return nil, fmt.Errorf("%w: first name cannot be empty", ErrAuthValidation)
+			return nil, fmt.Errorf("%w: first name cannot be empty", apperrors.ErrValidationFailed)
 		} else if len(firstName) < validation.NameMinLength {
 			return nil, fmt.Errorf("%w: first name must be at least %d characters",
-				ErrAuthValidation, validation.NameMinLength)
+				apperrors.ErrValidationFailed, validation.NameMinLength)
 		} else {
 			return nil, fmt.Errorf("%w: first name cannot exceed %d characters",
-				ErrAuthValidation, validation.NameMaxLength)
+				apperrors.ErrValidationFailed, validation.NameMaxLength)
 		}
 	}
 
@@ -554,21 +537,21 @@ func (s *AuthService) UpdateUserProfile(ctx context.Context, userID int64, req *
 
 	if !lastNameValidator.Validate() {
 		if lastName == "" {
-			return nil, fmt.Errorf("%w: last name cannot be empty", ErrAuthValidation)
+			return nil, fmt.Errorf("%w: last name cannot be empty", apperrors.ErrValidationFailed)
 		} else if len(lastName) < validation.NameMinLength {
 			return nil, fmt.Errorf("%w: last name must be at least %d characters",
-				ErrAuthValidation, validation.NameMinLength)
+				apperrors.ErrValidationFailed, validation.NameMinLength)
 		} else {
 			return nil, fmt.Errorf("%w: last name cannot exceed %d characters",
-				ErrAuthValidation, validation.NameMaxLength)
+				apperrors.ErrValidationFailed, validation.NameMaxLength)
 		}
 	}
 
 	// Check if the email is different from the current one and already exists
 	user, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, repositories.ErrUserNotFound) {
-			return nil, ErrUserNotFound
+		if errors.Is(err, apperrors.ErrUserNotFound) {
+			return nil, apperrors.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get current user information: %w", err)
 	}
@@ -580,18 +563,18 @@ func (s *AuthService) UpdateUserProfile(ctx context.Context, userID int64, req *
 			return nil, fmt.Errorf("error checking if email exists: %w", err)
 		}
 		if exists {
-			return nil, ErrEmailAlreadyExists
+			return nil, apperrors.ErrEmailAlreadyExists
 		}
 	}
 
 	// Update the user profile
 	err = s.userRepo.UpdateUserProfile(ctx, userID, firstName, lastName, req.Email)
 	if err != nil {
-		if errors.Is(err, repositories.ErrUserNotFound) {
-			return nil, ErrUserNotFound
+		if errors.Is(err, apperrors.ErrUserNotFound) {
+			return nil, apperrors.ErrUserNotFound
 		}
-		if errors.Is(err, repositories.ErrEmailAlreadyExists) {
-			return nil, ErrEmailAlreadyExists
+		if errors.Is(err, apperrors.ErrEmailAlreadyExists) {
+			return nil, apperrors.ErrEmailAlreadyExists
 		}
 		return nil, fmt.Errorf("failed to update user profile: %w", err)
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/services"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 )
 
 // InstructorController handles instructor related operations
@@ -25,15 +26,20 @@ func NewInstructorController(instructorService *services.InstructorService) *Ins
 
 // handleInstructorError is a helper function to handle common instructor error scenarios
 func handleInstructorError(ctx *gin.Context, err error) {
-	if errors.Is(err, services.ErrInstructorNotFound) {
+	if errors.Is(err, apperrors.ErrUserNotFound) {
 		errorDetail := dto.NewErrorDetail(dto.ErrorCodeResourceNotFound, "Instructor not found")
 		errorDetail = errorDetail.WithDetails("The requested instructor does not exist")
 		ctx.JSON(http.StatusNotFound, dto.NewErrorResponse(errorDetail))
 		return
-	} else if errors.Is(err, services.ErrUnauthorized) {
+	} else if errors.Is(err, apperrors.ErrPermissionDenied) {
 		errorDetail := dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "Unauthorized operation")
 		errorDetail = errorDetail.WithDetails("User is not an instructor")
 		ctx.JSON(http.StatusForbidden, dto.NewErrorResponse(errorDetail))
+		return
+	} else if errors.Is(err, apperrors.ErrValidationFailed) {
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Validation failed")
+		errorDetail = errorDetail.WithDetails(err.Error())
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
 		return
 	}
 

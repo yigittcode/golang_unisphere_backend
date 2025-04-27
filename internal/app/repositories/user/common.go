@@ -11,15 +11,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yigit/unisphere/internal/app/models"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/dberrors"
 	"github.com/yigit/unisphere/internal/pkg/logger"
-)
-
-// Common errors
-var (
-	ErrUserNotFound       = errors.New("user not found")
-	ErrEmailAlreadyExists = errors.New("email already in use")
-	ErrDepartmentNotFound = errors.New("department not found")
 )
 
 // CommonRepository handles common user database operations
@@ -54,7 +48,7 @@ func (r *CommonRepository) CreateUser(ctx context.Context, user *models.User) (i
 	if err != nil {
 		if dberrors.IsDuplicateConstraintError(err, "users_email_key") {
 			logger.Warn().Str("email", user.Email).Msg("Attempted to create user with duplicate email")
-			return 0, ErrEmailAlreadyExists
+			return 0, apperrors.ErrEmailAlreadyExists
 		}
 		logger.Error().Err(err).Str("email", user.Email).Msg("Error executing create user query")
 		return 0, fmt.Errorf("error creating user: %w", err)
@@ -94,7 +88,7 @@ func (r *CommonRepository) GetUserByEmail(ctx context.Context, email string) (*m
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			logger.Warn().Str("email", email).Msg("User not found by email")
-			return nil, ErrUserNotFound
+			return nil, apperrors.ErrUserNotFound
 		}
 		logger.Error().Err(err).Str("email", email).Msg("Error scanning user row")
 		return nil, fmt.Errorf("error retrieving user by email: %w", err)
@@ -145,7 +139,7 @@ func (r *CommonRepository) GetUserByID(ctx context.Context, id int64) (*models.U
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			logger.Warn().Int64("userID", id).Msg("User not found by ID")
-			return nil, ErrUserNotFound
+			return nil, apperrors.ErrUserNotFound
 		}
 		logger.Error().Err(err).Int64("userID", id).Msg("Error scanning user row")
 		return nil, fmt.Errorf("error retrieving user by ID: %w", err)
@@ -208,7 +202,7 @@ func (r *CommonRepository) GetDepartmentNameByID(ctx context.Context, department
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			logger.Warn().Int64("departmentID", departmentID).Msg("Department not found by ID")
-			return "", ErrDepartmentNotFound
+			return "", apperrors.ErrDepartmentNotFound
 		}
 		logger.Error().Err(err).Int64("departmentID", departmentID).Msg("Error scanning department name")
 		return "", fmt.Errorf("error retrieving department name: %w", err)
@@ -237,7 +231,7 @@ func (r *CommonRepository) UpdateLastLogin(ctx context.Context, userID int64) er
 
 	if cmdTag.RowsAffected() == 0 {
 		logger.Warn().Int64("userID", userID).Msg("Attempted to update last login for non-existent user")
-		return ErrUserNotFound
+		return apperrors.ErrUserNotFound
 	}
 
 	logger.Info().Int64("userID", userID).Msg("Last login time updated")
@@ -273,7 +267,7 @@ func (r *CommonRepository) UpdateUserProfilePhotoURL(ctx context.Context, userID
 
 	if cmdTag.RowsAffected() == 0 {
 		logger.Warn().Int64("userID", userID).Msg("Attempted to update profile photo URL for non-existent user")
-		return ErrUserNotFound
+		return apperrors.ErrUserNotFound
 	}
 
 	logger.Info().Int64("userID", userID).Msg("Profile photo URL updated")
@@ -308,7 +302,7 @@ func (r *CommonRepository) UpdateUserProfilePhotoFileID(ctx context.Context, use
 
 	if cmdTag.RowsAffected() == 0 {
 		logger.Warn().Int64("userID", userID).Msg("Attempted to update profile photo file ID for non-existent user")
-		return ErrUserNotFound
+		return apperrors.ErrUserNotFound
 	}
 
 	logger.Info().Int64("userID", userID).Msg("Profile photo file ID updated")
@@ -326,7 +320,7 @@ func (r *CommonRepository) UpdateUserProfile(ctx context.Context, userID int64, 
 	if err != nil {
 		if dberrors.IsDuplicateConstraintError(err, "users_email_key") {
 			logger.Warn().Str("email", email).Int64("userID", userID).Msg("Attempted to update user with duplicate email")
-			return ErrEmailAlreadyExists
+			return apperrors.ErrEmailAlreadyExists
 		}
 		logger.Error().Err(err).Int64("userID", userID).Msg("Error updating user profile")
 		return fmt.Errorf("error updating user profile: %w", err)
@@ -334,7 +328,7 @@ func (r *CommonRepository) UpdateUserProfile(ctx context.Context, userID int64, 
 
 	if commandTag.RowsAffected() == 0 {
 		logger.Warn().Int64("userID", userID).Msg("User not found when updating profile")
-		return ErrUserNotFound
+		return apperrors.ErrUserNotFound
 	}
 
 	logger.Info().Int64("userID", userID).Msg("User profile updated successfully")

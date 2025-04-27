@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yigit/unisphere/internal/app/models/dto" // Ensure DTO import
 	"github.com/yigit/unisphere/internal/app/services"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/auth"
 )
 
@@ -40,32 +41,32 @@ func handleError(ctx *gin.Context, err error) {
 	// --- Specific Auth Service Error Mapping ---
 	switch {
 	// Validation errors from service
-	case errors.Is(err, services.ErrInvalidEmail):
+	case errors.Is(err, apperrors.ErrInvalidEmail):
 		statusCode = http.StatusBadRequest
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeInvalidEmail, "Invalid email format")
-	case errors.Is(err, services.ErrInvalidPassword):
+	case errors.Is(err, apperrors.ErrInvalidPassword):
 		statusCode = http.StatusBadRequest
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeInvalidPassword, "Invalid password format")
-	case errors.Is(err, services.ErrInvalidIdentifier), errors.Is(err, services.ErrInvalidStudentID):
+	case errors.Is(err, apperrors.ErrInvalidIdentifier), errors.Is(err, apperrors.ErrInvalidStudentID):
 		statusCode = http.StatusBadRequest
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeInvalidStudentID, "Invalid student ID format")
 	// Conflict errors
-	case errors.Is(err, services.ErrEmailAlreadyExists):
+	case errors.Is(err, apperrors.ErrEmailAlreadyExists):
 		statusCode = http.StatusConflict
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeResourceAlreadyExists, "Email already exists")
-	case errors.Is(err, services.ErrIdentifierAlreadyExists), errors.Is(err, services.ErrStudentIDAlreadyExists):
+	case errors.Is(err, apperrors.ErrIdentifierExists), errors.Is(err, apperrors.ErrStudentIDAlreadyExists):
 		statusCode = http.StatusConflict
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeResourceAlreadyExists, "Student ID already exists")
 	// Authentication errors
-	case errors.Is(err, services.ErrInvalidCredentials):
+	case errors.Is(err, apperrors.ErrInvalidCredentials):
 		statusCode = http.StatusUnauthorized
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeInvalidCredentials, "Invalid credentials")
-	case errors.Is(err, services.ErrTokenNotFound), errors.Is(err, services.ErrTokenExpired),
-		errors.Is(err, services.ErrTokenRevoked), errors.Is(err, services.ErrTokenInvalid):
+	case errors.Is(err, apperrors.ErrTokenNotFound), errors.Is(err, apperrors.ErrTokenExpired),
+		errors.Is(err, apperrors.ErrTokenRevoked), errors.Is(err, apperrors.ErrTokenInvalid):
 		statusCode = http.StatusUnauthorized
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeInvalidToken, "Invalid or expired token")
 	// Not found errors
-	case errors.Is(err, services.ErrUserNotFound):
+	case errors.Is(err, apperrors.ErrUserNotFound):
 		statusCode = http.StatusNotFound
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeResourceNotFound, "User not found")
 	default:

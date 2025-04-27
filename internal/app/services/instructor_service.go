@@ -2,21 +2,13 @@ package services
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"unicode"
 
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/repositories"
-)
-
-// Common instructor errors
-var (
-	ErrInstructorNotFound     = errors.New("instructor not found")
-	ErrUnauthorized           = errors.New("user is not an instructor")
-	ErrInstructorValidation   = errors.New("instructor validation failed")
-	ErrDepartmentNotAvailable = errors.New("department not available")
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 )
 
 // InstructorService handles instructor-related operations
@@ -36,7 +28,7 @@ func NewInstructorService(userRepo *repositories.UserRepository, departmentRepo 
 // validateUserID validates a user ID
 func (s *InstructorService) validateUserID(userID int64) error {
 	if userID <= 0 {
-		return fmt.Errorf("%w: user ID must be positive", ErrInstructorValidation)
+		return fmt.Errorf("%w: user ID must be positive", apperrors.ErrValidationFailed)
 	}
 	return nil
 }
@@ -45,19 +37,19 @@ func (s *InstructorService) validateUserID(userID int64) error {
 func (s *InstructorService) validateTitle(title string) error {
 	title = strings.TrimSpace(title)
 	if title == "" {
-		return fmt.Errorf("%w: title cannot be empty", ErrInstructorValidation)
+		return fmt.Errorf("%w: title cannot be empty", apperrors.ErrValidationFailed)
 	}
 
 	// Just check that title is reasonable length and doesn't contain invalid characters
 	if len(title) > 100 {
-		return fmt.Errorf("%w: title is too long (max 100 characters)", ErrInstructorValidation)
+		return fmt.Errorf("%w: title is too long (max 100 characters)", apperrors.ErrValidationFailed)
 	}
 
 	// Check that title contains only allowed characters for academic titles
 	// (letters, spaces, dots, and hyphens)
 	for _, char := range title {
 		if !unicode.IsLetter(char) && !unicode.IsSpace(char) && char != '.' && char != '-' {
-			return fmt.Errorf("%w: title contains invalid characters", ErrInstructorValidation)
+			return fmt.Errorf("%w: title contains invalid characters", apperrors.ErrValidationFailed)
 		}
 	}
 
@@ -67,7 +59,7 @@ func (s *InstructorService) validateTitle(title string) error {
 // validateDepartmentID validates a department ID
 func (s *InstructorService) validateDepartmentID(ctx context.Context, departmentID int64) error {
 	if departmentID <= 0 {
-		return fmt.Errorf("%w: department ID must be positive", ErrInstructorValidation)
+		return fmt.Errorf("%w: department ID must be positive", apperrors.ErrValidationFailed)
 	}
 
 	// Check if department exists
@@ -77,7 +69,7 @@ func (s *InstructorService) validateDepartmentID(ctx context.Context, department
 	}
 
 	if department == nil {
-		return ErrDepartmentNotAvailable
+		return apperrors.ErrDepartmentNotFound
 	}
 
 	return nil
@@ -181,7 +173,7 @@ func (s *InstructorService) UpdateInstructorTitle(ctx context.Context, userID in
 		return fmt.Errorf("error getting instructor: %w", err)
 	}
 	if instructor == nil {
-		return ErrInstructorNotFound
+		return apperrors.ErrUserNotFound
 	}
 
 	// Check if the user is an instructor
@@ -190,7 +182,7 @@ func (s *InstructorService) UpdateInstructorTitle(ctx context.Context, userID in
 		return fmt.Errorf("error getting user: %w", err)
 	}
 	if user.RoleType != models.RoleInstructor {
-		return ErrUnauthorized
+		return apperrors.ErrPermissionDenied
 	}
 
 	// Update the instructor's title

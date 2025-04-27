@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/yigit/unisphere/internal/app/models/dto"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/auth"
 )
 
@@ -53,10 +54,10 @@ func (m *AuthMiddleware) JWTAuth() gin.HandlerFunc {
 			errorMessage := "Authentication failed"
 			errorDetails := "Invalid token"
 
-			if errors.Is(err, auth.ErrExpiredToken) {
+			if errors.Is(err, apperrors.ErrTokenExpired) {
 				errorCode = dto.ErrorCodeExpiredToken
 				errorDetails = "Token has expired"
-			} else if errors.Is(err, auth.ErrInvalidFormat) {
+			} else if errors.Is(err, apperrors.ErrInvalidFormat) {
 				errorDetails = "Invalid token format"
 			}
 

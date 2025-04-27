@@ -9,20 +9,9 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5" // Import pgx for ErrNoRows
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/dberrors" // Import the dberrors package
 	"github.com/yigit/unisphere/internal/pkg/logger"   // Import logger
-)
-
-// Token errors
-var (
-	// ErrTokenNotFound is returned when a token is not found.
-	ErrTokenNotFound = errors.New("token not found") // Revert back from ErrNotFound if needed
-	// ErrTokenAlreadyExists is returned when a token with the same value exists (though unlikely for unique tokens).
-	ErrTokenAlreadyExists = errors.New("token already exists") // Added for consistency
-	// ErrTokenExpired is returned when a token has expired.
-	ErrTokenExpired = errors.New("token expired")
-	// ErrTokenRevoked is returned when a token has been revoked.
-	ErrTokenRevoked = errors.New("token revoked")
 )
 
 // TokenRepository handles token database operations
@@ -57,7 +46,7 @@ func (r *TokenRepository) CreateToken(ctx context.Context, token string, userID 
 		if dberrors.IsDuplicateConstraintError(err, "refresh_tokens_token_key") { // Use dberrors prefix
 			logger.Warn().Str("token", token).Msg("Attempted to create duplicate token")
 			// This shouldn't happen with unique tokens, but handle defensively
-			return ErrTokenAlreadyExists
+			return apperrors.ErrTokenInvalid
 		}
 		logger.Error().Err(err).Str("token", token).Int64("userID", userID).Msg("Error executing create token query")
 		return fmt.Errorf("error creating token: %w", err)
@@ -86,7 +75,7 @@ func (r *TokenRepository) GetTokenByValue(ctx context.Context, token string) (in
 	err = r.db.QueryRow(ctx, sql, args...).Scan(&userID, &expiryDate, &isRevoked)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, time.Time{}, false, ErrTokenNotFound
+			return 0, time.Time{}, false, apperrors.ErrTokenNotFound
 		}
 		logger.Error().Err(err).Str("token", token).Msg("Error scanning token row")
 		return 0, time.Time{}, false, fmt.Errorf("error retrieving token: %w", err)
@@ -94,12 +83,12 @@ func (r *TokenRepository) GetTokenByValue(ctx context.Context, token string) (in
 
 	// Check if token is revoked
 	if isRevoked {
-		return 0, time.Time{}, false, ErrTokenRevoked
+		return 0, time.Time{}, false, apperrors.ErrTokenRevoked
 	}
 
 	// Check token expiration
 	if expiryDate.Before(time.Now()) {
-		return 0, time.Time{}, false, ErrTokenExpired
+		return 0, time.Time{}, false, apperrors.ErrTokenExpired
 	}
 
 	return userID, expiryDate, isRevoked, nil
@@ -124,7 +113,7 @@ func (r *TokenRepository) RevokeToken(ctx context.Context, token string) error {
 	}
 
 	if cmdTag.RowsAffected() == 0 {
-		return ErrTokenNotFound
+		return apperrors.ErrTokenNotFound
 	}
 
 	return nil

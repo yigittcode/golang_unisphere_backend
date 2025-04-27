@@ -9,13 +9,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/yigit/unisphere/internal/app/models"
-)
-
-// JWT errors
-var (
-	ErrInvalidToken  = errors.New("invalid token")
-	ErrExpiredToken  = errors.New("token expired")
-	ErrInvalidFormat = errors.New("invalid token format")
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 )
 
 // JWTConfig defines JWT configuration settings
@@ -97,7 +91,7 @@ func (s *JWTService) ValidateToken(tokenString string) (*Claims, error) {
 	if err != nil {
 		// Token expired
 		if errors.Is(err, jwt.ErrTokenExpired) {
-			return nil, ErrExpiredToken
+			return nil, apperrors.ErrTokenExpired
 		}
 		return nil, fmt.Errorf("failed to parse token: %w", err)
 	}
@@ -107,7 +101,7 @@ func (s *JWTService) ValidateToken(tokenString string) (*Claims, error) {
 		return claims, nil
 	}
 
-	return nil, ErrInvalidToken
+	return nil, apperrors.ErrTokenInvalid
 }
 
 // GetRefreshTokenExpiry returns refresh token expiry time
@@ -118,7 +112,7 @@ func (s *JWTService) GetRefreshTokenExpiry() time.Time {
 // ExtractBearerToken extracts the token from the Authorization header
 func ExtractBearerToken(authHeader string) (string, error) {
 	if authHeader == "" {
-		return "", ErrInvalidFormat
+		return "", apperrors.ErrInvalidFormat
 	}
 
 	// Check if the header starts with "Bearer " (required)
@@ -134,13 +128,13 @@ func ExtractBearerToken(authHeader string) (string, error) {
 	}
 
 	// Otherwise, reject it as an invalid format
-	return "", fmt.Errorf("%w: authorization header must start with 'Bearer '", ErrInvalidFormat)
+	return "", fmt.Errorf("%w: authorization header must start with 'Bearer '", apperrors.ErrInvalidFormat)
 }
 
 // ValidateAndExtractClaims validates and extracts claims from a token string
 func (s *JWTService) ValidateAndExtractClaims(tokenString string) (*Claims, error) {
 	if tokenString == "" {
-		return nil, ErrInvalidToken
+		return nil, apperrors.ErrTokenInvalid
 	}
 
 	claims, err := s.ValidateToken(tokenString)
@@ -150,7 +144,7 @@ func (s *JWTService) ValidateAndExtractClaims(tokenString string) (*Claims, erro
 
 	// Additional validation if needed
 	if claims.UserID <= 0 || claims.Email == "" {
-		return nil, ErrInvalidToken
+		return nil, apperrors.ErrTokenInvalid
 	}
 
 	return claims, nil

@@ -8,8 +8,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	appAuth "github.com/yigit/unisphere/internal/app/auth"
 	"github.com/yigit/unisphere/internal/app/models/dto" // Keep dto import for ErrorDetail etc.
-	appRepos "github.com/yigit/unisphere/internal/app/repositories"
-	appServices "github.com/yigit/unisphere/internal/app/services"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/logger"
 )
 
@@ -46,30 +45,30 @@ func HandleAPIError(ctx *gin.Context, err error) {
 	// --- Specific Service/Repo/Auth Error Mapping ---
 	switch {
 	// Not Found Errors
-	case errors.Is(err, appServices.ErrClassNotFound), errors.Is(err, appRepos.ErrNotFound),
-		errors.Is(err, appServices.ErrUserNotFound), errors.Is(err, appServices.ErrPastExamNotFound),
-		errors.Is(err, appAuth.ErrResourceNotFound), errors.Is(err, appServices.ErrFacultyNotFound),
-		errors.Is(err, appServices.ErrDepartmentNotFound), errors.Is(err, appServices.ErrInstructorNotFound):
+	case errors.Is(err, apperrors.ErrClassNoteNotFound), errors.Is(err, apperrors.ErrNotFound),
+		errors.Is(err, apperrors.ErrUserNotFound), errors.Is(err, apperrors.ErrPastExamNotFound),
+		errors.Is(err, appAuth.ErrResourceNotFound), errors.Is(err, apperrors.ErrFacultyNotFound),
+		errors.Is(err, apperrors.ErrDepartmentNotFound):
 		statusCode = http.StatusNotFound
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeResourceNotFound, "Resource Not Found")
 		errDetail = errDetail.WithDetails(err.Error())
 
 	// Conflict Errors (Already Exists)
-	case errors.Is(err, appServices.ErrEmailAlreadyExists), errors.Is(err, appServices.ErrIdentifierAlreadyExists),
-		errors.Is(err, appServices.ErrStudentIDAlreadyExists), errors.Is(err, appRepos.ErrFacultyAlreadyExists),
-		errors.Is(err, appRepos.ErrDepartmentAlreadyExists):
+	case errors.Is(err, apperrors.ErrEmailAlreadyExists), errors.Is(err, apperrors.ErrIdentifierExists),
+		errors.Is(err, apperrors.ErrStudentIDAlreadyExists), errors.Is(err, apperrors.ErrFacultyAlreadyExists),
+		errors.Is(err, apperrors.ErrDepartmentAlreadyExists):
 		statusCode = http.StatusConflict
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeResourceAlreadyExists, "Resource Already Exists")
 		errDetail = errDetail.WithDetails(err.Error())
 
 	// Authentication/Authorization Errors
-	case errors.Is(err, appServices.ErrInvalidCredentials), errors.Is(err, appServices.ErrTokenInvalid),
-		errors.Is(err, appServices.ErrTokenExpired), errors.Is(err, appServices.ErrTokenRevoked),
-		errors.Is(err, appServices.ErrTokenNotFound):
+	case errors.Is(err, apperrors.ErrInvalidCredentials), errors.Is(err, apperrors.ErrTokenInvalid),
+		errors.Is(err, apperrors.ErrTokenExpired), errors.Is(err, apperrors.ErrTokenRevoked),
+		errors.Is(err, apperrors.ErrTokenNotFound):
 		statusCode = http.StatusUnauthorized
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "Authentication Failed")
 		errDetail = errDetail.WithDetails(err.Error())
-	case errors.Is(err, appAuth.ErrPermissionDenied), errors.Is(err, appServices.ErrInstructorOnly):
+	case errors.Is(err, appAuth.ErrPermissionDenied), errors.Is(err, apperrors.ErrInstructorOnly):
 		statusCode = http.StatusForbidden
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "Permission Denied")
 		errDetail = errDetail.WithDetails(err.Error())
@@ -78,9 +77,9 @@ func HandleAPIError(ctx *gin.Context, err error) {
 	case errors.As(err, &validator.ValidationErrors{}):
 		statusCode = http.StatusBadRequest
 		errDetail = dto.HandleValidationError(err) // Use dto.HandleValidationError
-	case errors.Is(err, appServices.ErrInvalidEmail), errors.Is(err, appServices.ErrInvalidPassword),
-		errors.Is(err, appServices.ErrInvalidIdentifier), errors.Is(err, appServices.ErrInvalidStudentID),
-		errors.Is(err, appServices.ErrNoteDepartmentNotFound):
+	case errors.Is(err, apperrors.ErrInvalidEmail), errors.Is(err, apperrors.ErrInvalidPassword),
+		errors.Is(err, apperrors.ErrInvalidIdentifier), errors.Is(err, apperrors.ErrInvalidStudentID),
+		errors.Is(err, apperrors.ErrDepartmentNotFound):
 		statusCode = http.StatusBadRequest
 		errDetail = dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Validation Failed")
 		errDetail = errDetail.WithDetails(err.Error())

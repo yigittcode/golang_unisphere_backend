@@ -16,9 +16,11 @@ var (
 
 // Student Errors
 var (
-	ErrStudentNotFound   = errors.New("student not found")
-	ErrIdentifierExists  = errors.New("student identifier already in use")
-	ErrInvalidIdentifier = errors.New("invalid student identifier format")
+	ErrStudentNotFound        = errors.New("student not found")
+	ErrIdentifierExists       = errors.New("student identifier already in use")
+	ErrInvalidIdentifier      = errors.New("invalid student identifier format")
+	ErrStudentIDAlreadyExists = errors.New("student ID already exists")
+	ErrInvalidStudentID       = errors.New("invalid student ID format")
 )
 
 // Authentication Errors
@@ -30,6 +32,7 @@ var (
 	ErrTokenExpired       = errors.New("token has expired")
 	ErrTokenRevoked       = errors.New("token has been revoked")
 	ErrTokenInvalid       = errors.New("invalid token")
+	ErrInvalidFormat      = errors.New("invalid token format")
 )
 
 // Department Errors
