@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
     role_type role_type NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     last_login_at TIMESTAMP NULL,
-    profile_photo_url VARCHAR(255) NULL
+    department_id BIGINT NULL
 );
 
 -- Create a trigger to update the updated_at field
@@ -62,11 +62,14 @@ CREATE TABLE IF NOT EXISTS departments (
     CONSTRAINT unique_department_code UNIQUE (code)
 );
 
+-- Add foreign key constraint for user-department relationship
+ALTER TABLE users ADD CONSTRAINT fk_user_department FOREIGN KEY (department_id) REFERENCES departments(id);
+
 -- Student table (extends User)
 CREATE TABLE IF NOT EXISTS students (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL UNIQUE,
-    student_id VARCHAR(20) NOT NULL UNIQUE,
+    identifier VARCHAR(20) NOT NULL UNIQUE,
     department_id BIGINT NOT NULL,
     graduation_year INT,
     CONSTRAINT fk_student_user
@@ -186,6 +189,7 @@ CREATE INDEX IF NOT EXISTS idx_instructors_department ON instructors(department_
 CREATE INDEX IF NOT EXISTS idx_departments_faculty ON departments(faculty_id);
 CREATE INDEX IF NOT EXISTS idx_class_notes_course ON class_notes(course_code);
 CREATE INDEX IF NOT EXISTS idx_past_exams_course ON past_exams(course_code);
+CREATE INDEX IF NOT EXISTS idx_users_department ON users(department_id);
 
 -- Örnek sorgular (yorum yapılmış):
 /*

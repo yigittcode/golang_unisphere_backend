@@ -296,3 +296,34 @@ func (r *DepartmentRepository) DepartmentExistsByNameOrCode(ctx context.Context,
 // 	var pgErr *pgconn.PgError
 // 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 // }
+
+// GetFacultyByDepartmentID retrieves faculty details for a department
+func (r *DepartmentRepository) GetFacultyByDepartmentID(ctx context.Context, departmentID int64) (*models.Faculty, error) {
+	sql, args, err := r.sb.Select("f.id", "f.name", "f.code").
+		From("departments d").
+		Join("faculties f ON d.faculty_id = f.id").
+		Where(squirrel.Eq{"d.id": departmentID}).
+		Limit(1).
+		ToSql()
+
+	if err != nil {
+		logger.Error().Err(err).Msg("Error building get faculty by department ID SQL")
+		return nil, fmt.Errorf("failed to build get faculty query: %w", err)
+	}
+
+	var faculty models.Faculty
+	err = r.db.QueryRow(ctx, sql, args...).Scan(
+		&faculty.ID,
+		&faculty.Name,
+		&faculty.Code,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrFacultyNotFound
+		}
+		logger.Error().Err(err).Int64("departmentID", departmentID).Msg("Error scanning faculty row")
+		return nil, fmt.Errorf("error retrieving faculty for department: %w", err)
+	}
+
+	return &faculty, nil
+}

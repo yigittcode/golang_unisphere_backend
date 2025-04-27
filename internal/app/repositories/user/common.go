@@ -22,22 +22,22 @@ var (
 	ErrDepartmentNotFound = errors.New("department not found")
 )
 
-// Repository handles common user database operations
-type Repository struct {
+// CommonRepository handles common user database operations
+type CommonRepository struct {
 	db *pgxpool.Pool
 	sb squirrel.StatementBuilderType
 }
 
-// NewRepository creates a new Repository
-func NewRepository(db *pgxpool.Pool) *Repository {
-	return &Repository{
+// NewRepository creates a new CommonRepository
+func NewRepository(db *pgxpool.Pool) *CommonRepository {
+	return &CommonRepository{
 		db: db,
 		sb: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
 	}
 }
 
 // CreateUser creates a new user
-func (r *Repository) CreateUser(ctx context.Context, user *models.User) (int64, error) {
+func (r *CommonRepository) CreateUser(ctx context.Context, user *models.User) (int64, error) {
 	sql, args, err := r.sb.Insert("users").
 		Columns("email", "password", "first_name", "last_name", "role_type", "is_active").
 		Values(user.Email, user.Password, user.FirstName, user.LastName, user.RoleType, user.IsActive).
@@ -65,12 +65,12 @@ func (r *Repository) CreateUser(ctx context.Context, user *models.User) (int64, 
 }
 
 // GetUserByEmail retrieves a user by email
-func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+func (r *CommonRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
 	sql, args, err := r.sb.Select(
 		"id", "email", "password", "first_name", "last_name",
 		"created_at", "updated_at", "role_type", "is_active", "last_login_at",
-		"profile_photo_url",
+		"department_id", "profile_photo_file_id",
 	).
 		From("users").
 		Where(squirrel.Eq{"email": email}).
@@ -83,11 +83,12 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*models.
 	}
 
 	var lastLoginAt pgtype.Timestamp
-	var profilePhotoURL pgtype.Text
+	var departmentID pgtype.Int8
+	var profilePhotoFileID pgtype.Int8
 	err = r.db.QueryRow(ctx, sql, args...).Scan(
 		&user.ID, &user.Email, &user.Password, &user.FirstName, &user.LastName,
 		&user.CreatedAt, &user.UpdatedAt, &user.RoleType, &user.IsActive, &lastLoginAt,
-		&profilePhotoURL,
+		&departmentID, &profilePhotoFileID,
 	)
 
 	if err != nil {
@@ -102,20 +103,25 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*models.
 	if lastLoginAt.Valid {
 		user.LastLoginAt = &lastLoginAt.Time
 	}
-	if profilePhotoURL.Valid {
-		user.ProfilePhotoURL = &profilePhotoURL.String
+	if departmentID.Valid {
+		id := departmentID.Int64
+		user.DepartmentID = &id
+	}
+	if profilePhotoFileID.Valid {
+		id := profilePhotoFileID.Int64
+		user.ProfilePhotoFileID = &id
 	}
 
 	return &user, nil
 }
 
 // GetUserByID retrieves a user by ID
-func (r *Repository) GetUserByID(ctx context.Context, id int64) (*models.User, error) {
+func (r *CommonRepository) GetUserByID(ctx context.Context, id int64) (*models.User, error) {
 	var user models.User
 	sql, args, err := r.sb.Select(
 		"id", "email", "password", "first_name", "last_name",
 		"created_at", "updated_at", "role_type", "is_active", "last_login_at",
-		"profile_photo_url",
+		"department_id", "profile_photo_file_id",
 	).
 		From("users").
 		Where(squirrel.Eq{"id": id}).
@@ -128,11 +134,12 @@ func (r *Repository) GetUserByID(ctx context.Context, id int64) (*models.User, e
 	}
 
 	var lastLoginAt pgtype.Timestamp
-	var profilePhotoURL pgtype.Text
+	var departmentID pgtype.Int8
+	var profilePhotoFileID pgtype.Int8
 	err = r.db.QueryRow(ctx, sql, args...).Scan(
 		&user.ID, &user.Email, &user.Password, &user.FirstName, &user.LastName,
 		&user.CreatedAt, &user.UpdatedAt, &user.RoleType, &user.IsActive, &lastLoginAt,
-		&profilePhotoURL,
+		&departmentID, &profilePhotoFileID,
 	)
 
 	if err != nil {
@@ -147,15 +154,20 @@ func (r *Repository) GetUserByID(ctx context.Context, id int64) (*models.User, e
 	if lastLoginAt.Valid {
 		user.LastLoginAt = &lastLoginAt.Time
 	}
-	if profilePhotoURL.Valid {
-		user.ProfilePhotoURL = &profilePhotoURL.String
+	if departmentID.Valid {
+		id := departmentID.Int64
+		user.DepartmentID = &id
+	}
+	if profilePhotoFileID.Valid {
+		id := profilePhotoFileID.Int64
+		user.ProfilePhotoFileID = &id
 	}
 
 	return &user, nil
 }
 
 // EmailExists checks if an email already exists
-func (r *Repository) EmailExists(ctx context.Context, email string) (bool, error) {
+func (r *CommonRepository) EmailExists(ctx context.Context, email string) (bool, error) {
 	var exists bool
 	sql, args, err := r.sb.Select("1").
 		From("users").
@@ -179,7 +191,7 @@ func (r *Repository) EmailExists(ctx context.Context, email string) (bool, error
 }
 
 // GetDepartmentNameByID retrieves department name by ID
-func (r *Repository) GetDepartmentNameByID(ctx context.Context, departmentID int64) (string, error) {
+func (r *CommonRepository) GetDepartmentNameByID(ctx context.Context, departmentID int64) (string, error) {
 	var name string
 	sql, args, err := r.sb.Select("name").
 		From("departments").
@@ -206,7 +218,7 @@ func (r *Repository) GetDepartmentNameByID(ctx context.Context, departmentID int
 }
 
 // UpdateLastLogin updates the last login time
-func (r *Repository) UpdateLastLogin(ctx context.Context, userID int64) error {
+func (r *CommonRepository) UpdateLastLogin(ctx context.Context, userID int64) error {
 	sql, args, err := r.sb.Update("users").
 		Set("last_login_at", time.Now()).
 		Where(squirrel.Eq{"id": userID}).
@@ -234,7 +246,7 @@ func (r *Repository) UpdateLastLogin(ctx context.Context, userID int64) error {
 
 // UpdateUserProfilePhotoURL updates only the profile photo URL for a given user.
 // If photoURL is nil or empty, it sets the database column to NULL.
-func (r *Repository) UpdateUserProfilePhotoURL(ctx context.Context, userID int64, photoURL *string) error {
+func (r *CommonRepository) UpdateUserProfilePhotoURL(ctx context.Context, userID int64, photoURL *string) error {
 	var photoURLArg interface{}
 	if photoURL != nil && *photoURL != "" {
 		photoURLArg = *photoURL
@@ -260,10 +272,71 @@ func (r *Repository) UpdateUserProfilePhotoURL(ctx context.Context, userID int64
 	}
 
 	if cmdTag.RowsAffected() == 0 {
-		logger.Warn().Int64("userID", userID).Msg("Attempted to update profile photo for non-existent user")
+		logger.Warn().Int64("userID", userID).Msg("Attempted to update profile photo URL for non-existent user")
 		return ErrUserNotFound
 	}
 
-	logger.Info().Int64("userID", userID).Msg("User profile photo URL updated successfully")
+	logger.Info().Int64("userID", userID).Msg("Profile photo URL updated")
+	return nil
+}
+
+// UpdateUserProfilePhotoFileID updates the profile photo file ID for a given user.
+func (r *CommonRepository) UpdateUserProfilePhotoFileID(ctx context.Context, userID int64, fileID *int64) error {
+	var fileIDArg interface{}
+	if fileID != nil {
+		fileIDArg = *fileID
+	} else {
+		fileIDArg = nil // Set to SQL NULL
+	}
+
+	sql, args, err := r.sb.Update("users").
+		Set("profile_photo_file_id", fileIDArg).
+		Set("updated_at", time.Now()). // Also update the updated_at timestamp
+		Where(squirrel.Eq{"id": userID}).
+		ToSql()
+
+	if err != nil {
+		logger.Error().Err(err).Int64("userID", userID).Msg("Error building update profile photo file ID SQL")
+		return fmt.Errorf("failed to build update profile photo file ID query: %w", err)
+	}
+
+	cmdTag, err := r.db.Exec(ctx, sql, args...)
+	if err != nil {
+		logger.Error().Err(err).Int64("userID", userID).Msg("Error executing update profile photo file ID query")
+		return fmt.Errorf("failed to update profile photo file ID: %w", err)
+	}
+
+	if cmdTag.RowsAffected() == 0 {
+		logger.Warn().Int64("userID", userID).Msg("Attempted to update profile photo file ID for non-existent user")
+		return ErrUserNotFound
+	}
+
+	logger.Info().Int64("userID", userID).Msg("Profile photo file ID updated")
+	return nil
+}
+
+// UpdateUserProfile updates a user's basic profile information (first name, last name, email)
+func (r *CommonRepository) UpdateUserProfile(ctx context.Context, userID int64, firstName, lastName, email string) error {
+	query := `
+		UPDATE users 
+		SET first_name = $2, last_name = $3, email = $4
+		WHERE id = $1
+	`
+	commandTag, err := r.db.Exec(ctx, query, userID, firstName, lastName, email)
+	if err != nil {
+		if dberrors.IsDuplicateConstraintError(err, "users_email_key") {
+			logger.Warn().Str("email", email).Int64("userID", userID).Msg("Attempted to update user with duplicate email")
+			return ErrEmailAlreadyExists
+		}
+		logger.Error().Err(err).Int64("userID", userID).Msg("Error updating user profile")
+		return fmt.Errorf("error updating user profile: %w", err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		logger.Warn().Int64("userID", userID).Msg("User not found when updating profile")
+		return ErrUserNotFound
+	}
+
+	logger.Info().Int64("userID", userID).Msg("User profile updated successfully")
 	return nil
 }

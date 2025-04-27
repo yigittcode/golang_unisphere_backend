@@ -38,6 +38,7 @@ func SetupRouter(
 	{
 		// Auth Profile route (moved here)
 		authenticated.GET("/auth/profile", authController.GetProfile)
+		authenticated.PUT("/auth/profile", authController.UpdateProfile)
 		authenticated.POST("/auth/profile/photo", authController.UpdateProfilePhoto)
 		authenticated.DELETE("/auth/profile/photo", authController.DeleteProfilePhoto)
 

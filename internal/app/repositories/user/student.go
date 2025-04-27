@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	ErrStudentIDExists = errors.New("student ID already in use")
-	ErrStudentNotFound = ErrUserNotFound
+	ErrIdentifierExists = errors.New("student identifier already in use")
+	ErrStudentNotFound  = ErrUserNotFound
 )
 
 // StudentRepository handles student database operations
@@ -35,8 +35,8 @@ func NewStudentRepository(db *pgxpool.Pool) *StudentRepository {
 // CreateStudent creates a new student
 func (r *StudentRepository) CreateStudent(ctx context.Context, student *models.Student) error {
 	sql, args, err := r.sb.Insert("students").
-		Columns("user_id", "student_id", "department_id", "graduation_year").
-		Values(student.UserID, student.StudentID, student.DepartmentID, student.GraduationYear).
+		Columns("user_id", "identifier", "department_id", "graduation_year").
+		Values(student.UserID, student.Identifier, student.DepartmentID, student.GraduationYear).
 		ToSql()
 
 	if err != nil {
@@ -46,22 +46,22 @@ func (r *StudentRepository) CreateStudent(ctx context.Context, student *models.S
 
 	_, err = r.db.Exec(ctx, sql, args...)
 	if err != nil {
-		if dberrors.IsDuplicateConstraintError(err, "students_student_id_key") {
-			logger.Warn().Str("studentID", student.StudentID).Msg("Attempted to create student with duplicate student ID")
-			return ErrStudentIDExists
+		if dberrors.IsDuplicateConstraintError(err, "students_identifier_key") {
+			logger.Warn().Str("identifier", student.Identifier).Msg("Attempted to create student with duplicate identifier")
+			return ErrIdentifierExists
 		}
-		logger.Error().Err(err).Int64("userID", student.UserID).Str("studentID", student.StudentID).Msg("Error executing create student query")
+		logger.Error().Err(err).Int64("userID", student.UserID).Str("identifier", student.Identifier).Msg("Error executing create student query")
 		return fmt.Errorf("error creating student: %w", err)
 	}
 
-	logger.Info().Int64("userID", student.UserID).Str("studentID", student.StudentID).Msg("Student created successfully")
+	logger.Info().Int64("userID", student.UserID).Str("identifier", student.Identifier).Msg("Student created successfully")
 	return nil
 }
 
 // GetStudentByUserID retrieves a student by user ID
 func (r *StudentRepository) GetStudentByUserID(ctx context.Context, userID int64) (*models.Student, error) {
 	var student models.Student
-	sql, args, err := r.sb.Select("id", "user_id", "student_id", "department_id", "graduation_year").
+	sql, args, err := r.sb.Select("id", "user_id", "identifier", "department_id", "graduation_year").
 		From("students").
 		Where(squirrel.Eq{"user_id": userID}).
 		Limit(1).
@@ -73,7 +73,7 @@ func (r *StudentRepository) GetStudentByUserID(ctx context.Context, userID int64
 	}
 
 	err = r.db.QueryRow(ctx, sql, args...).Scan(
-		&student.ID, &student.UserID, &student.StudentID, &student.DepartmentID, &student.GraduationYear)
+		&student.ID, &student.UserID, &student.Identifier, &student.DepartmentID, &student.GraduationYear)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -87,25 +87,25 @@ func (r *StudentRepository) GetStudentByUserID(ctx context.Context, userID int64
 	return &student, nil
 }
 
-// StudentIDExists checks if a student ID already exists
-func (r *StudentRepository) StudentIDExists(ctx context.Context, studentID string) (bool, error) {
+// IdentifierExists checks if a student identifier already exists
+func (r *StudentRepository) IdentifierExists(ctx context.Context, identifier string) (bool, error) {
 	var exists bool
 	sql, args, err := r.sb.Select("1").
 		From("students").
-		Where(squirrel.Eq{"student_id": studentID}).
+		Where(squirrel.Eq{"identifier": identifier}).
 		Prefix("SELECT EXISTS (").
 		Suffix(")").
 		ToSql()
 
 	if err != nil {
-		logger.Error().Err(err).Msg("Error building student ID exists SQL")
-		return false, fmt.Errorf("failed to build student ID exists query: %w", err)
+		logger.Error().Err(err).Msg("Error building student identifier exists SQL")
+		return false, fmt.Errorf("failed to build student identifier exists query: %w", err)
 	}
 
 	err = r.db.QueryRow(ctx, sql, args...).Scan(&exists)
 	if err != nil {
-		logger.Error().Err(err).Str("studentID", studentID).Msg("Error checking student ID existence")
-		return false, fmt.Errorf("error checking student ID existence: %w", err)
+		logger.Error().Err(err).Str("identifier", identifier).Msg("Error checking student identifier existence")
+		return false, fmt.Errorf("error checking student identifier existence: %w", err)
 	}
 
 	return exists, nil

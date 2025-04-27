@@ -43,18 +43,25 @@ type TokenResponse struct {
 
 // UserProfile represents user profile information returned by the API
 type UserProfile struct {
-	ID              int64   `json:"id" example:"1"`                                          // Unique identifier for the user
-	Email           string  `json:"email" example:"user@school.edu.tr"`                      // User's email address
-	FirstName       string  `json:"firstName" example:"John"`                                // User's first name
-	LastName        string  `json:"lastName" example:"Doe"`                                  // User's last name
-	RoleType        string  `json:"roleType" example:"STUDENT" enums:"STUDENT,INSTRUCTOR"`   // User's role (STUDENT or INSTRUCTOR)
-	ProfilePhotoUrl *string `json:"profilePhotoUrl,omitempty" example:"uploads/profile.jpg"` // URL of the user's profile photo (null if not set)
+	ID                 int64  `json:"id" example:"1"`                                        // Unique identifier for the user
+	Email              string `json:"email" example:"user@school.edu.tr"`                    // User's email address
+	FirstName          string `json:"firstName" example:"John"`                              // User's first name
+	LastName           string `json:"lastName" example:"Doe"`                                // User's last name
+	RoleType           string `json:"roleType" example:"STUDENT" enums:"STUDENT,INSTRUCTOR"` // User's role (STUDENT or INSTRUCTOR)
+	ProfilePhotoFileId *int64 `json:"profilePhotoFileId,omitempty" example:"123"`            // ID of the user's profile photo file (null if not set)
 	// Student or instructor specific fields
-	StudentID      *string `json:"studentId,omitempty" example:"12345678"`                  // Student's unique 8-digit ID (only for students)
+	Identifier     *string `json:"identifier,omitempty" example:"12345678"`                 // Student's unique 8-digit identifier (only for students)
 	GraduationYear *int    `json:"graduationYear,omitempty" example:"2025"`                 // Student's expected graduation year (optional, only for students)
 	Title          *string `json:"title,omitempty" example:"Professor"`                     // Instructor's academic title (only for instructors)
 	DepartmentID   int64   `json:"departmentId" example:"1"`                                // ID of the user's department
 	DepartmentName string  `json:"departmentName,omitempty" example:"Computer Engineering"` // Name of the user's department
 	FacultyID      int64   `json:"facultyId,omitempty" example:"1"`                         // ID of the user's faculty
 	FacultyName    string  `json:"facultyName,omitempty" example:"Engineering Faculty"`     // Name of the user's faculty
+}
+
+// UpdateUserProfileRequest defines the parameters for updating user profile
+type UpdateUserProfileRequest struct {
+	FirstName string `json:"firstName" binding:"required" example:"John"`
+	LastName  string `json:"lastName" binding:"required" example:"Doe"`
+	Email     string `json:"email" binding:"required,email" example:"john.doe@school.edu.tr"`
 }

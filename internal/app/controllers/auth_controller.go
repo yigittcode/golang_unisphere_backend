@@ -302,3 +302,45 @@ func (c *AuthController) DeleteProfilePhoto(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(profile, "Profile photo deleted successfully"))
 }
+
+// UpdateProfile handles user profile updates
+// @Summary Update user profile
+// @Description Update profile information for authenticated user (name, email)
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.UpdateUserProfileRequest true "Profile update data"
+// @Success 200 {object} dto.APIResponse{data=dto.UserProfile} "Profile updated successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
+// @Failure 409 {object} dto.ErrorResponse "Email already exists"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Router /auth/profile [put]
+func (c *AuthController) UpdateProfile(ctx *gin.Context) {
+	userIDAny, exists := ctx.Get("userID")
+	if !exists {
+		handleError(ctx, errors.New("authentication required: userID not found in context"))
+		return
+	}
+	userID, ok := userIDAny.(int64)
+	if !ok {
+		handleError(ctx, errors.New("internal server error: invalid userID type in context"))
+		return
+	}
+
+	var req dto.UpdateUserProfileRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		errorDetail := dto.HandleValidationError(err)
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
+		return
+	}
+
+	profile, err := c.authService.UpdateUserProfile(ctx, userID, &req)
+	if err != nil {
+		handleError(ctx, err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(profile, "Profile updated successfully"))
+}

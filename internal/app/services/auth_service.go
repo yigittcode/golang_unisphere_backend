@@ -21,18 +21,20 @@ import (
 
 // Define custom error types for auth service
 var (
-	ErrInvalidEmail           = errors.New("invalid email format")
-	ErrInvalidPassword        = errors.New("invalid password format")
-	ErrInvalidStudentID       = errors.New("invalid student ID format")
-	ErrEmailAlreadyExists     = errors.New("email already exists")
-	ErrStudentIDAlreadyExists = errors.New("student ID already in use")
-	ErrTokenNotFound          = errors.New("token not found")
-	ErrTokenExpired           = errors.New("token has expired")
-	ErrTokenRevoked           = errors.New("token has been revoked")
-	ErrTokenInvalid           = errors.New("invalid token")
-	ErrUserNotFound           = errors.New("user not found")
-	ErrInvalidCredentials     = errors.New("invalid credentials")
-	ErrAuthValidation         = errors.New("auth validation failed")
+	ErrInvalidEmail            = errors.New("invalid email format")
+	ErrInvalidPassword         = errors.New("invalid password format")
+	ErrInvalidIdentifier       = errors.New("invalid student identifier format")
+	ErrInvalidStudentID        = errors.New("invalid student identifier format") // Alias for ErrInvalidIdentifier
+	ErrEmailAlreadyExists      = errors.New("email already exists")
+	ErrIdentifierAlreadyExists = errors.New("student identifier already in use")
+	ErrStudentIDAlreadyExists  = errors.New("student identifier already in use") // Alias for ErrIdentifierAlreadyExists
+	ErrTokenNotFound           = errors.New("token not found")
+	ErrTokenExpired            = errors.New("token has expired")
+	ErrTokenRevoked            = errors.New("token has been revoked")
+	ErrTokenInvalid            = errors.New("invalid token")
+	ErrUserNotFound            = errors.New("user not found")
+	ErrInvalidCredentials      = errors.New("invalid credentials")
+	ErrAuthValidation          = errors.New("auth validation failed")
 )
 
 // AuthService handles authentication operations
@@ -121,16 +123,16 @@ func (s *AuthService) validatePassword(password string) error {
 	return nil
 }
 
-// validateStudentID validates a student ID
-func (s *AuthService) validateStudentID(studentID string) error {
-	if studentID == "" {
-		return fmt.Errorf("%w: student ID cannot be empty", ErrAuthValidation)
+// validateIdentifier validates a student identifier
+func (s *AuthService) validateIdentifier(identifier string) error {
+	if identifier == "" {
+		return fmt.Errorf("%w: student identifier cannot be empty", ErrAuthValidation)
 	}
 
-	// Student ID should match the pattern (8 digits)
-	studentIDRegex := regexp.MustCompile(`^\d{8}$`)
-	if !studentIDRegex.MatchString(studentID) {
-		return ErrInvalidStudentID
+	// Student identifier should match the pattern (8 digits)
+	identifierRegex := regexp.MustCompile(`^\d{8}$`)
+	if !identifierRegex.MatchString(identifier) {
+		return ErrInvalidIdentifier
 	}
 
 	return nil
@@ -166,18 +168,18 @@ func (s *AuthService) RegisterStudent(ctx context.Context, req *dto.RegisterStud
 		return nil, err
 	}
 
-	// Validate student ID
-	if err := s.validateStudentID(req.StudentID); err != nil {
+	// Validate student identifier
+	if err := s.validateIdentifier(req.StudentID); err != nil {
 		return nil, err
 	}
 
-	// Check if student ID already exists
-	exists, err := s.userRepo.StudentIDExists(ctx, req.StudentID)
+	// Check if student identifier already exists
+	exists, err := s.userRepo.IdentifierExists(ctx, req.StudentID)
 	if err != nil {
-		return nil, fmt.Errorf("error checking if student ID exists: %w", err)
+		return nil, fmt.Errorf("error checking if student identifier exists: %w", err)
 	}
 	if exists {
-		return nil, ErrStudentIDAlreadyExists
+		return nil, ErrIdentifierAlreadyExists
 	}
 
 	// Check if email already exists
@@ -197,38 +199,43 @@ func (s *AuthService) RegisterStudent(ctx context.Context, req *dto.RegisterStud
 
 	// Create user
 	user := &models.User{
-		Email:     req.Email,
-		Password:  string(hashedPassword),
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		RoleType:  models.RoleStudent,
-		IsActive:  true,
+		Email:        req.Email,
+		Password:     string(hashedPassword),
+		FirstName:    req.FirstName,
+		LastName:     req.LastName,
+		RoleType:     models.RoleStudent,
+		IsActive:     true,
+		DepartmentID: &req.DepartmentID,
 	}
 
-	// Add user to database
+	// Create user in DB
 	userID, err := s.userRepo.CreateUser(ctx, user)
 	if err != nil {
-		return nil, fmt.Errorf("user creation error: %w", err)
+		return nil, fmt.Errorf("error creating user: %w", err)
 	}
 
 	// Create student
 	student := &models.Student{
 		UserID:         userID,
-		StudentID:      req.StudentID,
+		Identifier:     req.StudentID,
 		DepartmentID:   req.DepartmentID,
 		GraduationYear: req.GraduationYear,
 	}
 
-	// Add student to database
-	if err := s.userRepo.CreateStudent(ctx, student); err != nil {
-		return nil, fmt.Errorf("student creation error: %w", err)
+	// Create student in DB
+	err = s.userRepo.CreateStudent(ctx, student)
+	if err != nil {
+		return nil, fmt.Errorf("error creating student: %w", err)
 	}
 
-	// Add User ID
-	user.ID = userID
-
 	// Generate token
-	return s.generateTokenResponse(ctx, user)
+	user.ID = userID // Set ID for token generation
+	tokenResponse, err := s.generateTokenResponse(ctx, user)
+	if err != nil {
+		return nil, fmt.Errorf("error generating token: %w", err)
+	}
+
+	return tokenResponse, nil
 }
 
 // RegisterInstructor registers a new instructor
@@ -370,159 +377,185 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*d
 	return s.generateTokenResponse(ctx, user)
 }
 
-// GetProfile retrieves user profile
+// GetProfile retrieves a user's profile
 func (s *AuthService) GetProfile(ctx context.Context, userID int64) (*dto.UserProfile, error) {
 	// Validate user ID
 	if err := s.validateUserID(userID); err != nil {
 		return nil, err
 	}
 
-	// Get user information
+	// Get user from DB
 	user, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
-		// Check if the error is user not found from repository
-		if errors.Is(err, repositories.ErrUserNotFound) { // Check specific repo error
-			return nil, ErrUserNotFound // Return the service's ErrUserNotFound
-		}
-		// For other errors, wrap and return
-		return nil, fmt.Errorf("failed to get user information: %w", err)
+		return nil, ErrUserNotFound
 	}
 
-	// Basic profile information
+	// Create profile response
 	profile := &dto.UserProfile{
-		ID:              user.ID,
-		Email:           user.Email,
-		FirstName:       user.FirstName,
-		LastName:        user.LastName,
-		RoleType:        string(user.RoleType),
-		ProfilePhotoUrl: user.ProfilePhotoURL,
+		ID:                 user.ID,
+		Email:              user.Email,
+		FirstName:          user.FirstName,
+		LastName:           user.LastName,
+		RoleType:           string(user.RoleType),
+		ProfilePhotoFileId: user.ProfilePhotoFileID,
 	}
 
 	var departmentID int64
-	// Get additional information based on user type
-	if user.RoleType == models.RoleStudent {
-		student, err := s.userRepo.GetStudentByUserID(ctx, user.ID)
+
+	// Get role-specific information
+	switch user.RoleType {
+	case models.RoleStudent:
+		// Get student details
+		student, err := s.userRepo.GetStudentByUserID(ctx, userID)
 		if err != nil {
-			// Check specific repo error
-			if errors.Is(err, repositories.ErrUserNotFound) {
-				return nil, ErrUserNotFound // Return service's UserNotFound
-			}
-			return nil, fmt.Errorf("failed to get student information: %w", err)
+			return nil, fmt.Errorf("error retrieving student details: %w", err)
 		}
 
-		profile.StudentID = &student.StudentID
+		profile.Identifier = &student.Identifier
 		profile.GraduationYear = student.GraduationYear
 		departmentID = student.DepartmentID // Store department ID
 
-	} else if user.RoleType == models.RoleInstructor {
-		instructor, err := s.userRepo.GetInstructorByUserID(ctx, user.ID)
+	case models.RoleInstructor:
+		// Get instructor details
+		instructor, err := s.userRepo.GetInstructorByUserID(ctx, userID)
 		if err != nil {
-			// Check specific repo error
-			if errors.Is(err, repositories.ErrUserNotFound) {
-				return nil, ErrUserNotFound // Return service's UserNotFound
-			}
-			return nil, fmt.Errorf("failed to get instructor information: %w", err)
+			return nil, fmt.Errorf("error retrieving instructor details: %w", err)
 		}
 
 		profile.Title = &instructor.Title
 		departmentID = instructor.DepartmentID // Store department ID
 	}
 
-	// Fetch Department and Faculty info if DepartmentID is available
+	// Get department details (both roles have a department)
 	if departmentID > 0 {
-		profile.DepartmentID = departmentID
-		department, err := s.departmentRepo.GetByID(ctx, departmentID)
-		if err != nil {
-			s.logger.Warn().Err(err).Int64("deptId", departmentID).Msg("Could not find department info for profile")
-		} else if department != nil {
-			profile.DepartmentName = department.Name
-			profile.FacultyID = department.FacultyID // Get FacultyID from department
+		// If user has department_id set, prioritize that
+		if user.DepartmentID != nil {
+			departmentID = *user.DepartmentID
+		}
 
-			// Fetch Faculty Name using FacultyID
-			faculty, err := s.facultyRepo.GetFacultyByID(ctx, department.FacultyID) // Use facultyRepo
-			if err != nil {
-				s.logger.Warn().Err(err).Int64("facultyId", department.FacultyID).Msg("Could not find faculty name for profile")
-			} else if faculty != nil {
-				profile.FacultyName = faculty.Name
-			}
+		profile.DepartmentID = departmentID
+
+		// Get department name
+		departmentName, err := s.userRepo.GetDepartmentNameByID(ctx, departmentID)
+		if err == nil {
+			profile.DepartmentName = departmentName
+		}
+
+		// Get faculty details through repository
+		facultyDetails, err := s.departmentRepo.GetFacultyByDepartmentID(ctx, departmentID)
+		if err == nil && facultyDetails != nil {
+			profile.FacultyID = facultyDetails.ID
+			profile.FacultyName = facultyDetails.Name
 		}
 	}
 
 	return profile, nil
 }
 
-// UpdateProfilePhoto handles uploading and updating a user's profile photo.
+// UpdateProfilePhoto updates a user's profile photo
 func (s *AuthService) UpdateProfilePhoto(ctx context.Context, userID int64, fileHeader *multipart.FileHeader) (*dto.UserProfile, error) {
-	s.logger.Info().Int64("userID", userID).Msg("Attempting to update profile photo")
 	// Validate user ID
 	if err := s.validateUserID(userID); err != nil {
 		return nil, err
 	}
 
-	// Check if user exists
-	_, err := s.userRepo.GetUserByID(ctx, userID)
-	if err != nil {
+	// Verify user exists
+	if _, err := s.userRepo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, repositories.ErrUserNotFound) {
-			return nil, ErrUserNotFound // Return service level error
+			return nil, ErrUserNotFound
 		}
-		return nil, fmt.Errorf("failed to get user for photo update: %w", err)
+		return nil, fmt.Errorf("failed to get user information: %w", err)
 	}
 
-	// TODO: Optionally delete the old photo file if user.ProfilePhotoURL is not nil
-	// if user.ProfilePhotoURL != nil {
-	// 	 if delErr := s.fileStorage.DeleteFile(*user.ProfilePhotoURL); delErr != nil {
-	// 	     s.logger.Warn().Err(delErr).Str("fileUrl", *user.ProfilePhotoURL).Msg("Failed to delete old profile photo, continuing...")
-	// 	 }
-	// }
-
-	// Save the new file
-	newPhotoPath, err := s.fileStorage.SaveFile(fileHeader)
+	// We don't need to open the file manually, the SaveFile method will handle that
+	newFilePath, err := s.fileStorage.SaveFile(fileHeader)
 	if err != nil {
-		s.logger.Error().Err(err).Int64("userID", userID).Msg("Failed to save new profile photo")
-		return nil, fmt.Errorf("failed to save profile photo: %w", err)
-	}
-	if newPhotoPath == "" {
-		// This should not happen if fileHeader is not nil, but handle defensively
-		return nil, fmt.Errorf("failed to get path after saving file")
+		return nil, fmt.Errorf("error saving file: %w", err)
 	}
 
-	// Update the database
-	if err := s.userRepo.UpdateUserProfilePhotoURL(ctx, userID, &newPhotoPath); err != nil {
-		s.logger.Error().Err(err).Int64("userID", userID).Str("newPhotoPath", newPhotoPath).Msg("Failed to update profile photo URL in database")
-		// TODO: Optionally attempt to delete the newly uploaded file if DB update fails
-		return nil, fmt.Errorf("failed to update profile photo in database: %w", err)
+	// Update user's profile photo URL
+	if err := s.userRepo.UpdateUserProfilePhotoFileID(ctx, userID, nil); err != nil {
+		// Try to delete the file if the update fails
+		_ = s.fileStorage.DeleteFile(newFilePath)
+		return nil, fmt.Errorf("error updating profile photo: %w", err)
 	}
 
-	// Fetch the updated profile to return
+	// Return updated profile
 	return s.GetProfile(ctx, userID)
 }
 
-// DeleteProfilePhoto removes a user's profile photo.
+// DeleteProfilePhoto deletes a user's profile photo
 func (s *AuthService) DeleteProfilePhoto(ctx context.Context, userID int64) (*dto.UserProfile, error) {
-	s.logger.Info().Int64("userID", userID).Msg("Attempting to delete profile photo")
 	// Validate user ID
 	if err := s.validateUserID(userID); err != nil {
 		return nil, err
 	}
 
-	// We could fetch the user first to get the old URL for file deletion, but
-	// for simplicity and to avoid the unused variable issue, we just update the DB.
-	// The GetProfile call at the end will reflect the change.
-
-	// TODO: Implement proper file deletion. Fetch user first, get URL, delete file, then update DB.
-
-	// Update the database, setting the URL to NULL. This will return ErrUserNotFound if user doesn't exist.
-	if err := s.userRepo.UpdateUserProfilePhotoURL(ctx, userID, nil); err != nil {
+	// Verify user exists
+	if _, err := s.userRepo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, repositories.ErrUserNotFound) {
-			return nil, ErrUserNotFound // User didn't exist
+			return nil, ErrUserNotFound
 		}
-		s.logger.Error().Err(err).Int64("userID", userID).Msg("Failed to set profile photo URL to NULL in database")
-		return nil, fmt.Errorf("failed to update profile photo in database: %w", err)
+		return nil, fmt.Errorf("failed to get user information: %w", err)
 	}
 
-	s.logger.Info().Int64("userID", userID).Msg("Profile photo database link removed successfully.")
+	// Update user's profile photo file ID to NULL
+	if err := s.userRepo.UpdateUserProfilePhotoFileID(ctx, userID, nil); err != nil {
+		return nil, fmt.Errorf("error updating profile photo: %w", err)
+	}
 
-	// Fetch and return the updated profile
+	// Return updated profile
+	return s.GetProfile(ctx, userID)
+}
+
+// UpdateUserProfile updates a user's profile information
+func (s *AuthService) UpdateUserProfile(ctx context.Context, userID int64, req *dto.UpdateUserProfileRequest) (*dto.UserProfile, error) {
+	// Validate email
+	if err := s.validateEmail(req.Email); err != nil {
+		return nil, err
+	}
+
+	// Validate first name and last name (simple validation, can be expanded)
+	if strings.TrimSpace(req.FirstName) == "" {
+		return nil, fmt.Errorf("%w: first name cannot be empty", ErrAuthValidation)
+	}
+	if strings.TrimSpace(req.LastName) == "" {
+		return nil, fmt.Errorf("%w: last name cannot be empty", ErrAuthValidation)
+	}
+
+	// Check if the email is different from the current one and already exists
+	user, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrUserNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get current user information: %w", err)
+	}
+
+	// Check if new email already exists (only if email is being changed)
+	if user.Email != req.Email {
+		exists, err := s.userRepo.EmailExists(ctx, req.Email)
+		if err != nil {
+			return nil, fmt.Errorf("error checking if email exists: %w", err)
+		}
+		if exists {
+			return nil, ErrEmailAlreadyExists
+		}
+	}
+
+	// Update the user profile
+	err = s.userRepo.UpdateUserProfile(ctx, userID, req.FirstName, req.LastName, req.Email)
+	if err != nil {
+		if errors.Is(err, repositories.ErrUserNotFound) {
+			return nil, ErrUserNotFound
+		}
+		if errors.Is(err, repositories.ErrEmailAlreadyExists) {
+			return nil, ErrEmailAlreadyExists
+		}
+		return nil, fmt.Errorf("failed to update user profile: %w", err)
+	}
+
+	// Fetch the updated profile to return
 	return s.GetProfile(ctx, userID)
 }
 

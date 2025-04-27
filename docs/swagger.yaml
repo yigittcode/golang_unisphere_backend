@@ -374,6 +374,22 @@ definitions:
     required:
     - title
     type: object
+  dto.UpdateUserProfileRequest:
+    properties:
+      email:
+        example: john.doe@school.edu.tr
+        type: string
+      firstName:
+        example: John
+        type: string
+      lastName:
+        example: Doe
+        type: string
+    required:
+    - email
+    - firstName
+    - lastName
+    type: object
   dto.UserProfile:
     properties:
       departmentId:
@@ -629,6 +645,50 @@ paths:
       security:
       - BearerAuth: []
       summary: Get user profile
+      tags:
+      - auth
+    put:
+      consumes:
+      - application/json
+      description: Update profile information for authenticated user (name, email)
+      parameters:
+      - description: Profile update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateUserProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Profile updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.UserProfile'
+              type: object
+        "400":
+          description: Invalid request format or validation error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Email already exists
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update user profile
       tags:
       - auth
   /auth/profile/photo:
@@ -1985,7 +2045,7 @@ schemes:
 - https
 securityDefinitions:
   BearerAuth:
-    description: JWT token for authorization
+    description: Type "Bearer" followed by a space and the JWT token
     in: header
     name: Authorization
     type: apiKey

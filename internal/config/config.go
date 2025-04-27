@@ -50,10 +50,10 @@ func LoadConfig(configPath string) (*Config, error) {
 	setDefaults(config)
 
 	if _, err := os.Stat(configPath); err == nil {
-		file, err := os.ReadFile(configPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read config file: %w", err)
-		}
+	file, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file: %w", err)
+	}
 		err = yaml.Unmarshal(file, config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse config: %w", err)

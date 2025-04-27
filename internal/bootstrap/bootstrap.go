@@ -100,15 +100,19 @@ func SetupDatabase(cfg *config.Config, lgr zerolog.Logger) (*pgxpool.Pool, error
 	// Run migrations
 	lgr.Info().Msg("Running database migrations...")
 	migrator := appMigrations.NewMigrator(dbPool)
-	migrationPath := filepath.Join("migrations", "init.sql")
-	if _, err := os.Stat(migrationPath); os.IsNotExist(err) {
-		lgr.Error().Str("path", migrationPath).Msg("Migration file not found")
-		return nil, fmt.Errorf("migration file not found at %s: %w", migrationPath, err)
+
+	// Use the migrations directory instead of just init.sql
+	migrationsDir := "migrations"
+	if _, err := os.Stat(migrationsDir); os.IsNotExist(err) {
+		lgr.Error().Str("path", migrationsDir).Msg("Migrations directory not found")
+		return nil, fmt.Errorf("migrations directory not found at %s: %w", migrationsDir, err)
 	}
-	if err := migrator.MigrateFromFile(migrationPath); err != nil {
+
+	if err := migrator.MigrateFromDirectory(migrationsDir); err != nil {
 		lgr.Error().Err(err).Msg("Database migration error")
-		return nil, fmt.Errorf("database migration failed: %w", err)
+		return nil, fmt.Errorf("database migrations failed: %w", err)
 	}
+
 	lgr.Info().Msg("Database migrations successfully applied.")
 
 	// Create Default Data (after migrations)
@@ -127,9 +131,12 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 	deps.Repos = appRepos.NewRepositories(dbPool)
 
 	// Initialize File Storage
-	// Assuming baseURL is empty for now, adjust if files are served from a specific URL prefix
+	// Configure baseURL to match the static file serving endpoint
 	var err error
-	deps.FileStorage, err = filestorage.NewLocalStorage(cfg.Server.StoragePath, "")
+	// Change the relative path to an absolute URL including host and port
+	baseUrl := "http://localhost:" + cfg.Server.Port
+	fileStorageBaseURL := baseUrl + "/uploads" // This must match the static file serving URL path
+	deps.FileStorage, err = filestorage.NewLocalStorage(cfg.Server.StoragePath, fileStorageBaseURL)
 	if err != nil {
 		lgr.Error().Err(err).Msg("Failed to initialize file storage")
 		return nil, fmt.Errorf("failed to initialize file storage: %w", err)

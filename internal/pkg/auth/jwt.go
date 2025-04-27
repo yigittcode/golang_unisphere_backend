@@ -121,13 +121,20 @@ func ExtractBearerToken(authHeader string) (string, error) {
 		return "", ErrInvalidFormat
 	}
 
-	// Check if the header starts with "Bearer " (optional)
+	// Check if the header starts with "Bearer " (required)
 	if strings.HasPrefix(authHeader, "Bearer ") {
 		return strings.TrimPrefix(authHeader, "Bearer "), nil
 	}
 
-	// Otherwise just return the entire header value as the token
-	return authHeader, nil
+	// If in Swagger UI, the user might paste just the token without "Bearer " prefix
+	// To be more user-friendly, check if the header looks like a JWT token (three dot-separated parts)
+	if strings.Count(authHeader, ".") == 2 {
+		// It looks like a JWT token, so return it directly
+		return authHeader, nil
+	}
+
+	// Otherwise, reject it as an invalid format
+	return "", fmt.Errorf("%w: authorization header must start with 'Bearer '", ErrInvalidFormat)
 }
 
 // ValidateAndExtractClaims validates and extracts claims from a token string

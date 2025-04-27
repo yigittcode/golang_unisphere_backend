@@ -3,6 +3,7 @@ package dto
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -28,6 +29,8 @@ const (
 	ErrorCodeInternalServer        ErrorCode = "SRV_001"
 	ErrorCodeDatabaseError         ErrorCode = "SRV_002"
 	ErrorCodeExternalServiceError  ErrorCode = "SRV_003"
+	ErrorCodeBadRequest            ErrorCode = "BAD_REQUEST"
+	ErrorCodeForbidden             ErrorCode = "FORBIDDEN"
 )
 
 // ErrorSeverity represents the severity level of an error
@@ -152,4 +155,31 @@ func HandleValidationError(err error) *ErrorDetail {
 	}
 	// Fallback for non-validator errors or if parsing fails
 	return NewErrorDetail(ErrorCodeValidationFailed, "Input validation failed").WithDetails(err.Error())
+}
+
+// fieldNameFromJSONTag extracts the field name from struct JSON tag
+func fieldNameFromJSONTag(fieldName string) string {
+	// Try to get the JSON tag name through reflection when possible
+	// This is a simplified version - in production you might cache this or use a more robust approach
+	return strings.ToLower(fieldName)
+}
+
+// validationErrorToMessage converts validator errors to human-readable messages
+func validationErrorToMessage(fieldError validator.FieldError) string {
+	switch fieldError.Tag() {
+	case "required":
+		return "This field is required"
+	case "email":
+		return "Invalid email format"
+	case "min":
+		return fmt.Sprintf("Should be at least %s characters long", fieldError.Param())
+	case "max":
+		return fmt.Sprintf("Should be at most %s characters long", fieldError.Param())
+	case "len":
+		return fmt.Sprintf("Should be exactly %s characters long", fieldError.Param())
+	case "numeric":
+		return "Should contain only numbers"
+	default:
+		return fmt.Sprintf("Failed %s validation", fieldError.Tag())
+	}
 }

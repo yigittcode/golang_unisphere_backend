@@ -123,6 +123,79 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update profile information for authenticated user (name, email)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Update user profile",
+                "parameters": [
+                    {
+                        "description": "Profile update data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateUserProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Profile updated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.UserProfile"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or missing token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Email already exists",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/auth/profile/photo": {
@@ -2691,6 +2764,28 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.UpdateUserProfileRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "firstName",
+                "lastName"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "john.doe@school.edu.tr"
+                },
+                "firstName": {
+                    "type": "string",
+                    "example": "John"
+                },
+                "lastName": {
+                    "type": "string",
+                    "example": "Doe"
+                }
+            }
+        },
         "dto.UserProfile": {
             "type": "object",
             "properties": {
@@ -2942,7 +3037,7 @@ const docTemplate = `{
     },
     "securityDefinitions": {
         "BearerAuth": {
-            "description": "JWT token for authorization",
+            "description": "Type \"Bearer\" followed by a space and the JWT token",
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"

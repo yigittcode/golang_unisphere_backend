@@ -13,12 +13,12 @@ import (
 var (
 	ErrUserNotFound       = errors.New("user not found")
 	ErrEmailAlreadyExists = errors.New("email already exists")
-	ErrStudentIDExists    = errors.New("student ID already in use")
+	ErrIdentifierExists   = errors.New("student identifier already in use")
 )
 
 // UserRepository combines all user-related repositories
 type UserRepository struct {
-	common     *user.Repository
+	common     *user.CommonRepository
 	student    *user.StudentRepository
 	instructor *user.InstructorRepository
 }
@@ -62,9 +62,9 @@ func (r *UserRepository) GetStudentByUserID(ctx context.Context, userID int64) (
 	return r.student.GetStudentByUserID(ctx, userID)
 }
 
-// StudentIDExists checks if a student ID already exists
-func (r *UserRepository) StudentIDExists(ctx context.Context, studentID string) (bool, error) {
-	return r.student.StudentIDExists(ctx, studentID)
+// IdentifierExists checks if a student identifier already exists
+func (r *UserRepository) IdentifierExists(ctx context.Context, identifier string) (bool, error) {
+	return r.student.IdentifierExists(ctx, identifier)
 }
 
 // CreateInstructor creates a new instructor
@@ -101,4 +101,16 @@ func (r *UserRepository) UpdateLastLogin(ctx context.Context, userID int64) erro
 func (r *UserRepository) UpdateUserProfilePhotoURL(ctx context.Context, userID int64, photoURL *string) error {
 	// Delegate to the common repository
 	return r.common.UpdateUserProfilePhotoURL(ctx, userID, photoURL)
+}
+
+// UpdateUserProfilePhotoFileID updates the profile photo file ID for a given user.
+func (r *UserRepository) UpdateUserProfilePhotoFileID(ctx context.Context, userID int64, fileID *int64) error {
+	// Delegate to the common repository
+	return r.common.UpdateUserProfilePhotoFileID(ctx, userID, fileID)
+}
+
+// UpdateUserProfile updates a user's basic profile information
+func (r *UserRepository) UpdateUserProfile(ctx context.Context, userID int64, firstName, lastName, email string) error {
+	// Delegate to the common repository
+	return r.common.UpdateUserProfile(ctx, userID, firstName, lastName, email)
 }

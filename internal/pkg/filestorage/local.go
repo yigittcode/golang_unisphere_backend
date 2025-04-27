@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/yigit/unisphere/internal/pkg/logger"
@@ -74,25 +75,69 @@ func (ls *LocalStorage) SaveFile(fileHeader *multipart.FileHeader) (string, erro
 	}
 
 	// Construct the accessible path/URL
-	// If baseURL is configured, return a full URL, otherwise return relative path
-	accessiblePath := uniqueFilename // Start with just the filename
+	var accessiblePath string
+	
 	if ls.baseURL != "" {
-		// Ensure no double slashes
-		base := ls.baseURL
-		if base[len(base)-1:] == "/" {
-			base = base[:len(base)-1]
-		}
-		accessiblePath = base + "/" + uniqueFilename
+		// If baseURL is provided, use it to construct a URL
+		// Make sure we don't have double slashes
+		accessiblePath = strings.TrimRight(ls.baseURL, "/") + "/" + uniqueFilename
 	} else {
-		// If no baseURL, maybe return path relative to storage base?
-		// Or just the filename, assuming client knows the base?
-		// Let's return path relative to uploads for now.
-		accessiblePath = filepath.Join("uploads", uniqueFilename) // Assumes /uploads is served
+		// If no baseURL, use the relative path to uploads directory
+		accessiblePath = filepath.Join("uploads", uniqueFilename)
 	}
 
 	logger.Info().Str("filename", fileHeader.Filename).Str("saved_as", uniqueFilename).Str("accessible_path", accessiblePath).Msg("File saved successfully")
 	return accessiblePath, nil
 }
 
+// DeleteFile removes a file from the storage filesystem.
+// It accepts the file path as stored in the database (e.g., uploads/filename.jpg).
+// Returns nil if deletion is successful or if the file doesn't exist.
+func (ls *LocalStorage) DeleteFile(filePath string) error {
+	if filePath == "" {
+		return nil // Nothing to delete
+	}
+
+	// Extract the filename from the path
+	// The stored path is typically in the format: "uploads/filename.ext"
+	filename := filepath.Base(filePath)
+
+	// Ensure we're only getting the filename portion
+	if filename == "" || filename == "." || filename == "/" || filename == "uploads" {
+		return fmt.Errorf("invalid file path: %s", filePath)
+	}
+
+	// Construct the full physical path to the file
+	physicalPath := filepath.Join(ls.basePath, filename)
+
+	// Check if the file exists first
+	if _, err := os.Stat(physicalPath); os.IsNotExist(err) {
+		logger.Warn().Str("path", physicalPath).Msg("File to delete does not exist")
+		return nil // Consider this a successful delete (idempotent operation)
+	}
+
+	// Remove the file
+	if err := os.Remove(physicalPath); err != nil {
+		logger.Error().Err(err).Str("path", physicalPath).Msg("Failed to delete file")
+		return fmt.Errorf("failed to delete file: %w", err)
+	}
+
+	logger.Info().Str("path", physicalPath).Msg("File deleted successfully")
+	return nil
+}
+
+// GetFullPath returns the full filesystem path for a given file URL.
+// This is useful for getting the actual path for deletion.
+func (ls *LocalStorage) GetFullPath(fileURL string) string {
+	// Extract filename from URL or path
+	filename := filepath.Base(fileURL)
+	if filename == "" || filename == "." || filename == "/" {
+		return ""
+	}
+
+	return filepath.Join(ls.basePath, filename)
+}
+
 // TODO: Add DeleteFile method if needed
 // func (ls *LocalStorage) DeleteFile(filePath string) error { ... }
+ 

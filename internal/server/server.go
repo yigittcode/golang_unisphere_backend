@@ -49,6 +49,9 @@ func NewServer() (*Server, error) {
 
 	router := bootstrap.SetupRouter(cfg, deps, lgr)
 
+	// Configure static file serving for uploads
+	setupStaticFileServing(router, cfg, lgr)
+
 	s := &Server{
 		config: cfg,
 		router: router,
@@ -57,6 +60,24 @@ func NewServer() (*Server, error) {
 	}
 
 	return s, nil
+}
+
+// setupStaticFileServing configures the router to serve static files
+func setupStaticFileServing(router *gin.Engine, cfg *config.Config, lgr zerolog.Logger) {
+	// Set up static file serving for uploads directory
+	uploadPath := cfg.Server.StoragePath
+
+	// Ensure the directory exists
+	if _, err := os.Stat(uploadPath); os.IsNotExist(err) {
+		if err := os.MkdirAll(uploadPath, os.ModePerm); err != nil {
+			lgr.Error().Err(err).Str("path", uploadPath).Msg("Failed to create uploads directory")
+			return
+		}
+	}
+
+	// Serve the uploads directory at /uploads URL path
+	router.Static("/uploads", uploadPath)
+	lgr.Info().Str("path", uploadPath).Msg("Static file serving configured for uploads directory")
 }
 
 // Run starts the HTTP server and handles graceful shutdown.

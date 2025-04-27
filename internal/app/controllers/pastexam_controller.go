@@ -448,11 +448,34 @@ func (c *PastExamController) DeletePastExam(ctx *gin.Context) {
 		return
 	}
 
-	// Call service to delete past exam
+	// First get the exam to retrieve the file path before deletion
+	pastExam, err := c.pastExamService.GetPastExamByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, services.ErrPastExamNotFound) {
+			// If exam doesn't exist, just return the error
+			handlePastExamError(ctx, err)
+			return
+		}
+		// For other errors, log and continue with deletion attempt
+		logger.Warn().Err(err).Int64("examID", id).Msg("Error getting exam details before deletion")
+	}
+
+	// Call service to delete past exam from database
 	err = c.pastExamService.DeletePastExam(ctx, id, userID.(int64))
 	if err != nil {
 		handlePastExamError(ctx, err)
 		return
+	}
+
+	// If we have the exam details and it had a file, delete the file
+	if pastExam != nil && pastExam.FileURL != nil && *pastExam.FileURL != "" {
+		fileErr := c.fileStorage.DeleteFile(*pastExam.FileURL)
+		if fileErr != nil {
+			// Log the error but don't fail the operation since the database record is already deleted
+			logger.Error().Err(fileErr).Str("filePath", *pastExam.FileURL).Msg("Failed to delete file from filesystem")
+		} else {
+			logger.Info().Str("filePath", *pastExam.FileURL).Msg("Successfully deleted file from filesystem")
+		}
 	}
 
 	ctx.JSON(http.StatusOK, dto.APIResponse{
