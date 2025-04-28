@@ -236,7 +236,7 @@ func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusCreated, dto.NewSuccessResponse(createdExam))
-}
+	}
 
 // UpdatePastExam handles updating an existing past exam
 // @Summary Update a past exam
@@ -296,7 +296,7 @@ func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(updatedExam))
-}
+	}
 
 // DeletePastExam handles deleting a past exam
 // @Summary Delete a past exam

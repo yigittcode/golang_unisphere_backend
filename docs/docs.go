@@ -204,7 +204,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserResponse"
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse"
                                         }
                                     }
                                 }
@@ -302,7 +302,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.FileResponse"
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse"
                                         }
                                     }
                                 }
@@ -389,7 +389,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserResponse"
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse"
                                         }
                                     }
                                 }
@@ -3103,20 +3103,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_yigit_unisphere_internal_app_models_dto.FileResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "type": {
                     "type": "string"
                 }
             }

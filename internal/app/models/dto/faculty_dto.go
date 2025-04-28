@@ -21,3 +21,4 @@ type FacultyListResponse struct {
 	Faculties []FacultyResponse `json:"faculties"`
 	PaginationInfo
 }
+ 

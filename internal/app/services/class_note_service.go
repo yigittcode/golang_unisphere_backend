@@ -84,7 +84,7 @@ func (s *classNoteServiceImpl) GetNoteByID(ctx context.Context, id int64) (*dto.
 		return nil, fmt.Errorf("error getting class note: %w", err)
 	}
 	if note == nil {
-		return nil, apperrors.ErrClassNoteNotFound
+			return nil, apperrors.ErrClassNoteNotFound
 	}
 
 	// Convert to response DTO
@@ -153,7 +153,7 @@ func (s *classNoteServiceImpl) UpdateNote(ctx context.Context, id int64, req *dt
 		return nil, fmt.Errorf("error getting class note: %w", err)
 	}
 	if note == nil {
-		return nil, apperrors.ErrClassNoteNotFound
+			return nil, apperrors.ErrClassNoteNotFound
 	}
 
 	// Update note fields

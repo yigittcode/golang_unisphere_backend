@@ -262,7 +262,7 @@ func (c *AuthController) GetCurrentUser(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body dto.UpdateProfileRequest true "Profile update details"
-// @Success 200 {object} dto.APIResponse{data=dto.UserResponse}
+// @Success 200 {object} dto.APIResponse{data=dto.SuccessResponse}
 // @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
@@ -293,27 +293,10 @@ func (c *AuthController) UpdateProfile(ctx *gin.Context) {
 		return
 	}
 
-	// Get updated user
-	user, err := c.authService.GetUserByID(ctx, userID.(int64))
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to get updated profile"),
-		})
-		return
-	}
-
-	// Create response
-	response := dto.UserResponse{
-		ID:           user.ID,
-		Email:        user.Email,
-		FirstName:    user.FirstName,
-		LastName:     user.LastName,
-		Role:         string(user.RoleType),
-		DepartmentID: user.DepartmentID,
-	}
-
 	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Data: response,
+		Data: dto.SuccessResponse{
+			Message: "Profile updated successfully",
+		},
 	})
 }
 
@@ -324,7 +307,7 @@ func (c *AuthController) UpdateProfile(ctx *gin.Context) {
 // @Accept multipart/form-data
 // @Produce json
 // @Param file formData file true "Profile photo file"
-// @Success 200 {object} dto.APIResponse{data=dto.FileResponse}
+// @Success 200 {object} dto.APIResponse{data=dto.SuccessResponse}
 // @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
@@ -355,27 +338,10 @@ func (c *AuthController) UpdateProfilePhoto(ctx *gin.Context) {
 		return
 	}
 
-	// Get updated user
-	user, err := c.authService.GetUserByID(ctx, userID.(int64))
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to get updated profile"),
-		})
-		return
-	}
-
-	// Create response
-	response := dto.UserResponse{
-		ID:           user.ID,
-		Email:        user.Email,
-		FirstName:    user.FirstName,
-		LastName:     user.LastName,
-		Role:         string(user.RoleType),
-		DepartmentID: user.DepartmentID,
-	}
-
 	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Data: response,
+		Data: dto.SuccessResponse{
+			Message: "Profile photo updated successfully",
+		},
 	})
 }
 
@@ -385,7 +351,7 @@ func (c *AuthController) UpdateProfilePhoto(ctx *gin.Context) {
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Success 200 {object} dto.APIResponse{data=dto.UserResponse}
+// @Success 200 {object} dto.APIResponse{data=dto.SuccessResponse}
 // @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Router /auth/profile/photo [delete]
@@ -407,26 +373,9 @@ func (c *AuthController) DeleteProfilePhoto(ctx *gin.Context) {
 		return
 	}
 
-	// Get updated user
-	user, err := c.authService.GetUserByID(ctx, userID.(int64))
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to get updated profile"),
-		})
-		return
-	}
-
-	// Create response
-	response := dto.UserResponse{
-		ID:           user.ID,
-		Email:        user.Email,
-		FirstName:    user.FirstName,
-		LastName:     user.LastName,
-		Role:         string(user.RoleType),
-		DepartmentID: user.DepartmentID,
-	}
-
 	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Data: response,
+		Data: dto.SuccessResponse{
+			Message: "Profile photo deleted successfully",
+		},
 	})
 }

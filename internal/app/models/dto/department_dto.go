@@ -23,3 +23,4 @@ type DepartmentListResponse struct {
 	Departments []DepartmentResponse `json:"departments"`
 	PaginationInfo
 }
+ 

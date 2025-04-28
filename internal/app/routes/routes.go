@@ -19,6 +19,9 @@ func SetupRouter(
 	classNoteController *controllers.ClassNoteController,
 	authMiddleware *middleware.AuthMiddleware,
 ) {
+	// Setup Swagger documentation
+	SetupSwagger(router)
+
 	// API version group
 	v1 := router.Group("/api/v1")
 
