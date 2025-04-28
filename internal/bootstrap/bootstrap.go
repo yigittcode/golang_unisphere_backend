@@ -28,12 +28,14 @@ import (
 	appMiddleware "github.com/yigit/unisphere/internal/middleware"
 	pkgAuth "github.com/yigit/unisphere/internal/pkg/auth"
 	"github.com/yigit/unisphere/internal/pkg/filestorage" // Import filestorage
-	"github.com/yigit/unisphere/internal/pkg/helpers"     // Import the new helpers package
+
+	// Import the new helpers package
+	"github.com/yigit/unisphere/internal/pkg/helpers"
 	"github.com/yigit/unisphere/internal/pkg/logger"
 	"github.com/yigit/unisphere/internal/seed" // Import the new seed package
 )
 
-// Dependencies holds the core application components (DI container).
+// Dependencies holds all the application dependencies
 type Dependencies struct {
 	AuthService          appServices.AuthService       // Interface type
 	InstructorService    appServices.InstructorService // Interface type
@@ -142,14 +144,19 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 		return nil, fmt.Errorf("failed to initialize file storage: %w", err)
 	}
 
+	// Initialize services
+	deps.AuthzService = appAuth.NewAuthorizationService(
+		deps.Repos.UserRepository,
+		deps.Repos.ClassNoteRepository,
+		deps.Repos.PastExamRepository,
+	)
+
 	deps.JWTService = pkgAuth.NewJWTService(pkgAuth.JWTConfig{
 		SecretKey:       cfg.JWT.Secret,
 		AccessTokenExp:  helpers.ParseDuration(cfg.JWT.AccessTokenExpiration, 1*time.Hour),
 		RefreshTokenExp: helpers.ParseDuration(cfg.JWT.RefreshTokenExpiration, 720*time.Hour),
 		TokenIssuer:     cfg.JWT.Issuer,
 	})
-
-	deps.AuthzService = appAuth.NewAuthorizationService(deps.Repos.UserRepository, deps.Repos.PastExamRepository, deps.Repos.ClassNoteRepository)
 
 	deps.AuthService = appServices.NewAuthService(
 		deps.Repos.UserRepository,
@@ -161,15 +168,21 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 		deps.JWTService,
 		lgr,
 	)
-	deps.InstructorService = appServices.NewInstructorService(deps.Repos.UserRepository, deps.Repos.DepartmentRepository)
+
 	deps.FacultyService = appServices.NewFacultyService(deps.Repos.FacultyRepository)
 	deps.DepartmentService = appServices.NewDepartmentService(deps.Repos.DepartmentRepository, deps.Repos.FacultyRepository)
-	deps.PastExamService = appServices.NewPastExamService(deps.Repos.PastExamRepository, deps.AuthzService)
+	deps.InstructorService = appServices.NewInstructorService(deps.Repos.UserRepository, deps.Repos.DepartmentRepository)
+	deps.PastExamService = appServices.NewPastExamService(deps.Repos.PastExamRepository, deps.Repos.DepartmentRepository, deps.AuthzService)
 	deps.ClassNoteService = appServices.NewClassNoteService(deps.Repos.ClassNoteRepository, deps.Repos.DepartmentRepository, deps.AuthzService)
 
 	deps.AuthMiddleware = appMiddleware.NewAuthMiddleware(deps.JWTService)
 
-	deps.AuthController = appControllers.NewAuthController(deps.AuthService, deps.JWTService, logger.NewLogger(lgr))
+	deps.AuthController = appControllers.NewAuthController(
+		deps.AuthService,
+		deps.Repos.UserRepository,
+		deps.JWTService,
+		deps.Logger,
+	)
 	deps.FacultyController = appControllers.NewFacultyController(deps.FacultyService)
 	deps.DepartmentController = appControllers.NewDepartmentController(deps.DepartmentService)
 	deps.InstructorController = appControllers.NewInstructorController(deps.InstructorService)

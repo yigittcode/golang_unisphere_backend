@@ -2,37 +2,44 @@ package apperrors
 
 import "errors"
 
-// Common Errors
+// Common errors
 var (
-	ErrInternalServer = errors.New("internal server error")
-	ErrNotFound       = errors.New("resource not found")
-)
+	// Resource errors
+	ErrResourceNotFound      = errors.New("resource not found")
+	ErrResourceAlreadyExists = errors.New("resource already exists")
 
-// User Errors
-var (
+	// Authentication errors
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrTokenExpired       = errors.New("token expired")
+	ErrTokenInvalid       = errors.New("invalid token")
+	ErrTokenNotFound      = errors.New("token not found")
+	ErrTokenRevoked       = errors.New("token revoked")
+
+	// Authorization errors
+	ErrPermissionDenied = errors.New("permission denied")
+
+	// Validation errors
+	ErrValidationFailed = errors.New("validation failed")
+	ErrInvalidEmail     = errors.New("invalid email")
+	ErrInvalidPassword  = errors.New("invalid password")
+
+	// User errors
 	ErrUserNotFound       = errors.New("user not found")
 	ErrEmailAlreadyExists = errors.New("email already exists")
+	ErrIdentifierExists   = errors.New("identifier already exists")
+
+	// Class note errors
+	ErrClassNoteNotFound = errors.New("class note not found")
+
+	// Past exam errors
+	ErrPastExamNotFound = errors.New("past exam not found")
 )
 
 // Student Errors
 var (
 	ErrStudentNotFound        = errors.New("student not found")
-	ErrIdentifierExists       = errors.New("student identifier already in use")
-	ErrInvalidIdentifier      = errors.New("invalid student identifier format")
 	ErrStudentIDAlreadyExists = errors.New("student ID already exists")
 	ErrInvalidStudentID       = errors.New("invalid student ID format")
-)
-
-// Authentication Errors
-var (
-	ErrInvalidEmail       = errors.New("invalid email format")
-	ErrInvalidPassword    = errors.New("invalid password format")
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrTokenNotFound      = errors.New("token not found")
-	ErrTokenExpired       = errors.New("token has expired")
-	ErrTokenRevoked       = errors.New("token has been revoked")
-	ErrTokenInvalid       = errors.New("invalid token")
-	ErrInvalidFormat      = errors.New("invalid token format")
 )
 
 // Department Errors
@@ -51,19 +58,7 @@ var (
 
 // Content Errors
 var (
-	ErrPastExamNotFound  = errors.New("past exam not found")
-	ErrClassNoteNotFound = errors.New("class note not found")
-)
-
-// Permissions and Authorization Errors
-var (
-	ErrPermissionDenied = errors.New("permission denied")
-	ErrInstructorOnly   = errors.New("this operation is restricted to instructors")
-)
-
-// Validation
-var (
-	ErrValidationFailed = errors.New("validation failed")
+	ErrInvalidFormat = errors.New("invalid token format")
 )
 
 // Is returns whether target matches any of the errors in errList

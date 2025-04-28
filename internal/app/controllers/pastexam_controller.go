@@ -2,10 +2,9 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yigit/unisphere/internal/app/models"
@@ -34,24 +33,38 @@ func NewPastExamController(pastExamService services.PastExamService, fileStorage
 
 // This controller now uses the centralized error handling middleware
 
-// GetAllPastExams retrieves all past exams with pagination and filtering
+// toPastExamResponse converts a PastExam model to a PastExamResponse DTO
+func toPastExamResponse(exam *models.PastExam) dto.PastExamResponse {
+	return dto.PastExamResponse{
+		ID:           exam.ID,
+		CourseCode:   exam.CourseCode,
+		Year:         exam.Year,
+		Term:         exam.Term,
+		FileID:       exam.FileID,
+		DepartmentID: exam.DepartmentID,
+		InstructorID: exam.InstructorID,
+	}
+}
+
+// GetAllPastExams handles retrieving all past exams with optional filtering
 // @Summary Get all past exams
-// @Description Get a list of all past exams. Supports filtering by faculty, department, course code, year, term and sorting by various fields.
-// @Tags pastexams
+// @Description Retrieves a list of past exams with optional filtering and pagination
+// @Tags past-exams
+// @Accept json
 // @Produce json
-// @Param facultyId query int false "Filter by faculty ID" Format(int64) example(1)
-// @Param departmentId query int false "Filter by department ID" Format(int64) example(1)
-// @Param courseCode query string false "Filter by course code (case-insensitive, partial match)" example(CENG)
-// @Param year query int false "Filter by exact year" example(2023)
-// @Param term query string false "Filter by term" Enums(FALL, SPRING) example(FALL)
-// @Param sortBy query string false "Sort field (year, term, courseCode, title, createdAt, updatedAt)" default(createdAt)
-// @Param sortOrder query string false "Sort order" Enums(ASC, DESC) default(DESC)
-// @Param page query int false "Page number for pagination (0-based)" default(0) minimum(0)
-// @Param size query int false "Number of items per page" default(10) minimum(1) maximum(100)
-// @Success 200 {object} dto.APIResponse{data=dto.PastExamListResponse} "Past exams retrieved successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid query parameter format or value"
+// @Param facultyId query int false "Filter by faculty ID"
+// @Param departmentId query int false "Filter by department ID"
+// @Param courseCode query string false "Filter by course code"
+// @Param year query int false "Filter by year"
+// @Param term query string false "Filter by term (FALL, SPRING, SUMMER)"
+// @Param sortBy query string false "Sort field (year, term, courseCode, title, departmentName, facultyName, instructorName, createdAt, updatedAt)"
+// @Param sortOrder query string false "Sort order (ASC, DESC)"
+// @Param page query int false "Page number (default: 1)"
+// @Param pageSize query int false "Page size (default: 10)"
+// @Success 200 {object} dto.APIResponse{data=[]models.PastExam,pagination=dto.PaginationInfo} "Past exams retrieved successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid request parameters"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /pastexams [get]
+// @Router /past-exams [get]
 func (c *PastExamController) GetAllPastExams(ctx *gin.Context) {
 	// Parse pagination parameters (0-based)
 	page, err := strconv.Atoi(ctx.DefaultQuery("page", strconv.Itoa(helpers.DefaultPage)))
@@ -108,40 +121,47 @@ func (c *PastExamController) GetAllPastExams(ctx *gin.Context) {
 		filters["sortOrder"] = sortOrder
 	}
 
-	// Get past exams from service (page is 0-based)
-	pastExams, paginationInfo, err := c.pastExamService.GetAllPastExams(ctx, page, pageSize, filters)
+	// Get past exams from service
+	filter := &dto.PastExamFilterRequest{
+		Page:     page,
+		PageSize: pageSize,
+	}
+
+	// Add filters if provided
+	if deptID, ok := filters["departmentId"].(int64); ok {
+		filter.DepartmentID = &deptID
+	}
+	if courseCode, ok := filters["courseCode"].(string); ok {
+		filter.CourseCode = &courseCode
+	}
+	if year, ok := filters["year"].(int); ok {
+		filter.Year = &year
+	}
+	if term, ok := filters["term"].(string); ok {
+		filter.Term = &term
+	}
+
+	response, err := c.pastExamService.GetAllExams(ctx, filter)
 	if err != nil {
 		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
-	// Convert to response DTOs
-	examResponses := make([]dto.PastExamResponse, 0, len(pastExams))
-	for _, exam := range pastExams {
-		examResponses = append(examResponses, dto.FromPastExam(&exam))
-	}
-
-	// Create response with pagination info from service
-	response := dto.PastExamListResponse{
-		Exams: examResponses,
-		// Pagination info is now directly from the service response (which uses the helper)
-		Pagination: paginationInfo,
-	}
-
-	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response, "Past exams retrieved successfully"))
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response))
 }
 
-// GetPastExamByID retrieves a past exam by ID
+// GetPastExamByID handles retrieving a specific past exam by ID
 // @Summary Get past exam by ID
-// @Description Get detailed information for a specific past exam by its ID.
-// @Tags pastexams
+// @Description Retrieves a specific past exam by its ID
+// @Tags past-exams
+// @Accept json
 // @Produce json
-// @Param id path int true "Past Exam ID" Format(int64) example(1)
-// @Success 200 {object} dto.APIResponse{data=dto.PastExamResponse} "Past exam information retrieved successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid Past Exam ID format"
+// @Param id path int true "Past exam ID"
+// @Success 200 {object} dto.APIResponse{data=models.PastExam} "Past exam retrieved successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid past exam ID"
 // @Failure 404 {object} dto.ErrorResponse "Past exam not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /pastexams/{id} [get]
+// @Router /past-exams/{id} [get]
 func (c *PastExamController) GetPastExamByID(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -152,41 +172,35 @@ func (c *PastExamController) GetPastExamByID(ctx *gin.Context) {
 		return
 	}
 
-	pastExam, err := c.pastExamService.GetPastExamByID(ctx, id)
+	// Get exam by ID
+	exam, err := c.pastExamService.GetExamByID(ctx, id)
 	if err != nil {
 		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
-	response := dto.FromPastExam(pastExam)
-	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Success:   true,
-		Message:   "Past exam retrieved successfully",
-		Data:      response,
-		Timestamp: time.Now(),
-	})
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(exam))
 }
 
-// CreatePastExam handles past exam creation
-// @Summary Create a new past exam (Instructor only)
-// @Description Create a new past exam with the provided data and optional file upload.
-// @Tags pastexams
+// CreatePastExam handles creating a new past exam
+// @Summary Create a new past exam
+// @Description Creates a new past exam with the provided information
+// @Tags past-exams
 // @Accept multipart/form-data
 // @Produce json
-// @Security BearerAuth
-// @Param year formData int true "Year" example(2023)
-// @Param term formData string true "Term (FALL or SPRING)" example(FALL)
-// @Param departmentId formData int true "Department ID" example(1)
-// @Param courseCode formData string true "Course Code" example(CENG301)
-// @Param title formData string true "Title" example("Midterm Exam")
-// @Param content formData string true "Content" example("Exam content details...")
-// @Param files formData file false "Exam files (PDF, image, etc.)"
-// @Success 201 {object} dto.APIResponse{data=dto.PastExamResponse} "Past exam successfully created"
-// @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
+// @Param year formData int true "Year of the exam"
+// @Param term formData string true "Term of the exam (FALL, SPRING, SUMMER)"
+// @Param departmentId formData int true "Department ID"
+// @Param courseCode formData string true "Course code"
+// @Param title formData string true "Exam title"
+// @Param instructorId formData int false "Instructor ID"
+// @Param file formData file true "Exam file"
+// @Success 201 {object} dto.APIResponse{data=models.PastExam} "Past exam created successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid request format"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 403 {object} dto.ErrorResponse "Forbidden - User is not an instructor"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /pastexams [post]
+// @Router /past-exams [post]
 func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
 	// Parse form data instead of JSON
 	var req dto.CreatePastExamRequest
@@ -199,125 +213,52 @@ func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, exists := ctx.Get("userID")
+	_, exists := ctx.Get("userID")
 	if !exists {
 		errorDetail := dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "User not authenticated")
 		ctx.JSON(http.StatusUnauthorized, dto.NewErrorResponse(errorDetail))
 		return
 	}
-	userIDInt, ok := userID.(int64)
-	if !ok {
-		errorDetail := dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "Invalid userID type")
-		ctx.JSON(http.StatusUnauthorized, dto.NewErrorResponse(errorDetail))
-		return
-	}
 
-	// Convert request to model
-	pastExam := &models.PastExam{
-		Year:         req.Year,
-		Term:         models.Term(req.Term),
-		DepartmentID: req.DepartmentID,
-		CourseCode:   req.CourseCode,
-		Title:        req.Title,
-		Content:      req.Content,
+	// Get file from form
+	file, err := ctx.FormFile("file")
+	if err != nil {
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid or missing file")
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
+		return
 	}
 
 	// Call service to create past exam
-	id, err := c.pastExamService.CreatePastExam(ctx, pastExam, userIDInt)
+	createdExam, err := c.pastExamService.CreateExam(ctx, &req, file)
 	if err != nil {
 		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
-	// Handle multiple file uploads
-	form, err := ctx.MultipartForm()
-	if err != nil && !errors.Is(err, http.ErrNotMultipart) {
-		logger.Error().Err(err).Msg("Error retrieving multipart form")
-		errorDetail := dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Error processing file upload")
-		errorDetail = errorDetail.WithDetails(err.Error())
-		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(errorDetail))
-		return
-	}
-
-	// If we have files, process them
-	uploadedFiles := []*models.File{}
-	if form != nil && form.File != nil {
-		files := form.File["files"]
-		for _, fileHeader := range files {
-			// Save the file
-			savedFilePath, err := c.fileStorage.SaveFile(fileHeader)
-			if err != nil {
-				logger.Error().Err(err).Str("filename", fileHeader.Filename).Msg("Error saving uploaded file")
-				// Continue with next file if one fails
-				continue
-			}
-
-			// Create file record in database
-			savedFile := &models.File{
-				FileName:     fileHeader.Filename,
-				FilePath:     savedFilePath,
-				FileURL:      c.fileStorage.GetFileURL(savedFilePath),
-				FileSize:     fileHeader.Size,
-				FileType:     fileHeader.Header.Get("Content-Type"),
-				ResourceType: models.FileTypePastExam,
-				ResourceID:   id,
-				UploadedBy:   userIDInt,
-			}
-
-			// Add file to uploaded files collection
-			uploadedFiles = append(uploadedFiles, savedFile)
-		}
-	}
-
-	// If we have any files, associate them with the past exam
-	for _, file := range uploadedFiles {
-		fileID, err := c.pastExamService.AddFileToPastExam(ctx, id, file)
-		if err != nil {
-			logger.Error().Err(err).Int64("examId", id).Str("filename", file.FileName).Msg("Error attaching file to past exam")
-			// Continue with next file if one fails
-		}
-		file.ID = fileID
-	}
-
-	// Get the created past exam with all details
-	createdExam, err := c.pastExamService.GetPastExamByID(ctx, id)
-	if err != nil {
-		middleware.HandleAPIError(ctx, err)
-		return
-	}
-
-	response := dto.FromPastExam(createdExam)
-	ctx.JSON(http.StatusCreated, dto.APIResponse{
-		Success:   true,
-		Message:   "Past exam created successfully",
-		Data:      response,
-		Timestamp: time.Now(),
-	})
+	ctx.JSON(http.StatusCreated, dto.NewSuccessResponse(createdExam))
 }
 
-// UpdatePastExam handles past exam updates
-// @Summary Update a past exam (Instructor only)
-// @Description Update an existing past exam with the provided data and optional new file upload.
-// @Tags pastexams
+// UpdatePastExam handles updating an existing past exam
+// @Summary Update a past exam
+// @Description Updates an existing past exam with the provided information
+// @Tags past-exams
 // @Accept multipart/form-data
 // @Produce json
-// @Security BearerAuth
-// @Param id path int true "Past Exam ID" Format(int64) example(1)
-// @Param year formData int true "Year" example(2023)
-// @Param term formData string true "Term (FALL or SPRING)" example(FALL)
-// @Param departmentId formData int true "Department ID" example(1)
-// @Param courseCode formData string true "Course Code" example(CENG301)
-// @Param title formData string true "Title" example("Midterm 1 - Updated")
-// @Param content formData string true "Content" example("Updated exam content...")
-// @Param files formData file false "Exam files (PDF, image, etc.)"
-// @Param removeFileIds formData string false "Comma-separated list of file IDs to remove" example("1,2,3")
-// @Success 200 {object} dto.APIResponse{data=dto.PastExamResponse} "Past exam successfully updated"
-// @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
+// @Param id path int true "Past exam ID"
+// @Param year formData int false "Year of the exam"
+// @Param term formData string false "Term of the exam (FALL, SPRING, SUMMER)"
+// @Param departmentId formData int false "Department ID"
+// @Param courseCode formData string false "Course code"
+// @Param title formData string false "Exam title"
+// @Param instructorId formData int false "Instructor ID"
+// @Param file formData file false "Exam file"
+// @Success 200 {object} dto.APIResponse{data=models.PastExam} "Past exam updated successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid request format"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 403 {object} dto.ErrorResponse "Forbidden - User does not have permission to update this exam"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden"
 // @Failure 404 {object} dto.ErrorResponse "Past exam not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /pastexams/{id} [put]
+// @Router /past-exams/{id} [put]
 func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
 	// Get exam ID from URL
 	idStr := ctx.Param("id")
@@ -340,135 +281,37 @@ func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, exists := ctx.Get("userID")
+	_, exists := ctx.Get("userID")
 	if !exists {
 		errorDetail := dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "User not authenticated")
 		ctx.JSON(http.StatusUnauthorized, dto.NewErrorResponse(errorDetail))
 		return
 	}
-	userIDInt, ok := userID.(int64)
-	if !ok {
-		errorDetail := dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "Invalid userID type")
-		ctx.JSON(http.StatusUnauthorized, dto.NewErrorResponse(errorDetail))
-		return
-	}
-
-	// Convert request to model
-	pastExam := &models.PastExam{
-		ID:           id,
-		Year:         req.Year,
-		Term:         models.Term(req.Term),
-		DepartmentID: req.DepartmentID,
-		CourseCode:   req.CourseCode,
-		Title:        req.Title,
-		Content:      req.Content,
-	}
 
 	// Call service to update past exam
-	err = c.pastExamService.UpdatePastExam(ctx, pastExam, userIDInt, nil)
+	updatedExam, err := c.pastExamService.UpdateExam(ctx, id, &req)
 	if err != nil {
 		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
-	// Process file removals
-	if removeFileIdsStr := ctx.PostForm("removeFileIds"); removeFileIdsStr != "" {
-		fileIdStrs := strings.Split(removeFileIdsStr, ",")
-		for _, fileIdStr := range fileIdStrs {
-			fileId, err := strconv.ParseInt(strings.TrimSpace(fileIdStr), 10, 64)
-			if err != nil {
-				logger.Warn().Err(err).Str("fileIdStr", fileIdStr).Msg("Invalid file ID for removal")
-				continue
-			}
-
-			err = c.pastExamService.RemoveFileFromPastExam(ctx, id, fileId, userIDInt)
-			if err != nil {
-				logger.Error().Err(err).Int64("examId", id).Int64("fileId", fileId).Msg("Error removing file from past exam")
-				// Continue with other files if one removal fails
-			}
-		}
-	}
-
-	// Handle multiple file uploads
-	form, err := ctx.MultipartForm()
-	if err != nil && !errors.Is(err, http.ErrNotMultipart) {
-		logger.Error().Err(err).Msg("Error retrieving multipart form")
-		errorDetail := dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Error processing file upload")
-		errorDetail = errorDetail.WithDetails(err.Error())
-		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(errorDetail))
-		return
-	}
-
-	// If we have files, process them
-	uploadedFiles := []*models.File{}
-	if form != nil && form.File != nil {
-		files := form.File["files"]
-		for _, fileHeader := range files {
-			// Save the file
-			savedFilePath, err := c.fileStorage.SaveFile(fileHeader)
-			if err != nil {
-				logger.Error().Err(err).Str("filename", fileHeader.Filename).Msg("Error saving uploaded file")
-				// Continue with next file if one fails
-				continue
-			}
-
-			// Create file record in database
-			savedFile := &models.File{
-				FileName:     fileHeader.Filename,
-				FilePath:     savedFilePath,
-				FileURL:      c.fileStorage.GetFileURL(savedFilePath),
-				FileSize:     fileHeader.Size,
-				FileType:     fileHeader.Header.Get("Content-Type"),
-				ResourceType: models.FileTypePastExam,
-				ResourceID:   id,
-				UploadedBy:   userIDInt,
-			}
-
-			// Add file to uploaded files collection
-			uploadedFiles = append(uploadedFiles, savedFile)
-		}
-	}
-
-	// If we have any files, associate them with the past exam
-	for _, file := range uploadedFiles {
-		fileID, err := c.pastExamService.AddFileToPastExam(ctx, id, file)
-		if err != nil {
-			logger.Error().Err(err).Int64("examId", id).Str("filename", file.FileName).Msg("Error attaching file to past exam")
-			// Continue with next file if one fails
-		}
-		file.ID = fileID
-	}
-
-	// Get the updated past exam with all details
-	updatedExam, err := c.pastExamService.GetPastExamByID(ctx, id)
-	if err != nil {
-		middleware.HandleAPIError(ctx, err)
-		return
-	}
-
-	response := dto.FromPastExam(updatedExam)
-	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Success:   true,
-		Message:   "Past exam updated successfully",
-		Data:      response,
-		Timestamp: time.Now(),
-	})
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(updatedExam))
 }
 
-// DeletePastExam deletes a past exam
-// @Summary Delete a past exam (Instructor only, Owner only)
-// @Description Delete a past exam by its ID. Requires instructor role and ownership.
-// @Tags pastexams
+// DeletePastExam handles deleting a past exam
+// @Summary Delete a past exam
+// @Description Deletes an existing past exam by its ID
+// @Tags past-exams
+// @Accept json
 // @Produce json
-// @Security BearerAuth
-// @Param id path int true "Past Exam ID" Format(int64) example(1)
-// @Success 200 {object} dto.APIResponse "Past exam successfully deleted"
-// @Failure 400 {object} dto.ErrorResponse "Invalid Past Exam ID format"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
-// @Failure 403 {object} dto.ErrorResponse "Forbidden - User is not an instructor or not the owner"
+// @Param id path int true "Past exam ID"
+// @Success 204 "Past exam deleted successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid past exam ID"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden"
 // @Failure 404 {object} dto.ErrorResponse "Past exam not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /pastexams/{id} [delete]
+// @Router /past-exams/{id} [delete]
 func (c *PastExamController) DeletePastExam(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -480,15 +323,15 @@ func (c *PastExamController) DeletePastExam(ctx *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, exists := ctx.Get("userID")
+	_, exists := ctx.Get("userID")
 	if !exists {
 		errorDetail := dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "User not authenticated")
 		ctx.JSON(http.StatusUnauthorized, dto.NewErrorResponse(errorDetail))
 		return
 	}
 
-	// First get the exam to retrieve the file path before deletion
-	pastExam, err := c.pastExamService.GetPastExamByID(ctx, id)
+	// Call service to delete past exam
+	err = c.pastExamService.DeleteExam(ctx, id)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrPastExamNotFound) {
 			// If exam doesn't exist, just return the error
@@ -499,30 +342,10 @@ func (c *PastExamController) DeletePastExam(ctx *gin.Context) {
 		logger.Warn().Err(err).Int64("examID", id).Msg("Error getting exam details before deletion")
 	}
 
-	// Call service to delete past exam from database
-	err = c.pastExamService.DeletePastExam(ctx, id, userID.(int64))
-	if err != nil {
-		middleware.HandleAPIError(ctx, err)
-		return
+	// Delete associated files
+	if err := c.fileStorage.DeleteFile(fmt.Sprintf("past_exam_%d", id)); err != nil {
+		logger.Error().Err(err).Int64("examId", id).Msg("Failed to delete files from storage")
 	}
 
-	// If we have the exam details and it had a file, delete the file
-	if pastExam != nil && pastExam.Files != nil && len(pastExam.Files) > 0 {
-		for _, file := range pastExam.Files {
-			fileErr := c.fileStorage.DeleteFile(file.FilePath)
-			if fileErr != nil {
-				// Log the error but don't fail the operation since the database record is already deleted
-				logger.Error().Err(fileErr).Str("filePath", file.FilePath).Msg("Failed to delete file from filesystem")
-			} else {
-				logger.Info().Str("filePath", file.FilePath).Msg("Successfully deleted file from filesystem")
-			}
-		}
-	}
-
-	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Success:   true,
-		Message:   "Past exam deleted successfully",
-		Data:      nil,
-		Timestamp: time.Now(),
-	})
+	ctx.JSON(http.StatusNoContent, nil)
 }

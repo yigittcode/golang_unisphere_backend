@@ -3,12 +3,16 @@ package dto
 import "time"
 
 // APIResponse is the generic structure for all API responses.
+// @Description Generic response structure for all API endpoints
 type APIResponse struct {
-	Success   bool         `json:"success" example:"true"`
-	Message   string       `json:"message" example:"Operation completed successfully"`
-	Data      interface{}  `json:"data,omitempty"`                               // Use specific DTOs for data structure
-	Error     *ErrorDetail `json:"error,omitempty"`                              // Include error details if Success is false
-	Timestamp time.Time    `json:"timestamp" example:"2025-04-23T12:01:05.123Z"` // Timestamp of the response
+	// Response payload - specific to each endpoint
+	Data interface{} `json:"data,omitempty"`
+
+	// Error details - only present when Success is false
+	Error *ErrorDetail `json:"error,omitempty" swaggerignore:"true"`
+
+	// Timestamp of when the response was generated
+	Timestamp time.Time `json:"timestamp" example:"2025-04-23T12:01:05.123Z"`
 }
 
 // SuccessResponse represents a standard success response message for API endpoints
@@ -18,10 +22,8 @@ type SuccessResponse struct {
 }
 
 // NewSuccessResponse creates a standard success API response.
-func NewSuccessResponse(data interface{}, message string) APIResponse {
+func NewSuccessResponse(data interface{}) APIResponse {
 	return APIResponse{
-		Success:   true,
-		Message:   message,
 		Data:      data,
 		Timestamp: time.Now(),
 	}

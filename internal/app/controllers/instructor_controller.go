@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/services"
@@ -27,12 +28,15 @@ func NewInstructorController(instructorService services.InstructorService) *Inst
 
 // GetInstructorByID retrieves instructor information by ID
 // @Summary Get instructor by ID
-// @Description Get public information about an instructor by their user ID
+// @Description Retrieves a specific instructor by its ID
 // @Tags instructors
+// @Accept json
 // @Produce json
-// @Param id path int true "Instructor User ID" Format(int64)
+// @Security BearerAuth
+// @Param id path int true "Instructor ID" Format(int64) minimum(1)
 // @Success 200 {object} dto.APIResponse{data=dto.InstructorResponse} "Instructor retrieved successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid Instructor ID format"
+// @Failure 400 {object} dto.ErrorResponse "Invalid instructor ID format"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
 // @Failure 404 {object} dto.ErrorResponse "Instructor not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /instructors/{id} [get]
@@ -56,48 +60,51 @@ func (c *InstructorController) GetInstructorByID(ctx *gin.Context) {
 
 	// Convert model to DTO response
 	response := dto.InstructorResponse{
-		ID:        instructor.ID,
-		UserID:    instructor.UserID,
-		Title:     instructor.Title,
+		ID:     instructor.ID,
+		UserID: instructor.UserID,
+		Title:  instructor.Title,
 	}
-	
+
 	// Add user info if available
 	if instructor.User != nil {
 		response.FirstName = instructor.User.FirstName
 		response.LastName = instructor.User.LastName
 		response.Email = instructor.User.Email
 		response.CreatedAt = instructor.User.CreatedAt.Format(time.RFC3339)
-		
+
 		if instructor.User.DepartmentID != nil {
 			response.DepartmentID = *instructor.User.DepartmentID
 		}
 	}
-	
+
 	// Add department info if available
 	if instructor.Department != nil {
 		response.DepartmentName = instructor.Department.Name
-		
+
 		// Add faculty info if available
 		if instructor.Department.Faculty != nil {
 			response.FacultyName = instructor.Department.Faculty.Name
 		}
 	}
-	
+
 	// Return instructor information
-	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response, "Instructor retrieved successfully"))
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response))
 }
 
-// GetInstructorsByDepartment retrieves instructors by department ID
+// GetInstructorsByDepartment retrieves instructors by department
 // @Summary Get instructors by department
-// @Description Get a list of instructors belonging to a specific department
+// @Description Retrieves a list of instructors for a specific department
 // @Tags instructors
+// @Accept json
 // @Produce json
-// @Param departmentId path int true "Department ID" Format(int64)
-// @Success 200 {object} dto.APIResponse{data=dto.InstructorsResponse} "Instructors retrieved successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid Department ID format"
+// @Security BearerAuth
+// @Param departmentId path int true "Department ID" Format(int64) minimum(1)
+// @Success 200 {object} dto.APIResponse{data=[]dto.InstructorResponse} "Instructors retrieved successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid department ID format"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
 // @Failure 404 {object} dto.ErrorResponse "Department not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /department-instructors/{departmentId} [get] // Note: Path defined in routes.go
+// @Router /instructors/department/{departmentId} [get]
 func (c *InstructorController) GetInstructorsByDepartment(ctx *gin.Context) {
 	// Get department ID from URL
 	departmentIdParam := ctx.Param("departmentId")
@@ -120,35 +127,34 @@ func (c *InstructorController) GetInstructorsByDepartment(ctx *gin.Context) {
 	instructorResponses := make([]dto.InstructorResponse, 0, len(instructors))
 	for _, instructor := range instructors {
 		response := dto.InstructorResponse{
-			ID:        instructor.ID,
-			UserID:    instructor.UserID,
-			Title:     instructor.Title,
+			ID:     instructor.ID,
+			UserID: instructor.UserID,
+			Title:  instructor.Title,
 		}
-		
+
 		// Add user info if available
 		if instructor.User != nil {
 			response.FirstName = instructor.User.FirstName
 			response.LastName = instructor.User.LastName
 			response.Email = instructor.User.Email
 			response.CreatedAt = instructor.User.CreatedAt.Format(time.RFC3339)
-			
+
 			if instructor.User.DepartmentID != nil {
 				response.DepartmentID = *instructor.User.DepartmentID
 			}
 		}
-		
+
 		// Add department info if available
 		if instructor.Department != nil {
 			response.DepartmentName = instructor.Department.Name
 		}
-		
+
 		instructorResponses = append(instructorResponses, response)
 	}
-	
+
 	// Return instructor information
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(
 		dto.InstructorsResponse{Instructors: instructorResponses},
-		"Instructors retrieved successfully",
 	))
 }
 
@@ -191,35 +197,35 @@ func (c *InstructorController) GetInstructorProfile(ctx *gin.Context) {
 
 	// Convert model to DTO
 	response := dto.InstructorResponse{
-		ID:        profile.ID,
-		UserID:    profile.UserID,
-		Title:     profile.Title,
+		ID:     profile.ID,
+		UserID: profile.UserID,
+		Title:  profile.Title,
 	}
-	
+
 	// Add user info if available
 	if profile.User != nil {
 		response.FirstName = profile.User.FirstName
 		response.LastName = profile.User.LastName
 		response.Email = profile.User.Email
 		response.CreatedAt = profile.User.CreatedAt.Format(time.RFC3339)
-		
+
 		if profile.User.DepartmentID != nil {
 			response.DepartmentID = *profile.User.DepartmentID
 		}
 	}
-	
+
 	// Add department info if available
 	if profile.Department != nil {
 		response.DepartmentName = profile.Department.Name
-		
+
 		// Add faculty info if available
 		if profile.Department.Faculty != nil {
 			response.FacultyName = profile.Department.Faculty.Name
 		}
 	}
-	
+
 	// Return instructor profile
-	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response, "Instructor profile retrieved successfully"))
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response))
 }
 
 // UpdateTitle updates the title of an instructor
@@ -272,7 +278,6 @@ func (c *InstructorController) UpdateTitle(ctx *gin.Context) {
 	}
 
 	// Return success response
-	successMsg := "Instructor title updated successfully"
-	response := dto.SuccessResponse{Message: successMsg}
-	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response, successMsg))
+	response := dto.SuccessResponse{Message: "Instructor title updated successfully"}
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response))
 }

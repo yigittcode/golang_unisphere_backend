@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/models/dto"
@@ -28,13 +29,16 @@ func NewFacultyController(facultyService services.FacultyService) *FacultyContro
 
 // CreateFaculty handles faculty creation
 // @Summary Create a new faculty
-// @Description Create a new faculty with the provided data
+// @Description Creates a new faculty with the provided information
 // @Tags faculties
 // @Accept json
 // @Produce json
-// @Param request body models.Faculty true "Faculty information"
-// @Success 201 {object} dto.APIResponse "Faculty successfully created"
-// @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
+// @Security BearerAuth
+// @Param request body dto.CreateFacultyRequest true "Faculty information"
+// @Success 201 {object} dto.APIResponse{data=dto.FacultyResponse} "Faculty created successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid request data"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden - User does not have permission"
 // @Failure 409 {object} dto.ErrorResponse "Faculty already exists"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /faculties [post]
@@ -55,20 +59,22 @@ func (c *FacultyController) CreateFaculty(ctx *gin.Context) {
 
 	faculty.ID = id
 	ctx.JSON(http.StatusCreated, dto.APIResponse{
-		Success:   true,
-		Message:   "Faculty created successfully",
 		Data:      faculty,
 		Timestamp: time.Now(),
 	})
 }
 
 // GetFacultyByID retrieves a faculty by ID
-// @Summary Get faculty by ID
-// @Description Get faculty information by ID
+// @Summary Get faculty details
+// @Description Retrieves detailed information about a specific faculty by its ID
 // @Tags faculties
+// @Accept json
 // @Produce json
-// @Param id path int true "Faculty ID"
-// @Success 200 {object} dto.APIResponse "Faculty information retrieved successfully"
+// @Security BearerAuth
+// @Param id path int true "Faculty ID" Format(int64) minimum(1)
+// @Success 200 {object} dto.APIResponse{data=dto.FacultyResponse} "Faculty retrieved successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid faculty ID format"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
 // @Failure 404 {object} dto.ErrorResponse "Faculty not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /faculties/{id} [get]
@@ -89,8 +95,6 @@ func (c *FacultyController) GetFacultyByID(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Success:   true,
-		Message:   "Faculty retrieved successfully",
 		Data:      faculty,
 		Timestamp: time.Now(),
 	})
@@ -98,10 +102,12 @@ func (c *FacultyController) GetFacultyByID(ctx *gin.Context) {
 
 // GetAllFaculties retrieves all faculties
 // @Summary Get all faculties
-// @Description Get a list of all faculties
+// @Description Retrieves a list of all faculties
 // @Tags faculties
+// @Accept json
 // @Produce json
-// @Success 200 {object} dto.APIResponse "Faculties retrieved successfully"
+// @Security BearerAuth
+// @Success 200 {object} dto.APIResponse{data=[]models.Faculty} "Faculties retrieved successfully"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /faculties [get]
 func (c *FacultyController) GetAllFaculties(ctx *gin.Context) {
@@ -112,23 +118,24 @@ func (c *FacultyController) GetAllFaculties(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Success:   true,
-		Message:   "Faculties retrieved successfully",
-		Data:      faculties,
+			Data:      faculties,
 		Timestamp: time.Now(),
 	})
 }
 
 // UpdateFaculty updates an existing faculty
 // @Summary Update a faculty
-// @Description Update a faculty with the provided data
+// @Description Updates an existing faculty with new information
 // @Tags faculties
 // @Accept json
 // @Produce json
-// @Param id path int true "Faculty ID"
-// @Param request body models.Faculty true "Updated faculty information"
-// @Success 200 {object} dto.APIResponse "Faculty successfully updated"
-// @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
+// @Security BearerAuth
+// @Param id path int true "Faculty ID" Format(int64) minimum(1)
+// @Param request body dto.UpdateFacultyRequest true "Updated faculty information"
+// @Success 200 {object} dto.APIResponse{data=dto.FacultyResponse} "Faculty updated successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid request data"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden - User does not have permission"
 // @Failure 404 {object} dto.ErrorResponse "Faculty not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /faculties/{id} [put]
@@ -160,8 +167,6 @@ func (c *FacultyController) UpdateFaculty(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Success:   true,
-		Message:   "Faculty updated successfully",
 		Data:      faculty,
 		Timestamp: time.Now(),
 	})
@@ -169,13 +174,17 @@ func (c *FacultyController) UpdateFaculty(ctx *gin.Context) {
 
 // DeleteFaculty deletes a faculty
 // @Summary Delete a faculty
-// @Description Delete a faculty by ID
+// @Description Deletes a faculty and its associated data
 // @Tags faculties
+// @Accept json
 // @Produce json
-// @Param id path int true "Faculty ID"
-// @Success 200 {object} dto.APIResponse "Faculty successfully deleted"
+// @Security BearerAuth
+// @Param id path int true "Faculty ID" Format(int64) minimum(1)
+// @Success 200 {object} dto.APIResponse "Faculty deleted successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid faculty ID"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden - User does not have permission"
 // @Failure 404 {object} dto.ErrorResponse "Faculty not found"
-// @Failure 409 {object} dto.ErrorResponse "Cannot delete faculty with associated departments"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /faculties/{id} [delete]
 func (c *FacultyController) DeleteFaculty(ctx *gin.Context) {
@@ -195,8 +204,6 @@ func (c *FacultyController) DeleteFaculty(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Success:   true,
-		Message:   "Faculty deleted successfully",
 		Data:      nil,
 		Timestamp: time.Now(),
 	})

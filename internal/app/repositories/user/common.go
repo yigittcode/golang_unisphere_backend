@@ -351,3 +351,70 @@ func (r *CommonRepository) UpdateUserProfile(ctx context.Context, userID int64, 
 	logger.Info().Int64("userID", userID).Msg("User profile updated successfully")
 	return nil
 }
+
+// DeleteUser deletes a user by ID
+func (r *CommonRepository) DeleteUser(ctx context.Context, id int64) error {
+	query := r.sb.Delete("users").
+		Where(squirrel.Eq{"id": id})
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		logger.Error().Err(err).Msg("Error building delete user SQL")
+		return fmt.Errorf("failed to build delete user query: %w", err)
+	}
+
+	result, err := r.db.Exec(ctx, sql, args...)
+	if err != nil {
+		logger.Error().Err(err).Int64("userID", id).Msg("Error executing delete user query")
+		return fmt.Errorf("error deleting user: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		logger.Warn().Int64("userID", id).Msg("User not found when deleting")
+		return apperrors.ErrUserNotFound
+	}
+
+	logger.Info().Int64("userID", id).Msg("User deleted successfully")
+	return nil
+}
+
+// UpdateUser updates a user
+func (r *CommonRepository) UpdateUser(ctx context.Context, user *models.User) error {
+	query := r.sb.Update("users").
+		Set("email", user.Email).
+		Set("first_name", user.FirstName).
+		Set("last_name", user.LastName).
+		Set("role_type", user.RoleType).
+		Set("is_active", user.IsActive).
+		Set("updated_at", time.Now())
+
+	if user.DepartmentID != nil {
+		query = query.Set("department_id", *user.DepartmentID)
+	}
+
+	if user.ProfilePhotoFileID != nil {
+		query = query.Set("profile_photo_file_id", *user.ProfilePhotoFileID)
+	}
+
+	query = query.Where(squirrel.Eq{"id": user.ID})
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		logger.Error().Err(err).Msg("Error building update user SQL")
+		return fmt.Errorf("failed to build update user query: %w", err)
+	}
+
+	result, err := r.db.Exec(ctx, sql, args...)
+	if err != nil {
+		logger.Error().Err(err).Int64("userID", user.ID).Msg("Error executing update user query")
+		return fmt.Errorf("error updating user: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		logger.Warn().Int64("userID", user.ID).Msg("User not found when updating")
+		return apperrors.ErrUserNotFound
+	}
+
+	logger.Info().Int64("userID", user.ID).Msg("User updated successfully")
+	return nil
+}

@@ -10,21 +10,21 @@ import (
 	"github.com/yigit/unisphere/internal/app/models"
 )
 
-// ClassNoteRepository handles database operations for class notes
-type ClassNoteRepository struct {
+// PastExamRepository handles database operations for past exams
+type PastExamRepository struct {
 	db *pgxpool.Pool
 }
 
-// NewClassNoteRepository creates a new ClassNoteRepository
-func NewClassNoteRepository(db *pgxpool.Pool) *ClassNoteRepository {
-	return &ClassNoteRepository{db: db}
+// NewPastExamRepository creates a new PastExamRepository
+func NewPastExamRepository(db *pgxpool.Pool) *PastExamRepository {
+	return &PastExamRepository{db: db}
 }
 
-// GetAll retrieves all class notes with filtering and pagination
-func (r *ClassNoteRepository) GetAll(ctx context.Context, departmentID *int64, courseCode *string, page, pageSize int) ([]models.ClassNote, int64, error) {
+// GetAll retrieves all past exams with filtering and pagination
+func (r *PastExamRepository) GetAll(ctx context.Context, departmentID *int64, courseCode *string, page, pageSize int) ([]models.PastExam, int64, error) {
 	// Build base query
-	query := squirrel.Select("id", "course_code", "title", "description", "file_id", "department_id", "instructor_id").
-		From("class_notes").
+	query := squirrel.Select("id", "course_code", "year", "term", "file_id", "department_id", "instructor_id").
+		From("past_exams").
 		PlaceholderFormat(squirrel.Dollar)
 
 	// Add filters
@@ -52,34 +52,34 @@ func (r *ClassNoteRepository) GetAll(ctx context.Context, departmentID *int64, c
 	}
 	defer rows.Close()
 
-	var notes []models.ClassNote
+	var exams []models.PastExam
 	var total int64
 
 	for rows.Next() {
-		var note models.ClassNote
+		var exam models.PastExam
 		err := rows.Scan(
-			&note.ID,
-			&note.CourseCode,
-			&note.Title,
-			&note.Description,
-			&note.FileID,
-			&note.DepartmentID,
-			&note.InstructorID,
+			&exam.ID,
+			&exam.CourseCode,
+			&exam.Year,
+			&exam.Term,
+			&exam.FileID,
+			&exam.DepartmentID,
+			&exam.InstructorID,
 			&total,
 		)
 		if err != nil {
 			return nil, 0, fmt.Errorf("error scanning row: %w", err)
 		}
-		notes = append(notes, note)
+		exams = append(exams, exam)
 	}
 
-	return notes, total, nil
+	return exams, total, nil
 }
 
-// GetByID retrieves a class note by ID
-func (r *ClassNoteRepository) GetByID(ctx context.Context, id int64) (*models.ClassNote, error) {
-	query := squirrel.Select("id", "course_code", "title", "description", "file_id", "department_id", "instructor_id").
-		From("class_notes").
+// GetByID retrieves a past exam by ID
+func (r *PastExamRepository) GetByID(ctx context.Context, id int64) (*models.PastExam, error) {
+	query := squirrel.Select("id", "course_code", "year", "term", "file_id", "department_id", "instructor_id").
+		From("past_exams").
 		Where("id = ?", id).
 		PlaceholderFormat(squirrel.Dollar)
 
@@ -88,15 +88,15 @@ func (r *ClassNoteRepository) GetByID(ctx context.Context, id int64) (*models.Cl
 		return nil, fmt.Errorf("error building SQL: %w", err)
 	}
 
-	var note models.ClassNote
+	var exam models.PastExam
 	err = r.db.QueryRow(ctx, sql, args...).Scan(
-		&note.ID,
-		&note.CourseCode,
-		&note.Title,
-		&note.Description,
-		&note.FileID,
-		&note.DepartmentID,
-		&note.InstructorID,
+		&exam.ID,
+		&exam.CourseCode,
+		&exam.Year,
+		&exam.Term,
+		&exam.FileID,
+		&exam.DepartmentID,
+		&exam.InstructorID,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -105,14 +105,14 @@ func (r *ClassNoteRepository) GetByID(ctx context.Context, id int64) (*models.Cl
 		return nil, fmt.Errorf("error executing query: %w", err)
 	}
 
-	return &note, nil
+	return &exam, nil
 }
 
-// Create creates a new class note
-func (r *ClassNoteRepository) Create(ctx context.Context, note *models.ClassNote) (int64, error) {
-	query := squirrel.Insert("class_notes").
-		Columns("course_code", "title", "description", "file_id", "department_id", "instructor_id").
-		Values(note.CourseCode, note.Title, note.Description, note.FileID, note.DepartmentID, note.InstructorID).
+// Create creates a new past exam
+func (r *PastExamRepository) Create(ctx context.Context, exam *models.PastExam) (int64, error) {
+	query := squirrel.Insert("past_exams").
+		Columns("course_code", "year", "term", "file_id", "department_id", "instructor_id").
+		Values(exam.CourseCode, exam.Year, exam.Term, exam.FileID, exam.DepartmentID, exam.InstructorID).
 		Suffix("RETURNING id").
 		PlaceholderFormat(squirrel.Dollar)
 
@@ -130,16 +130,16 @@ func (r *ClassNoteRepository) Create(ctx context.Context, note *models.ClassNote
 	return id, nil
 }
 
-// Update updates an existing class note
-func (r *ClassNoteRepository) Update(ctx context.Context, note *models.ClassNote) error {
-	query := squirrel.Update("class_notes").
-		Set("course_code", note.CourseCode).
-		Set("title", note.Title).
-		Set("description", note.Description).
-		Set("file_id", note.FileID).
-		Set("department_id", note.DepartmentID).
-		Set("instructor_id", note.InstructorID).
-		Where("id = ?", note.ID).
+// Update updates an existing past exam
+func (r *PastExamRepository) Update(ctx context.Context, exam *models.PastExam) error {
+	query := squirrel.Update("past_exams").
+		Set("course_code", exam.CourseCode).
+		Set("year", exam.Year).
+		Set("term", exam.Term).
+		Set("file_id", exam.FileID).
+		Set("department_id", exam.DepartmentID).
+		Set("instructor_id", exam.InstructorID).
+		Where("id = ?", exam.ID).
 		PlaceholderFormat(squirrel.Dollar)
 
 	sql, args, err := query.ToSql()
@@ -159,9 +159,9 @@ func (r *ClassNoteRepository) Update(ctx context.Context, note *models.ClassNote
 	return nil
 }
 
-// Delete deletes a class note
-func (r *ClassNoteRepository) Delete(ctx context.Context, id int64) error {
-	query := squirrel.Delete("class_notes").
+// Delete deletes a past exam
+func (r *PastExamRepository) Delete(ctx context.Context, id int64) error {
+	query := squirrel.Delete("past_exams").
 		Where("id = ?", id).
 		PlaceholderFormat(squirrel.Dollar)
 

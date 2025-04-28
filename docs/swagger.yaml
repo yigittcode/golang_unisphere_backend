@@ -1,518 +1,6 @@
 basePath: /api/v1
 definitions:
-  dto.APIResponse:
-    properties:
-      data:
-        description: Use specific DTOs for data structure
-      error:
-        allOf:
-        - $ref: '#/definitions/dto.ErrorDetail'
-        description: Include error details if Success is false
-      message:
-        example: Operation completed successfully
-        type: string
-      success:
-        example: true
-        type: boolean
-      timestamp:
-        description: Timestamp of the response
-        example: "2025-04-23T12:01:05.123Z"
-        type: string
-    type: object
-  dto.ClassNoteListResponse:
-    properties:
-      notes:
-        description: List of class note details for the current page
-        items:
-          $ref: '#/definitions/dto.ClassNoteResponse'
-        type: array
-      pagination:
-        allOf:
-        - $ref: '#/definitions/dto.PaginationInfo'
-        description: Pagination metadata
-    type: object
-  dto.ClassNoteResponse:
-    properties:
-      content:
-        description: Main content of the note
-        example: Detailed notes covering topic X...
-        type: string
-      courseCode:
-        description: Course code
-        example: CENG304
-        type: string
-      createdAt:
-        description: Timestamp when the note was created
-        example: "2024-01-15T10:00:00Z"
-        type: string
-      departmentId:
-        description: ID of the department for the course
-        example: 1
-        type: integer
-      departmentName:
-        description: Name of the department
-        example: Computer Engineering
-        type: string
-      facultyId:
-        description: ID of the faculty associated with the department
-        example: 1
-        type: integer
-      facultyName:
-        description: Name of the faculty
-        example: Engineering Faculty
-        type: string
-      files:
-        description: Files attached to the note (new field for multiple files)
-        items:
-          $ref: '#/definitions/dto.FileResponse'
-        type: array
-      id:
-        description: Unique identifier for the class note
-        example: 15
-        type: integer
-      term:
-        description: Term (FALL or SPRING)
-        example: SPRING
-        type: string
-      title:
-        description: Title of the class note
-        example: Lecture Notes - Week 5
-        type: string
-      updatedAt:
-        description: Timestamp when the note was last updated
-        example: "2024-01-16T11:30:00Z"
-        type: string
-      uploadedByStudent:
-        description: True if uploaded by a student, false if by an instructor
-        example: true
-        type: boolean
-      uploaderEmail:
-        description: Email of the user who uploaded the note
-        example: john.doe@example.com
-        type: string
-      uploaderName:
-        description: Name of the user who uploaded the note
-        example: John Doe
-        type: string
-      year:
-        description: Year the note corresponds to
-        example: 2024
-        type: integer
-    type: object
-  dto.ErrorCode:
-    enum:
-    - AUTH_001
-    - AUTH_002
-    - AUTH_003
-    - AUTH_004
-    - AUTH_005
-    - AUTH_006
-    - AUTH_007
-    - AUTH_008
-    - RES_001
-    - RES_002
-    - RES_003
-    - VAL_001
-    - SRV_001
-    - SRV_002
-    - SRV_003
-    - BAD_REQUEST
-    - FORBIDDEN
-    type: string
-    x-enum-varnames:
-    - ErrorCodeInvalidCredentials
-    - ErrorCodeInvalidEmail
-    - ErrorCodeInvalidPassword
-    - ErrorCodeInvalidStudentID
-    - ErrorCodeInvalidToken
-    - ErrorCodeExpiredToken
-    - ErrorCodeTokenNotFound
-    - ErrorCodeUnauthorized
-    - ErrorCodeResourceNotFound
-    - ErrorCodeResourceAlreadyExists
-    - ErrorCodeResourceInvalid
-    - ErrorCodeValidationFailed
-    - ErrorCodeInternalServer
-    - ErrorCodeDatabaseError
-    - ErrorCodeExternalServiceError
-    - ErrorCodeBadRequest
-    - ErrorCodeForbidden
-  dto.ErrorDetail:
-    properties:
-      code:
-        allOf:
-        - $ref: '#/definitions/dto.ErrorCode'
-        example: AUTH_001
-      debugInfo:
-        type: string
-      details: {}
-      field:
-        example: email
-        type: string
-      message:
-        example: Email format is invalid, school email required
-        type: string
-      severity:
-        allOf:
-        - $ref: '#/definitions/dto.ErrorSeverity'
-        example: ERROR
-    type: object
-  dto.ErrorResponse:
-    properties:
-      error:
-        $ref: '#/definitions/dto.ErrorDetail'
-      success:
-        example: false
-        type: boolean
-      timestamp:
-        example: "2025-04-23T12:01:05.123Z"
-        type: string
-    type: object
-  dto.ErrorSeverity:
-    enum:
-    - INFO
-    - WARNING
-    - ERROR
-    - CRITICAL
-    type: string
-    x-enum-varnames:
-    - ErrorSeverityInfo
-    - ErrorSeverityWarning
-    - ErrorSeverityError
-    - ErrorSeverityCritical
-  dto.FileResponse:
-    properties:
-      createdAt:
-        description: Timestamp when the file was created
-        example: "2024-01-15T10:00:00Z"
-        type: string
-      fileName:
-        description: Name of the file
-        example: lecture_slides.pdf
-        type: string
-      fileSize:
-        description: Size of the file in bytes
-        example: 1048576
-        type: integer
-      fileType:
-        description: MIME type of the file
-        example: application/pdf
-        type: string
-      fileUrl:
-        description: URL to access the file
-        example: http://example.com/uploads/123
-        type: string
-      id:
-        description: Unique identifier for the file
-        example: 123
-        type: integer
-      resourceType:
-        description: Type of resource this file is attached to
-        example: PAST_EXAM
-        type: string
-    type: object
-  dto.LoginRequest:
-    properties:
-      email:
-        description: User's registered email address
-        example: user@school.edu.tr
-        type: string
-      password:
-        description: User's password
-        example: Password123
-        type: string
-    required:
-    - email
-    - password
-    type: object
-  dto.PaginationInfo:
-    properties:
-      currentPage:
-        description: Current page number (0-based)
-        example: 0
-        type: integer
-      pageSize:
-        description: Number of items per page
-        example: 10
-        type: integer
-      totalItems:
-        description: Total number of items matching the query
-        example: 48
-        type: integer
-      totalPages:
-        description: Total number of pages available
-        example: 5
-        type: integer
-    type: object
-  dto.PastExamListResponse:
-    properties:
-      exams:
-        description: List of past exam details for the current page
-        items:
-          $ref: '#/definitions/dto.PastExamResponse'
-        type: array
-      pagination:
-        allOf:
-        - $ref: '#/definitions/dto.PaginationInfo'
-        description: Pagination metadata
-    type: object
-  dto.PastExamResponse:
-    properties:
-      content:
-        description: Detailed content or description of the exam
-        example: Exam content details...
-        type: string
-      courseCode:
-        description: Course code
-        example: CENG301
-        type: string
-      createdAt:
-        description: Creation timestamp
-        example: "2024-01-15T10:00:00Z"
-        type: string
-      departmentId:
-        description: ID of the department for the course
-        example: 1
-        type: integer
-      departmentName:
-        description: Name of the department
-        example: Computer Engineering
-        type: string
-      facultyId:
-        description: ID of the faculty associated with the department
-        example: 1
-        type: integer
-      facultyName:
-        description: Name of the faculty
-        example: Engineering Faculty
-        type: string
-      files:
-        description: Files attached to the exam (new field for multiple files)
-        items:
-          $ref: '#/definitions/dto.FileResponse'
-        type: array
-      id:
-        description: Unique identifier for the past exam
-        example: 10
-        type: integer
-      instructorName:
-        description: Name of the instructor who uploaded the exam
-        example: Jane Smith
-        type: string
-      term:
-        description: Term the exam was held (FALL or SPRING)
-        example: FALL
-        type: string
-      title:
-        description: Title of the exam
-        example: Midterm 1
-        type: string
-      updatedAt:
-        description: Last update timestamp
-        example: "2024-01-16T11:30:00Z"
-        type: string
-      uploadedByEmail:
-        description: Email of the instructor who uploaded the exam
-        example: instructor@school.edu.tr
-        type: string
-      year:
-        description: Year the exam was held
-        example: 2023
-        type: integer
-    type: object
-  dto.ProfilePhoto:
-    properties:
-      fileType:
-        description: File MIME type
-        example: image/jpeg
-        type: string
-      id:
-        description: File ID
-        example: 4
-        type: integer
-      url:
-        description: File URL
-        example: http://example.com/uploads/profile.jpg
-        type: string
-    type: object
-  dto.RefreshTokenRequest:
-    properties:
-      refreshToken:
-        description: The refresh token obtained during login
-        example: your_refresh_token_here
-        type: string
-    required:
-    - refreshToken
-    type: object
-  dto.RegisterInstructorRequest:
-    properties:
-      departmentId:
-        description: ID of the department the instructor belongs to
-        example: 1
-        type: integer
-      email:
-        description: Instructor's email address (must be unique)
-        example: instructor@school.edu.tr
-        type: string
-      firstName:
-        description: Instructor's first name
-        example: Jane
-        type: string
-      lastName:
-        description: Instructor's last name
-        example: Smith
-        type: string
-      password:
-        description: Instructor's password (min 8 characters, letter+number required
-          by service)
-        example: Password123
-        minLength: 8
-        type: string
-      title:
-        description: Instructor's academic title (e.g., Professor, Dr.)
-        example: Professor
-        type: string
-    required:
-    - departmentId
-    - email
-    - firstName
-    - lastName
-    - password
-    - title
-    type: object
-  dto.RegisterStudentRequest:
-    properties:
-      departmentId:
-        description: ID of the department the student belongs to
-        example: 1
-        type: integer
-      email:
-        description: Student's email address (must be unique)
-        example: student@school.edu.tr
-        type: string
-      firstName:
-        description: Student's first name
-        example: John
-        type: string
-      graduationYear:
-        description: Student's expected graduation year (optional)
-        example: 2025
-        minimum: 1900
-        type: integer
-      lastName:
-        description: Student's last name
-        example: Doe
-        type: string
-      password:
-        description: Student's password (min 8 characters, letter+number required
-          by service)
-        example: Password123
-        minLength: 8
-        type: string
-      studentId:
-        description: Student's unique 8-digit ID
-        example: "12345678"
-        type: string
-    required:
-    - departmentId
-    - email
-    - firstName
-    - lastName
-    - password
-    - studentId
-    type: object
-  dto.SuccessResponse:
-    properties:
-      message:
-        example: Resource deleted successfully
-        type: string
-    type: object
-  dto.UpdateTitleRequest:
-    properties:
-      title:
-        type: string
-    required:
-    - title
-    type: object
-  dto.UpdateUserProfileRequest:
-    properties:
-      email:
-        example: john.doe@school.edu.tr
-        type: string
-      firstName:
-        example: John
-        type: string
-      lastName:
-        example: Doe
-        type: string
-    required:
-    - email
-    - firstName
-    - lastName
-    type: object
-  dto.UserProfile:
-    properties:
-      departmentId:
-        description: Department and Faculty information - flattened for easier access
-        example: 1
-        type: integer
-      departmentName:
-        description: Department name
-        example: Computer Engineering
-        type: string
-      email:
-        description: User's email address
-        example: user@school.edu.tr
-        type: string
-      facultyId:
-        description: Faculty ID
-        example: 1
-        type: integer
-      facultyName:
-        description: Faculty name
-        example: Engineering Faculty
-        type: string
-      firstName:
-        description: User's first name
-        example: John
-        type: string
-      graduationYear:
-        description: Student's expected graduation year (optional, only for students)
-        example: 2025
-        type: integer
-      id:
-        description: Unique identifier for the user
-        example: 1
-        type: integer
-      identifier:
-        description: Student or instructor specific fields
-        example: "12345678"
-        type: string
-      lastName:
-        description: User's last name
-        example: Doe
-        type: string
-      profilePhoto:
-        allOf:
-        - $ref: '#/definitions/dto.ProfilePhoto'
-        description: Profile photo information
-      profilePhotoFileId:
-        description: ID of the profile photo file
-        example: 123
-        type: integer
-      roleType:
-        description: User's role (STUDENT or INSTRUCTOR)
-        enum:
-        - STUDENT
-        - INSTRUCTOR
-        example: STUDENT
-        type: string
-      title:
-        description: Instructor's academic title (only for instructors)
-        example: Professor
-        type: string
-    type: object
-  models.Department:
+  github_com_yigit_unisphere_internal_app_models.Department:
     properties:
       code:
         description: Unique code for the department (e.g., CENG, EEE, MATH)
@@ -520,7 +8,7 @@ definitions:
         type: string
       faculty:
         allOf:
-        - $ref: '#/definitions/models.Faculty'
+        - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models.Faculty'
         description: Associated faculty details (populated in some responses)
       faculty_id:
         description: ID of the faculty this department belongs to (required)
@@ -539,7 +27,7 @@ definitions:
     - faculty_id
     - name
     type: object
-  models.Faculty:
+  github_com_yigit_unisphere_internal_app_models.Faculty:
     properties:
       code:
         description: Unique code for the faculty (e.g., ENG, SCI)
@@ -561,79 +49,400 @@ definitions:
     - code
     - name
     type: object
-  models.Instructor:
+  github_com_yigit_unisphere_internal_app_models.PastExam:
     properties:
-      department:
-        allOf:
-        - $ref: '#/definitions/models.Department'
-        description: Relation, no db tag
+      courseCode:
+        type: string
+      departmentID:
+        type: integer
+      fileID:
+        type: string
       id:
+        type: integer
+      instructorID:
+        type: integer
+      term:
+        type: string
+      year:
+        type: integer
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.APIResponse:
+    description: Generic response structure for all API endpoints
+    properties:
+      data:
+        description: Response payload - specific to each endpoint
+      timestamp:
+        description: Timestamp of when the response was generated
+        example: "2025-04-23T12:01:05.123Z"
+        type: string
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.AuthResponse:
+    properties:
+      token:
+        $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.TokenResponse'
+      user:
+        $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserResponse'
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.ClassNoteListResponse:
+    properties:
+      classNotes:
+        items:
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ClassNoteResponse'
+        type: array
+      currentPage:
+        description: Current page number (0-based)
+        example: 0
+        type: integer
+      pageSize:
+        description: Number of items per page
+        example: 10
+        type: integer
+      totalItems:
+        description: Total number of items matching the query
+        example: 48
+        type: integer
+      totalPages:
+        description: Total number of pages available
+        example: 5
+        type: integer
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.ClassNoteResponse:
+    properties:
+      courseCode:
+        type: string
+      departmentId:
+        type: integer
+      description:
+        type: string
+      fileId:
+        type: string
+      id:
+        type: integer
+      instructorId:
         type: integer
       title:
         type: string
-      user:
-        allOf:
-        - $ref: '#/definitions/models.User'
-        description: Relation, no db tag
-      userId:
-        type: integer
     type: object
-  models.RoleType:
+  github_com_yigit_unisphere_internal_app_models_dto.CreateDepartmentRequest:
+    properties:
+      facultyId:
+        type: integer
+      name:
+        type: string
+    required:
+    - facultyId
+    - name
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.CreateFacultyRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.DepartmentResponse:
+    properties:
+      facultyId:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.ErrorCode:
     enum:
-    - STUDENT
-    - INSTRUCTOR
+    - AUTH_001
+    - AUTH_002
+    - AUTH_003
+    - AUTH_004
+    - AUTH_005
+    - AUTH_006
+    - AUTH_007
+    - AUTH_008
+    - RES_001
+    - RES_002
+    - RES_003
+    - VAL_001
+    - SRV_001
+    - SRV_002
+    - SRV_003
+    - BAD_REQUEST
+    - FORBIDDEN
+    - INVALID_REQUEST
     type: string
-    x-enum-comments:
-      RoleInstructor: Original name
-      RoleStudent: Original name
     x-enum-varnames:
-    - RoleStudent
-    - RoleInstructor
-  models.User:
+    - ErrorCodeInvalidCredentials
+    - ErrorCodeInvalidEmail
+    - ErrorCodeInvalidPassword
+    - ErrorCodeInvalidStudentID
+    - ErrorCodeInvalidToken
+    - ErrorCodeExpiredToken
+    - ErrorCodeTokenNotFound
+    - ErrorCodeUnauthorized
+    - ErrorCodeResourceNotFound
+    - ErrorCodeResourceAlreadyExists
+    - ErrorCodeResourceInvalid
+    - ErrorCodeValidationFailed
+    - ErrorCodeInternalServer
+    - ErrorCodeDatabaseError
+    - ErrorCodeExternalServiceError
+    - ErrorCodeBadRequest
+    - ErrorCodeForbidden
+    - ErrorCodeInvalidRequest
+  github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail:
+    properties:
+      code:
+        allOf:
+        - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorCode'
+        example: AUTH_001
+      debugInfo:
+        type: string
+      details: {}
+      field:
+        example: email
+        type: string
+      message:
+        example: Email format is invalid, school email required
+        type: string
+      severity:
+        allOf:
+        - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorSeverity'
+        example: ERROR
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+      timestamp:
+        example: "2025-04-23T12:01:05.123Z"
+        type: string
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.ErrorSeverity:
+    enum:
+    - INFO
+    - WARNING
+    - ERROR
+    - CRITICAL
+    type: string
+    x-enum-varnames:
+    - ErrorSeverityInfo
+    - ErrorSeverityWarning
+    - ErrorSeverityError
+    - ErrorSeverityCritical
+  github_com_yigit_unisphere_internal_app_models_dto.FacultyResponse:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.FileResponse:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.InstructorResponse:
     properties:
       createdAt:
-        description: Timestamp when the user was created
-        example: "2024-01-01T10:00:00Z"
+        description: When instructor account was created
         type: string
       departmentId:
-        description: User's department (nullable)
-        example: 1
+        description: Department ID
         type: integer
+      departmentName:
+        description: Department name
+        type: string
       email:
-        description: User's email address
-        example: user@school.edu.tr
+        description: Instructor's email
+        type: string
+      facultyName:
+        description: Faculty name
         type: string
       firstName:
-        description: User's first name
-        example: John
+        description: Instructor's first name
         type: string
       id:
-        description: Unique identifier for the user
-        example: 1
+        description: Unique identifier for the instructor
         type: integer
-      isActive:
-        description: Whether the user account is active
-        example: true
-        type: boolean
-      lastLoginAt:
-        description: Timestamp of the last login (nullable)
-        example: "2024-04-20T18:00:00Z"
+      lastName:
+        description: Instructor's last name
+        type: string
+      title:
+        description: Instructor's academic title
+        type: string
+      userId:
+        description: Associated user ID
+        type: integer
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.PaginationInfo:
+    properties:
+      currentPage:
+        description: Current page number (0-based)
+        example: 0
+        type: integer
+      pageSize:
+        description: Number of items per page
+        example: 10
+        type: integer
+      totalItems:
+        description: Total number of items matching the query
+        example: 48
+        type: integer
+      totalPages:
+        description: Total number of pages available
+        example: 5
+        type: integer
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.RefreshTokenRequest:
+    properties:
+      refreshToken:
+        type: string
+    required:
+    - refreshToken
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.RegisterInstructorRequest:
+    properties:
+      departmentId:
+        type: integer
+      email:
+        type: string
+      firstName:
         type: string
       lastName:
-        description: User's last name
-        example: Doe
         type: string
-      profilePhotoFileId:
-        description: Profile photo file ID (nullable)
+      password:
+        minLength: 8
+        type: string
+      title:
+        type: string
+    required:
+    - departmentId
+    - email
+    - firstName
+    - lastName
+    - password
+    - title
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.RegisterStudentRequest:
+    properties:
+      departmentId:
         type: integer
-      roleType:
-        allOf:
-        - $ref: '#/definitions/models.RoleType'
-        description: User's role (STUDENT or INSTRUCTOR)
-        example: STUDENT
-      updatedAt:
-        description: Timestamp when the user was last updated
-        example: "2024-01-02T15:30:00Z"
+      email:
+        type: string
+      firstName:
+        type: string
+      graduationYear:
+        minimum: 1900
+        type: integer
+      lastName:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      studentId:
+        type: string
+    required:
+    - departmentId
+    - email
+    - firstName
+    - lastName
+    - password
+    - studentId
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse:
+    properties:
+      message:
+        example: Resource deleted successfully
+        type: string
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.TokenResponse:
+    properties:
+      accessToken:
+        type: string
+      expiresIn:
+        type: integer
+      refreshToken:
+        type: string
+      tokenType:
+        example: Bearer
+        type: string
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.UpdateClassNoteRequest:
+    properties:
+      courseCode:
+        type: string
+      description:
+        type: string
+      title:
+        type: string
+    required:
+    - courseCode
+    - description
+    - title
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.UpdateDepartmentRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.UpdateFacultyRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.UpdateProfileRequest:
+    properties:
+      email:
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+    required:
+    - email
+    - firstName
+    - lastName
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.UpdateTitleRequest:
+    properties:
+      title:
+        description: New academic title
+        example: Professor
+        type: string
+    required:
+    - title
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.UserResponse:
+    properties:
+      departmentId:
+        type: integer
+      email:
+        type: string
+      firstName:
+        type: string
+      id:
+        type: integer
+      lastName:
+        type: string
+      role:
         type: string
     type: object
 host: localhost:8080
@@ -654,172 +463,226 @@ paths:
     post:
       consumes:
       - application/json
-      description: Authenticate with email and password
+      description: Authenticates a user and returns access and refresh tokens
       parameters:
-      - description: Login credentials
+      - description: User login credentials
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.LoginRequest'
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Login successful
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.TokenResponse'
+              type: object
         "400":
           description: Invalid request format
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "401":
           description: Invalid credentials
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "403":
+          description: Account is locked or disabled
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      summary: User login
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      summary: Login user
       tags:
       - auth
   /auth/profile:
     get:
-      description: Get profile information for authenticated user
+      consumes:
+      - application/json
+      description: Retrieves the profile information of the currently authenticated
+        user
       produces:
       - application/json
       responses:
         "200":
-          description: User profile retrieved successfully
+          description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/dto.APIResponse'
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.UserProfile'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserResponse'
               type: object
         "401":
-          description: Unauthorized - Invalid or missing token
+          description: Unauthorized
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
       security:
-      - BearerAuth: []
-      summary: Get user profile
+      - ApiKeyAuth: []
+      summary: Get current user profile
       tags:
       - auth
     put:
       consumes:
       - application/json
-      description: Update profile information for authenticated user (name, email)
+      description: Update the current user's profile information
       parameters:
-      - description: Profile update data
+      - description: Profile update details
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.UpdateUserProfileRequest'
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UpdateProfileRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Profile updated successfully
+          description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/dto.APIResponse'
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.UserProfile'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserResponse'
               type: object
         "400":
-          description: Invalid request format or validation error
+          description: Bad Request
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
         "401":
-          description: Unauthorized - Invalid or missing token
+          description: Unauthorized
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "409":
-          description: Email already exists
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
       summary: Update user profile
       tags:
       - auth
   /auth/profile/photo:
     delete:
-      description: Remove a user's profile photo
+      consumes:
+      - application/json
+      description: Delete the current user's profile photo
       produces:
       - application/json
       responses:
         "200":
-          description: Profile photo deleted successfully
+          description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/dto.APIResponse'
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.UserProfile'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserResponse'
               type: object
         "401":
-          description: Unauthorized - Invalid or missing token
+          description: Unauthorized
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
       summary: Delete profile photo
       tags:
       - auth
-    post:
+    put:
       consumes:
       - multipart/form-data
-      description: Upload or update a user's profile photo
+      description: Update the current user's profile photo
       parameters:
-      - description: Profile photo
+      - description: Profile photo file
         in: formData
-        name: photo
+        name: file
         required: true
         type: file
       produces:
       - application/json
       responses:
         "200":
-          description: Profile photo updated successfully
+          description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/dto.APIResponse'
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.UserProfile'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.FileResponse'
               type: object
         "400":
-          description: Invalid file format
+          description: Bad Request
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
         "401":
-          description: Unauthorized - Invalid or missing token
+          description: Unauthorized
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
       summary: Update profile photo
       tags:
       - auth
@@ -827,101 +690,116 @@ paths:
     post:
       consumes:
       - application/json
-      description: Generate new access and refresh tokens using refresh token
+      description: Generates a new access token using a valid refresh token
       parameters:
       - description: Refresh token information
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.RefreshTokenRequest'
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.RefreshTokenRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Token refresh successful
+          description: Token refreshed successfully
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.TokenResponse'
+              type: object
         "400":
           description: Invalid request format
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "401":
-          description: Invalid or expired token
+          description: Invalid or expired refresh token
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      summary: Refresh authentication token
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      summary: Refresh access token
       tags:
       - auth
-  /auth/register-instructor:
+  /auth/register/instructor:
     post:
       consumes:
       - application/json
-      description: Create a new instructor account
+      description: Creates a new instructor account with the provided information
       parameters:
       - description: Instructor registration information
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.RegisterInstructorRequest'
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.RegisterInstructorRequest'
       produces:
       - application/json
       responses:
         "201":
-          description: Instructor successfully registered
+          description: Instructor registered successfully
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.AuthResponse'
+              type: object
         "400":
-          description: Invalid request format or validation error
+          description: Invalid request format
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "409":
-          description: Email already in use
+          description: Email already exists
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
       summary: Register a new instructor
       tags:
       - auth
-  /auth/register-student:
+  /auth/register/student:
     post:
       consumes:
       - application/json
-      description: Create a new student account
+      description: Creates a new student account with the provided information
       parameters:
       - description: Student registration information
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.RegisterStudentRequest'
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.RegisterStudentRequest'
       produces:
       - application/json
       responses:
         "201":
-          description: Student successfully registered
+          description: Student registered successfully
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.AuthResponse'
+              type: object
         "400":
-          description: Invalid request format or validation error
+          description: Invalid request format
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "409":
-          description: Email or student ID already in use
+          description: Email or student ID already exists
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
       summary: Register a new student
       tags:
       - auth
@@ -929,471 +807,430 @@ paths:
     get:
       consumes:
       - application/json
-      description: Retrieves a list of class notes with optional filtering and pagination.
+      description: Get a list of all class notes with optional filtering
       parameters:
-      - description: Filter by Faculty ID
-        example: 1
-        in: query
-        name: facultyId
-        type: integer
-      - description: Filter by Department ID
-        example: 1
+      - description: Filter by department ID
         in: query
         name: departmentId
         type: integer
-      - description: Filter by Course Code
-        example: CENG304
+      - description: Filter by course code
         in: query
         name: courseCode
         type: string
-      - description: Filter by Year
-        example: 2024
+      - description: 'Page number (default: 1)'
         in: query
-        name: year
-        type: integer
-      - description: Filter by Term (FALL or SPRING)
-        example: SPRING
-        in: query
-        name: term
-        type: string
-      - default: createdAt
-        description: Sort field (createdAt, year, term, courseCode, title)
-        in: query
-        name: sortBy
-        type: string
-      - default: DESC
-        description: Sort order (ASC or DESC)
-        in: query
-        name: sortOrder
-        type: string
-      - default: 0
-        description: Page number (0-based)
-        in: query
-        minimum: 0
         name: page
         type: integer
-      - default: 10
-        description: Page size
+      - description: 'Page size (default: 10, max: 100)'
         in: query
-        maximum: 100
-        minimum: 1
-        name: size
+        name: pageSize
         type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: Class notes retrieved successfully
+          description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/dto.APIResponse'
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.ClassNoteListResponse'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ClassNoteListResponse'
               type: object
         "400":
-          description: Bad Request (e.g., invalid query parameters)
+          description: Bad Request
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+      security:
+      - ApiKeyAuth: []
       summary: Get all class notes
       tags:
-      - ClassNotes
+      - class-notes
     post:
       consumes:
       - multipart/form-data
-      description: Create a new class note with the optional file upload
+      description: Create a new class note with file upload
       parameters:
-      - description: Year
-        example: 2024
-        in: formData
-        name: year
-        required: true
-        type: integer
-      - description: Term (FALL or SPRING)
-        example: SPRING
-        in: formData
-        name: term
-        required: true
-        type: string
-      - description: Department ID
-        example: 1
-        in: formData
-        name: departmentId
-        required: true
-        type: integer
-      - description: Course Code
-        example: CENG304
+      - description: Course code
         in: formData
         name: courseCode
         required: true
         type: string
       - description: Title
-        example: '"Lecture Notes - Week 5"'
         in: formData
         name: title
         required: true
         type: string
-      - description: Content
-        example: '"These notes cover..."'
+      - description: Description
         in: formData
-        name: content
+        name: description
         required: true
         type: string
-      - description: Files to upload (PDFs, images, etc.)
+      - description: Department ID
         in: formData
-        name: files
+        name: departmentId
+        required: true
+        type: integer
+      - description: File to upload
+        in: formData
+        name: file
+        required: true
         type: file
       produces:
       - application/json
       responses:
         "201":
-          description: Class note created successfully
+          description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/dto.APIResponse'
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.ClassNoteResponse'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ClassNoteResponse'
               type: object
         "400":
-          description: Bad Request (e.g., invalid input data)
+          description: Bad Request
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
         "401":
-          description: Unauthorized (missing or invalid token)
+          description: Unauthorized
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden (not permitted to create)
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
       security:
-      - BearerAuth: []
+      - ApiKeyAuth: []
       summary: Create a new class note
       tags:
-      - ClassNotes
-  /class-notes/{noteId}:
+      - class-notes
+  /class-notes/{id}:
     delete:
       consumes:
       - application/json
-      description: Deletes an existing class note. Requires authentication and ownership.
+      description: Delete an existing class note
       parameters:
-      - description: Class Note ID to delete
-        example: 15
-        format: int64
+      - description: Class note ID
         in: path
-        name: noteId
+        name: id
         required: true
         type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: Class note deleted successfully" // Changed data type
+          description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/dto.APIResponse'
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.SuccessResponse'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse'
               type: object
         "400":
-          description: Bad Request (e.g., invalid ID)
+          description: Bad Request
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
         "401":
-          description: Unauthorized (handled by middleware)" // Middleware should
-            handle this
+          description: Unauthorized
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden (not owner)
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
       security:
-      - BearerAuth: []
+      - ApiKeyAuth: []
       summary: Delete a class note
       tags:
-      - ClassNotes
+      - class-notes
     get:
       consumes:
       - application/json
-      description: Retrieves a specific class note by its ID.
+      description: Get detailed information about a specific class note
       parameters:
-      - description: Class Note ID
-        example: 15
-        format: int64
+      - description: Class note ID
         in: path
-        name: noteId
+        name: id
         required: true
         type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: Class note retrieved successfully
+          description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/dto.APIResponse'
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.ClassNoteResponse'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ClassNoteResponse'
               type: object
         "400":
-          description: Bad Request (e.g., invalid ID)
+          description: Bad Request
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      summary: Get class note by ID
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get a class note by ID
       tags:
-      - ClassNotes
+      - class-notes
     put:
       consumes:
-      - multipart/form-data
-      description: Update a class note that the user owns
+      - application/json
+      description: Update an existing class note
       parameters:
-      - description: Class Note ID
-        example: 15
-        format: int64
+      - description: Class note ID
         in: path
-        name: noteId
+        name: id
         required: true
         type: integer
-      - description: Year
-        example: 2024
-        in: formData
-        name: year
+      - description: Update data
+        in: body
+        name: request
         required: true
-        type: integer
-      - description: Term (FALL or SPRING)
-        example: SPRING
-        in: formData
-        name: term
-        required: true
-        type: string
-      - description: Department ID
-        example: 1
-        in: formData
-        name: departmentId
-        required: true
-        type: integer
-      - description: Course Code
-        example: CENG304
-        in: formData
-        name: courseCode
-        required: true
-        type: string
-      - description: Title
-        example: '"Updated Lecture Notes - Week 5"'
-        in: formData
-        name: title
-        required: true
-        type: string
-      - description: Content
-        example: '"Updated notes..."'
-        in: formData
-        name: content
-        required: true
-        type: string
-      - description: Files to upload (PDFs, images, etc.)
-        in: formData
-        name: files
-        type: file
-      - description: Comma-separated list of file IDs to remove
-        example: '"1,2,3"'
-        in: formData
-        name: removeFileIds
-        type: string
+        schema:
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UpdateClassNoteRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Class note updated successfully
+          description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/dto.APIResponse'
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.ClassNoteResponse'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ClassNoteResponse'
               type: object
         "400":
-          description: Bad Request (e.g., invalid input data)
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "401":
-          description: Unauthorized (missing or invalid token)
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden (not the owner of the note)
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "404":
-          description: Not Found (class note doesn't exist)
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update an existing class note
-      tags:
-      - ClassNotes
-  /class-notes/my-notes:
-    get:
-      consumes:
-      - application/json
-      description: Retrieves all class notes uploaded by the currently authenticated
-        user.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Your class notes retrieved successfully
+          description: Bad Request
           schema:
             allOf:
-            - $ref: '#/definitions/dto.APIResponse'
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/dto.ClassNoteResponse'
-                  type: array
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
               type: object
         "401":
-          description: Unauthorized (handled by middleware)" // Middleware should
-            handle this
+          description: Unauthorized
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get my class notes
-      tags:
-      - ClassNotes
-  /department-instructors/{departmentId}:
-    get:
-      description: Get a list of instructors belonging to a specific department
-      parameters:
-      - description: Department ID
-        format: int64
-        in: path
-        name: departmentId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Instructors retrieved successfully
-          schema:
             allOf:
-            - $ref: '#/definitions/dto.APIResponse'
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.Instructor'
-                  type: array
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
               type: object
-        "400":
-          description: Invalid Department ID format
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "404":
-          description: Department not found
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      summary: Get instructors by department
+      security:
+      - ApiKeyAuth: []
+      summary: Update a class note
       tags:
-      - instructors
+      - class-notes
   /departments:
     get:
-      description: Get a list of all departments
+      consumes:
+      - application/json
+      description: Retrieves a list of all departments
+      parameters:
+      - description: Filter by faculty ID
+        in: query
+        name: facultyId
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: Departments retrieved successfully
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models.Department'
+                  type: array
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
       summary: Get all departments
       tags:
       - departments
     post:
       consumes:
       - application/json
-      description: Create a new department with the provided data
+      description: Creates a new department with the provided information
       parameters:
       - description: Department information
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.Department'
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.CreateDepartmentRequest'
       produces:
       - application/json
       responses:
         "201":
-          description: Department successfully created
+          description: Department created successfully
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.DepartmentResponse'
+              type: object
         "400":
-          description: Invalid request format or validation error
+          description: Invalid request data
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "403":
+          description: Forbidden - User does not have permission
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "404":
           description: Faculty not found
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "409":
           description: Department already exists
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Create a new department
       tags:
       - departments
   /departments/{id}:
     delete:
-      description: Delete a department by ID
+      consumes:
+      - application/json
+      description: Deletes an existing department by its ID
       parameters:
       - description: Department ID
         in: path
@@ -1403,27 +1240,37 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
-          description: Department successfully deleted
+        "204":
+          description: Department deleted successfully
+        "400":
+          description: Invalid department ID
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "404":
           description: Department not found
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "409":
-          description: Cannot delete department with associated data
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Delete a department
       tags:
       - departments
     get:
-      description: Get department information by ID
+      consumes:
+      - application/json
+      description: Retrieves a specific department by its ID
       parameters:
       - description: Department ID
         in: path
@@ -1434,24 +1281,39 @@ paths:
       - application/json
       responses:
         "200":
-          description: Department information retrieved successfully
+          description: Department retrieved successfully
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models.Department'
+              type: object
+        "400":
+          description: Invalid department ID
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "404":
           description: Department not found
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Get department by ID
       tags:
       - departments
     put:
       consumes:
       - application/json
-      description: Update a department with the provided data
+      description: Updates an existing department with the provided information
       parameters:
       - description: Department ID
         in: path
@@ -1463,85 +1325,130 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.Department'
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UpdateDepartmentRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Department successfully updated
+          description: Department updated successfully
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models.Department'
+              type: object
         "400":
-          description: Invalid request format or validation error
+          description: Invalid request format
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "404":
           description: Department not found
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Update a department
       tags:
       - departments
   /faculties:
     get:
-      description: Get a list of all faculties
+      consumes:
+      - application/json
+      description: Retrieves a list of all faculties
       produces:
       - application/json
       responses:
         "200":
           description: Faculties retrieved successfully
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models.Faculty'
+                  type: array
+              type: object
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Get all faculties
       tags:
       - faculties
     post:
       consumes:
       - application/json
-      description: Create a new faculty with the provided data
+      description: Creates a new faculty with the provided information
       parameters:
       - description: Faculty information
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.Faculty'
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.CreateFacultyRequest'
       produces:
       - application/json
       responses:
         "201":
-          description: Faculty successfully created
+          description: Faculty created successfully
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.FacultyResponse'
+              type: object
         "400":
-          description: Invalid request format or validation error
+          description: Invalid request data
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "403":
+          description: Forbidden - User does not have permission
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "409":
           description: Faculty already exists
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Create a new faculty
       tags:
       - faculties
   /faculties/{id}:
     delete:
-      description: Delete a faculty by ID
+      consumes:
+      - application/json
+      description: Deletes a faculty and its associated data
       parameters:
       - description: Faculty ID
+        format: int64
         in: path
+        minimum: 1
         name: id
         required: true
         type: integer
@@ -1549,29 +1456,44 @@ paths:
       - application/json
       responses:
         "200":
-          description: Faculty successfully deleted
+          description: Faculty deleted successfully
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+        "400":
+          description: Invalid faculty ID
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "403":
+          description: Forbidden - User does not have permission
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "404":
           description: Faculty not found
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "409":
-          description: Cannot delete faculty with associated departments
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Delete a faculty
       tags:
       - faculties
     get:
-      description: Get faculty information by ID
+      consumes:
+      - application/json
+      description: Retrieves detailed information about a specific faculty by its
+        ID
       parameters:
       - description: Faculty ID
+        format: int64
         in: path
+        minimum: 1
         name: id
         required: true
         type: integer
@@ -1579,27 +1501,44 @@ paths:
       - application/json
       responses:
         "200":
-          description: Faculty information retrieved successfully
+          description: Faculty retrieved successfully
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.FacultyResponse'
+              type: object
+        "400":
+          description: Invalid faculty ID format
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "404":
           description: Faculty not found
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      summary: Get faculty by ID
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get faculty details
       tags:
       - faculties
     put:
       consumes:
       - application/json
-      description: Update a faculty with the provided data
+      description: Updates an existing faculty with new information
       parameters:
       - description: Faculty ID
+        format: int64
         in: path
+        minimum: 1
         name: id
         required: true
         type: integer
@@ -1608,35 +1547,54 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.Faculty'
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UpdateFacultyRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Faculty successfully updated
+          description: Faculty updated successfully
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.FacultyResponse'
+              type: object
         "400":
-          description: Invalid request format or validation error
+          description: Invalid request data
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "403":
+          description: Forbidden - User does not have permission
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "404":
           description: Faculty not found
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Update a faculty
       tags:
       - faculties
   /faculty-departments/{facultyId}:
     get:
-      description: Get a list of departments for a specific faculty
+      consumes:
+      - application/json
+      description: Retrieves a list of all departments belonging to a specific faculty
       parameters:
       - description: Faculty ID
+        format: int64
         in: path
+        minimum: 1
         name: facultyId
         required: true
         type: integer
@@ -1644,27 +1602,47 @@ paths:
       - application/json
       responses:
         "200":
-          description: Departments retrieved successfully
+          description: Faculty departments retrieved successfully
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.DepartmentResponse'
+                  type: array
+              type: object
+        "400":
+          description: Invalid faculty ID format
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "404":
           description: Faculty not found
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      summary: Get departments by faculty ID
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List faculty departments
       tags:
       - departments
   /instructors/{id}:
     get:
-      description: Get public information about an instructor by their user ID
+      consumes:
+      - application/json
+      description: Retrieves a specific instructor by its ID
       parameters:
-      - description: Instructor User ID
+      - description: Instructor ID
         format: int64
         in: path
+        minimum: 1
         name: id
         required: true
         type: integer
@@ -1675,24 +1653,78 @@ paths:
           description: Instructor retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/dto.APIResponse'
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Instructor'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.InstructorResponse'
               type: object
         "400":
-          description: Invalid Instructor ID format
+          description: Invalid instructor ID format
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "404":
           description: Instructor not found
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Get instructor by ID
+      tags:
+      - instructors
+  /instructors/department/{departmentId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of instructors for a specific department
+      parameters:
+      - description: Department ID
+        format: int64
+        in: path
+        minimum: 1
+        name: departmentId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Instructors retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.InstructorResponse'
+                  type: array
+              type: object
+        "400":
+          description: Invalid department ID format
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "404":
+          description: Department not found
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get instructors by department
       tags:
       - instructors
   /instructors/profile:
@@ -1706,27 +1738,27 @@ paths:
           description: Instructor profile retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/dto.APIResponse'
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Instructor'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.InstructorResponse'
               type: object
         "401":
           description: Unauthorized - Invalid or missing token
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "403":
           description: Forbidden - User is not an instructor or token invalid
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "404":
           description: Instructor not found
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get instructor profile
@@ -1744,99 +1776,81 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.UpdateTitleRequest'
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UpdateTitleRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Instructor title updated successfully
           schema:
-            $ref: '#/definitions/dto.APIResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
         "400":
           description: Invalid request format or validation error (e.g., empty title)
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "401":
           description: Unauthorized - Invalid or missing token
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "403":
           description: Forbidden - User is not an instructor or token invalid
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "404":
           description: Instructor not found
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update instructor title
       tags:
       - instructors
-  /pastexams:
+  /past-exams:
     get:
-      description: Get a list of all past exams. Supports filtering by faculty, department,
-        course code, year, term and sorting by various fields.
+      consumes:
+      - application/json
+      description: Retrieves a list of past exams with optional filtering and pagination
       parameters:
       - description: Filter by faculty ID
-        example: 1
-        format: int64
         in: query
         name: facultyId
         type: integer
       - description: Filter by department ID
-        example: 1
-        format: int64
         in: query
         name: departmentId
         type: integer
-      - description: Filter by course code (case-insensitive, partial match)
-        example: CENG
+      - description: Filter by course code
         in: query
         name: courseCode
         type: string
-      - description: Filter by exact year
-        example: 2023
+      - description: Filter by year
         in: query
         name: year
         type: integer
-      - description: Filter by term
-        enum:
-        - FALL
-        - SPRING
-        example: FALL
+      - description: Filter by term (FALL, SPRING, SUMMER)
         in: query
         name: term
         type: string
-      - default: createdAt
-        description: Sort field (year, term, courseCode, title, createdAt, updatedAt)
+      - description: Sort field (year, term, courseCode, title, departmentName, facultyName,
+          instructorName, createdAt, updatedAt)
         in: query
         name: sortBy
         type: string
-      - default: DESC
-        description: Sort order
-        enum:
-        - ASC
-        - DESC
+      - description: Sort order (ASC, DESC)
         in: query
         name: sortOrder
         type: string
-      - default: 0
-        description: Page number for pagination (0-based)
+      - description: 'Page number (default: 1)'
         in: query
-        minimum: 0
         name: page
         type: integer
-      - default: 10
-        description: Number of items per page
+      - description: 'Page size (default: 10)'
         in: query
-        maximum: 100
-        minimum: 1
-        name: size
+        name: pageSize
         type: integer
       produces:
       - application/json
@@ -1845,108 +1859,103 @@ paths:
           description: Past exams retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/dto.APIResponse'
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.PastExamListResponse'
+                  items:
+                    $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models.PastExam'
+                  type: array
+                pagination:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PaginationInfo'
               type: object
         "400":
-          description: Invalid query parameter format or value
+          description: Invalid request parameters
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
       summary: Get all past exams
       tags:
-      - pastexams
+      - past-exams
     post:
       consumes:
       - multipart/form-data
-      description: Create a new past exam with the provided data and optional file
-        upload.
+      description: Creates a new past exam with the provided information
       parameters:
-      - description: Year
-        example: 2023
+      - description: Year of the exam
         in: formData
         name: year
         required: true
         type: integer
-      - description: Term (FALL or SPRING)
-        example: FALL
+      - description: Term of the exam (FALL, SPRING, SUMMER)
         in: formData
         name: term
         required: true
         type: string
       - description: Department ID
-        example: 1
         in: formData
         name: departmentId
         required: true
         type: integer
-      - description: Course Code
-        example: CENG301
+      - description: Course code
         in: formData
         name: courseCode
         required: true
         type: string
-      - description: Title
-        example: '"Midterm Exam"'
+      - description: Exam title
         in: formData
         name: title
         required: true
         type: string
-      - description: Content
-        example: '"Exam content details..."'
+      - description: Instructor ID
         in: formData
-        name: content
+        name: instructorId
+        type: integer
+      - description: Exam file
+        in: formData
+        name: file
         required: true
-        type: string
-      - description: Exam files (PDF, image, etc.)
-        in: formData
-        name: files
         type: file
       produces:
       - application/json
       responses:
         "201":
-          description: Past exam successfully created
+          description: Past exam created successfully
           schema:
             allOf:
-            - $ref: '#/definitions/dto.APIResponse'
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.PastExamResponse'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models.PastExam'
               type: object
         "400":
-          description: Invalid request format or validation error
+          description: Invalid request format
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "403":
-          description: Forbidden - User is not an instructor
+          description: Forbidden
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create a new past exam (Instructor only)
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      summary: Create a new past exam
       tags:
-      - pastexams
-  /pastexams/{id}:
+      - past-exams
+  /past-exams/{id}:
     delete:
-      description: Delete a past exam by its ID. Requires instructor role and ownership.
+      consumes:
+      - application/json
+      description: Deletes an existing past exam by its ID
       parameters:
-      - description: Past Exam ID
-        example: 1
-        format: int64
+      - description: Past exam ID
         in: path
         name: id
         required: true
@@ -1954,41 +1963,37 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
-          description: Past exam successfully deleted
-          schema:
-            $ref: '#/definitions/dto.APIResponse'
+        "204":
+          description: Past exam deleted successfully
         "400":
-          description: Invalid Past Exam ID format
+          description: Invalid past exam ID
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "401":
-          description: Unauthorized - Invalid or missing token
+          description: Unauthorized
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "403":
-          description: Forbidden - User is not an instructor or not the owner
+          description: Forbidden
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "404":
           description: Past exam not found
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete a past exam (Instructor only, Owner only)
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      summary: Delete a past exam
       tags:
-      - pastexams
+      - past-exams
     get:
-      description: Get detailed information for a specific past exam by its ID.
+      consumes:
+      - application/json
+      description: Retrieves a specific past exam by its ID
       parameters:
-      - description: Past Exam ID
-        example: 1
-        format: int64
+      - description: Past exam ID
         in: path
         name: id
         required: true
@@ -1997,124 +2002,102 @@ paths:
       - application/json
       responses:
         "200":
-          description: Past exam information retrieved successfully
+          description: Past exam retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/dto.APIResponse'
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.PastExamResponse'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models.PastExam'
               type: object
         "400":
-          description: Invalid Past Exam ID format
+          description: Invalid past exam ID
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "404":
           description: Past exam not found
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
       summary: Get past exam by ID
       tags:
-      - pastexams
+      - past-exams
     put:
       consumes:
       - multipart/form-data
-      description: Update an existing past exam with the provided data and optional
-        new file upload.
+      description: Updates an existing past exam with the provided information
       parameters:
-      - description: Past Exam ID
-        example: 1
-        format: int64
+      - description: Past exam ID
         in: path
         name: id
         required: true
         type: integer
-      - description: Year
-        example: 2023
+      - description: Year of the exam
         in: formData
         name: year
-        required: true
         type: integer
-      - description: Term (FALL or SPRING)
-        example: FALL
+      - description: Term of the exam (FALL, SPRING, SUMMER)
         in: formData
         name: term
-        required: true
         type: string
       - description: Department ID
-        example: 1
         in: formData
         name: departmentId
-        required: true
         type: integer
-      - description: Course Code
-        example: CENG301
+      - description: Course code
         in: formData
         name: courseCode
-        required: true
         type: string
-      - description: Title
-        example: '"Midterm 1 - Updated"'
+      - description: Exam title
         in: formData
         name: title
-        required: true
         type: string
-      - description: Content
-        example: '"Updated exam content..."'
+      - description: Instructor ID
         in: formData
-        name: content
-        required: true
-        type: string
-      - description: Exam files (PDF, image, etc.)
+        name: instructorId
+        type: integer
+      - description: Exam file
         in: formData
-        name: files
+        name: file
         type: file
-      - description: Comma-separated list of file IDs to remove
-        example: '"1,2,3"'
-        in: formData
-        name: removeFileIds
-        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: Past exam successfully updated
+          description: Past exam updated successfully
           schema:
             allOf:
-            - $ref: '#/definitions/dto.APIResponse'
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.PastExamResponse'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models.PastExam'
               type: object
         "400":
-          description: Invalid request format or validation error
+          description: Invalid request format
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "403":
-          description: Forbidden - User does not have permission to update this exam
+          description: Forbidden
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "404":
           description: Past exam not found
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update a past exam (Instructor only)
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      summary: Update a past exam
       tags:
-      - pastexams
+      - past-exams
 schemes:
 - http
 - https

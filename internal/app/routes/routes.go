@@ -37,7 +37,7 @@ func SetupRouter(
 	authenticated.Use(authMiddleware.JWTAuth()) // Apply JWT Auth middleware to this group
 	{
 		// Auth Profile route (moved here)
-		authenticated.GET("/auth/profile", authController.GetProfile)
+		authenticated.GET("/auth/profile", authController.GetCurrentUser)
 		authenticated.PUT("/auth/profile", authController.UpdateProfile)
 		authenticated.POST("/auth/profile/photo", authController.UpdateProfilePhoto)
 		authenticated.DELETE("/auth/profile/photo", authController.DeleteProfilePhoto)
@@ -117,28 +117,17 @@ func SetupRouter(
 		// Class Note routes (now under authenticated group)
 		classNotes := authenticated.Group("/class-notes")
 		{
-			classNotes.GET("", classNoteController.GetAllClassNotes)
-			classNotes.GET("/:noteId", classNoteController.GetClassNoteByID)
+			classNotes.GET("", classNoteController.GetAllNotes)
+			classNotes.GET("/:noteId", classNoteController.GetNoteByID)
 
-			// Create, Update, Delete, My Notes require auth (already handled by parent group)
+			// Create, Update, Delete require auth (already handled by parent group)
 			createNoteReq := &dto.CreateClassNoteRequest{}
-			classNotes.POST("", middleware.ValidateRequest(createNoteReq), classNoteController.CreateClassNote)
+			classNotes.POST("", middleware.ValidateRequest(createNoteReq), classNoteController.CreateNote)
 
 			updateNoteReq := &dto.UpdateClassNoteRequest{}
-			classNotes.PUT("/:noteId", middleware.ValidateRequest(updateNoteReq), classNoteController.UpdateClassNote)
+			classNotes.PUT("/:noteId", middleware.ValidateRequest(updateNoteReq), classNoteController.UpdateNote)
 
-			classNotes.DELETE("/:noteId", classNoteController.DeleteClassNote)
-
-			classNotes.GET("/my-notes", classNoteController.GetMyClassNotes)
-
-			// Remove redundant protected group for classNotes as all need auth
-			/* // Original structure removed
-			classNotesProtected := classNotes.Group("")
-			classNotesProtected.Use(authMiddleware.JWTAuth()) // Redundant
-			{
-				// ... routes moved up ...
-			}
-			*/
+			classNotes.DELETE("/:noteId", classNoteController.DeleteNote)
 		}
 	}
 }

@@ -31,6 +31,7 @@ const (
 	ErrorCodeExternalServiceError  ErrorCode = "SRV_003"
 	ErrorCodeBadRequest            ErrorCode = "BAD_REQUEST"
 	ErrorCodeForbidden             ErrorCode = "FORBIDDEN"
+	ErrorCodeInvalidRequest        ErrorCode = "INVALID_REQUEST"
 )
 
 // ErrorSeverity represents the severity level of an error
@@ -56,7 +57,6 @@ type ErrorDetail struct {
 
 // ErrorResponse represents the standard error response structure
 type ErrorResponse struct {
-	Success   bool         `json:"success" example:"false"`
 	Error     *ErrorDetail `json:"error"`
 	Timestamp time.Time    `json:"timestamp" example:"2025-04-23T12:01:05.123Z"`
 }
@@ -99,7 +99,6 @@ func (e *ErrorDetail) WithDebugInfo(format string, args ...interface{}) *ErrorDe
 // NewErrorResponse creates a standard error response
 func NewErrorResponse(errorDetail *ErrorDetail) *ErrorResponse {
 	return &ErrorResponse{
-		Success:   false,
 		Error:     errorDetail,
 		Timestamp: time.Now(),
 	}

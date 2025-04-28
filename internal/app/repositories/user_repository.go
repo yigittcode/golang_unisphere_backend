@@ -11,6 +11,26 @@ import (
 // These errors have been moved to apperrors package
 // Use apperrors.ErrUserNotFound, apperrors.ErrEmailAlreadyExists, and apperrors.ErrIdentifierExists instead
 
+// IUserRepository defines the interface for user-related database operations
+type IUserRepository interface {
+	// Basic CRUD operations
+	Create(ctx context.Context, user *models.User) error
+	GetByID(ctx context.Context, id int64) (*models.User, error)
+	Update(ctx context.Context, user *models.User) error
+	Delete(ctx context.Context, id int64) error
+
+	// Authentication
+	GetByEmail(ctx context.Context, email string) (*models.User, error)
+	EmailExists(ctx context.Context, email string) (bool, error)
+
+	// Profile
+	UpdateProfile(ctx context.Context, userID int64, firstName, lastName, email string) error
+	UpdateProfilePhotoFileID(ctx context.Context, userID int64, fileID *int64) error
+
+	// Department
+	GetDepartmentNameByID(ctx context.Context, departmentID int64) (string, error)
+}
+
 // UserRepository combines all user-related repositories
 type UserRepository struct {
 	common     *user.CommonRepository
@@ -92,20 +112,42 @@ func (r *UserRepository) UpdateLastLogin(ctx context.Context, userID int64) erro
 	return r.common.UpdateLastLogin(ctx, userID)
 }
 
-// UpdateUserProfilePhotoURL updates only the profile photo URL for a given user.
-func (r *UserRepository) UpdateUserProfilePhotoURL(ctx context.Context, userID int64, photoURL *string) error {
-	// Delegate to the common repository
-	return r.common.UpdateUserProfilePhotoURL(ctx, userID, photoURL)
+// UpdateProfile updates a user's basic profile information
+func (r *UserRepository) UpdateProfile(ctx context.Context, userID int64, firstName, lastName, email string) error {
+	return r.common.UpdateUserProfile(ctx, userID, firstName, lastName, email)
 }
 
-// UpdateUserProfilePhotoFileID updates the profile photo file ID for a given user.
-func (r *UserRepository) UpdateUserProfilePhotoFileID(ctx context.Context, userID int64, fileID *int64) error {
-	// Delegate to the common repository
+// UpdateProfilePhotoFileID updates the profile photo file ID for a given user
+func (r *UserRepository) UpdateProfilePhotoFileID(ctx context.Context, userID int64, fileID *int64) error {
 	return r.common.UpdateUserProfilePhotoFileID(ctx, userID, fileID)
 }
 
-// UpdateUserProfile updates a user's basic profile information
-func (r *UserRepository) UpdateUserProfile(ctx context.Context, userID int64, firstName, lastName, email string) error {
-	// Delegate to the common repository
-	return r.common.UpdateUserProfile(ctx, userID, firstName, lastName, email)
+// Create creates a new user
+func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
+	id, err := r.CreateUser(ctx, user)
+	if err != nil {
+		return err
+	}
+	user.ID = id
+	return nil
+}
+
+// Delete deletes a user
+func (r *UserRepository) Delete(ctx context.Context, id int64) error {
+	return r.common.DeleteUser(ctx, id)
+}
+
+// GetByEmail retrieves a user by email
+func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
+	return r.GetUserByEmail(ctx, email)
+}
+
+// GetByID retrieves a user by ID
+func (r *UserRepository) GetByID(ctx context.Context, id int64) (*models.User, error) {
+	return r.GetUserByID(ctx, id)
+}
+
+// Update updates a user
+func (r *UserRepository) Update(ctx context.Context, user *models.User) error {
+	return r.common.UpdateUser(ctx, user)
 }
