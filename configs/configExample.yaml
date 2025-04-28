@@ -1,0 +1,28 @@
+# Server yapılandırması
+server:
+  port: 8080
+  mode: development # development, production
+
+# Veritabanı yapılandırması
+database:
+  driver: "{DATABASE_DRIVER}"
+  host: "{POSTGRES_HOST}"
+  port: 5432
+  user: "{POSTGRES_USER}"
+  password: "{POSTGRES_PASSWORD}"
+  dbname: "{POSTGRES_DB}"
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 1h
+
+# JWT yapılandırması
+jwt:
+  secret: "{JWT_SECRET}" # More secure random value
+  access_token_expiration: "{ACCESS_TOKEN_EXPIRATION}" # Access token should be short-lived
+  refresh_token_expiration: "{REFRESH_TOKEN_EXPIRATION}" # 30 days for refresh token
+  issuer: "{ISSUER}"
+
+# Loglama yapılandırması
+logging:
+  level: debug # debug, info, warn, error
+  format: text # text, json 
