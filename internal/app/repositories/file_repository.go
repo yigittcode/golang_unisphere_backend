@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yigit/unisphere/internal/app/models"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/logger"
 )
 
@@ -91,7 +92,7 @@ func (r *FileRepository) GetFileByID(ctx context.Context, fileID int64) (*models
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, ErrFileNotFound
+			return nil, apperrors.ErrNotFound
 		}
 		logger.Error().Err(err).Int64("fileID", fileID).Msg("Error retrieving file")
 		return nil, fmt.Errorf("error retrieving file: %w", err)
@@ -117,7 +118,7 @@ func (r *FileRepository) DeleteFile(ctx context.Context, fileID int64) error {
 	err = r.db.QueryRow(ctx, sql, args...).Scan(&filePath)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return ErrFileNotFound
+			return apperrors.ErrNotFound
 		}
 		logger.Error().Err(err).Int64("fileID", fileID).Msg("Error retrieving file path")
 		return fmt.Errorf("error retrieving file path: %w", err)

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/yigit/unisphere/internal/app/models/dto" // Ensure DTO import
 	"github.com/yigit/unisphere/internal/app/services"
@@ -13,7 +14,7 @@ import (
 
 // AuthController handles authentication related operations
 type AuthController struct {
-	authService services.AuthService  // Interface instead of pointer to struct
+	authService services.AuthService
 	jwtService  *auth.JWTService
 	logger      *logger.Logger
 }
@@ -207,7 +208,7 @@ func (c *AuthController) RefreshToken(ctx *gin.Context) {
 // @Tags auth
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} dto.APIResponse{data=dto.BaseUserProfile} "User profile retrieved successfully"
+// @Success 200 {object} dto.BaseUserProfile "User profile retrieved successfully"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
 // @Failure 404 {object} dto.ErrorResponse "User not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
@@ -247,7 +248,7 @@ func (c *AuthController) GetProfile(ctx *gin.Context) {
 		Interface("faculty", profile.Faculty).
 		Msg("Profile data retrieved successfully")
 
-	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(profile, "Profile retrieved successfully"))
+	ctx.JSON(http.StatusOK, profile)
 }
 
 // UpdateProfilePhoto handles profile photo upload
@@ -258,7 +259,7 @@ func (c *AuthController) GetProfile(ctx *gin.Context) {
 // @Produce json
 // @Param photo formData file true "Profile photo"
 // @Security BearerAuth
-// @Success 200 {object} dto.APIResponse{data=dto.BaseUserProfile} "Profile photo updated successfully"
+// @Success 200 {object} dto.BaseUserProfile "Profile photo updated successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid file format"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
@@ -298,7 +299,7 @@ func (c *AuthController) UpdateProfilePhoto(ctx *gin.Context) {
 // @Tags auth
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} dto.APIResponse{data=dto.BaseUserProfile} "Profile photo deleted successfully"
+// @Success 200 {object} dto.BaseUserProfile "Profile photo deleted successfully"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /auth/profile/photo [delete]
@@ -331,7 +332,7 @@ func (c *AuthController) DeleteProfilePhoto(ctx *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param request body dto.UpdateUserProfileRequest true "Profile update data"
-// @Success 200 {object} dto.APIResponse{data=dto.BaseUserProfile} "Profile updated successfully"
+// @Success 200 {object} dto.BaseUserProfile "Profile updated successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
 // @Failure 409 {object} dto.ErrorResponse "Email already exists"

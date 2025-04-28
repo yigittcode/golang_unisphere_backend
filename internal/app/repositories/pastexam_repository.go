@@ -36,30 +36,6 @@ func NewPastExamRepository(db *pgxpool.Pool) *PastExamRepository {
 	}
 }
 
-// Helper function to get nullable string from pointer
-func getNullString(s *string) sql.NullString {
-	if s == nil {
-		return sql.NullString{}
-	}
-	return sql.NullString{String: *s, Valid: true}
-}
-
-// Helper function to get nullable string from value
-func getContentNullString(s string) sql.NullString {
-	if s == "" {
-		return sql.NullString{}
-	}
-	return sql.NullString{String: s, Valid: true}
-}
-
-// Helper function to get nullable int64
-func getNullInt64(i int64) sql.NullInt64 {
-	if i == 0 {
-		return sql.NullInt64{}
-	}
-	return sql.NullInt64{Int64: i, Valid: true}
-}
-
 // GetAllPastExams retrieves all past exams with pagination and optional filtering/sorting
 func (r *PastExamRepository) GetAllPastExams(ctx context.Context, page, pageSize int, filters map[string]interface{}) ([]models.PastExam, dto.PaginationInfo, error) {
 	offset, limit := helpers.CalculateOffsetLimit(page, pageSize)
@@ -343,7 +319,7 @@ func (r *PastExamRepository) UpdatePastExam(ctx context.Context, pastExam *model
 			"department_id": pastExam.DepartmentID,
 			"course_code":   pastExam.CourseCode,
 			"title":         pastExam.Title,
-			"content":       getContentNullString(pastExam.Content),
+			"content":       helpers.GetContentNullString(pastExam.Content),
 			"instructor_id": instructorIDArg,
 			"updated_at":    time.Now(),
 		}).

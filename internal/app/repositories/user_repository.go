@@ -2,7 +2,7 @@ package repositories
 
 import (
 	"context"
-	
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/repositories/user"
