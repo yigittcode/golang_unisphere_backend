@@ -1,59 +1,30 @@
 package controllers
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 	"time"
-
 	"github.com/gin-gonic/gin"
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/services"
+	"github.com/yigit/unisphere/internal/middleware"
 )
 
 // DepartmentController handles department-related operations
 type DepartmentController struct {
-	departmentService *services.DepartmentService
+	departmentService services.DepartmentService
 }
 
 // NewDepartmentController creates a new DepartmentController
-func NewDepartmentController(departmentService *services.DepartmentService) *DepartmentController {
+func NewDepartmentController(departmentService services.DepartmentService) *DepartmentController {
 	return &DepartmentController{
 		departmentService: departmentService,
 	}
 }
 
 // handleDepartmentError is a helper function to handle common department error scenarios
-func handleDepartmentError(ctx *gin.Context, err error) {
-	statusCode := http.StatusInternalServerError
-	errorCode := dto.ErrorCodeInternalServer
-	errorMessage := "An unexpected error occurred"
-	errorDetails := err.Error()
-
-	// Handle specific errors
-	switch {
-	case errors.Is(err, services.ErrDepartmentNotFound):
-		statusCode = http.StatusNotFound
-		errorCode = dto.ErrorCodeResourceNotFound
-		errorMessage = "Department not found"
-		errorDetails = "The requested department does not exist"
-	case errors.Is(err, services.ErrDepartmentAlreadyExists):
-		statusCode = http.StatusConflict
-		errorCode = dto.ErrorCodeResourceAlreadyExists
-		errorMessage = "Department already exists"
-		errorDetails = "A department with this name or code already exists"
-	case errors.Is(err, services.ErrFacultyNotFound), errors.Is(err, services.ErrFacultyForDeptNotFound):
-		statusCode = http.StatusNotFound
-		errorCode = dto.ErrorCodeResourceNotFound
-		errorMessage = "Faculty not found"
-		errorDetails = "The faculty for this department does not exist"
-	}
-
-	errorDetail := dto.NewErrorDetail(errorCode, errorMessage)
-	errorDetail = errorDetail.WithDetails(errorDetails)
-	ctx.JSON(statusCode, dto.NewErrorResponse(errorDetail))
-}
+// This controller now uses the centralized error handling middleware in middleware/error_middleware.go
 
 // CreateDepartment handles department creation
 // @Summary Create a new department
@@ -79,7 +50,7 @@ func (c *DepartmentController) CreateDepartment(ctx *gin.Context) {
 
 	err := c.departmentService.CreateDepartment(ctx, &department)
 	if err != nil {
-		handleDepartmentError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -113,7 +84,7 @@ func (c *DepartmentController) GetDepartmentByID(ctx *gin.Context) {
 
 	department, err := c.departmentService.GetDepartmentByID(ctx, id)
 	if err != nil {
-		handleDepartmentError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -136,7 +107,7 @@ func (c *DepartmentController) GetDepartmentByID(ctx *gin.Context) {
 func (c *DepartmentController) GetAllDepartments(ctx *gin.Context) {
 	departments, err := c.departmentService.GetAllDepartments(ctx)
 	if err != nil {
-		handleDepartmentError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -170,7 +141,7 @@ func (c *DepartmentController) GetDepartmentsByFacultyID(ctx *gin.Context) {
 
 	departments, err := c.departmentService.GetDepartmentsByFacultyID(ctx, facultyID)
 	if err != nil {
-		handleDepartmentError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -218,7 +189,7 @@ func (c *DepartmentController) UpdateDepartment(ctx *gin.Context) {
 
 	err = c.departmentService.UpdateDepartment(ctx, &department)
 	if err != nil {
-		handleDepartmentError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -253,7 +224,7 @@ func (c *DepartmentController) DeleteDepartment(ctx *gin.Context) {
 
 	err = c.departmentService.DeleteDepartment(ctx, id)
 	if err != nil {
-		handleDepartmentError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 

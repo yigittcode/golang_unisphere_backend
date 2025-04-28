@@ -22,8 +22,20 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// AuthService handles authentication operations
-type AuthService struct {
+// AuthService defines the interface for authentication operations
+type AuthService interface {
+	RegisterStudent(ctx context.Context, req *dto.RegisterStudentRequest) (*dto.TokenResponse, error)
+	RegisterInstructor(ctx context.Context, req *dto.RegisterInstructorRequest) (*dto.TokenResponse, error)
+	Login(ctx context.Context, req *dto.LoginRequest) (*dto.TokenResponse, error)
+	RefreshToken(ctx context.Context, refreshToken string) (*dto.TokenResponse, error)
+	GetProfile(ctx context.Context, userID int64) (*dto.BaseUserProfile, error)
+	UpdateProfilePhoto(ctx context.Context, userID int64, photo *multipart.FileHeader) (*dto.BaseUserProfile, error)
+	DeleteProfilePhoto(ctx context.Context, userID int64) (*dto.BaseUserProfile, error)
+	UpdateUserProfile(ctx context.Context, userID int64, req *dto.UpdateUserProfileRequest) (*dto.BaseUserProfile, error)
+}
+
+// authServiceImpl implements the AuthService interface
+type authServiceImpl struct {
 	userRepo       *repositories.UserRepository
 	tokenRepo      *repositories.TokenRepository
 	departmentRepo *repositories.DepartmentRepository
@@ -44,8 +56,8 @@ func NewAuthService(
 	fileStorage *filestorage.LocalStorage,
 	jwtService *auth.JWTService,
 	logger zerolog.Logger,
-) *AuthService {
-	return &AuthService{
+) AuthService {
+	return &authServiceImpl{
 		userRepo:       userRepo,
 		tokenRepo:      tokenRepo,
 		departmentRepo: departmentRepo,
@@ -58,7 +70,7 @@ func NewAuthService(
 }
 
 // validateEmail validates an email address
-func (s *AuthService) validateEmail(email string) error {
+func (s *authServiceImpl) validateEmail(email string) error {
 	// Email should be non-empty
 	if strings.TrimSpace(email) == "" {
 		return fmt.Errorf("%w: email cannot be empty", apperrors.ErrValidationFailed)
@@ -76,7 +88,7 @@ func (s *AuthService) validateEmail(email string) error {
 }
 
 // validatePassword checks if password meets requirements
-func (s *AuthService) validatePassword(password string) error {
+func (s *authServiceImpl) validatePassword(password string) error {
 	if password == "" {
 		return fmt.Errorf("%w: password cannot be empty", apperrors.ErrValidationFailed)
 	}
@@ -118,7 +130,7 @@ func (s *AuthService) validatePassword(password string) error {
 }
 
 // validateIdentifier validates a student identifier
-func (s *AuthService) validateIdentifier(identifier string) error {
+func (s *authServiceImpl) validateIdentifier(identifier string) error {
 	if identifier == "" {
 		return fmt.Errorf("%w: student identifier cannot be empty", apperrors.ErrValidationFailed)
 	}
@@ -135,7 +147,7 @@ func (s *AuthService) validateIdentifier(identifier string) error {
 }
 
 // validateUserID validates a user ID
-func (s *AuthService) validateUserID(userID int64) error {
+func (s *authServiceImpl) validateUserID(userID int64) error {
 	if userID <= 0 {
 		return fmt.Errorf("%w: user ID must be positive", apperrors.ErrValidationFailed)
 	}
@@ -143,7 +155,7 @@ func (s *AuthService) validateUserID(userID int64) error {
 }
 
 // validateToken validates a token string
-func (s *AuthService) validateToken(token string) error {
+func (s *authServiceImpl) validateToken(token string) error {
 	// Token should be non-empty
 	if strings.TrimSpace(token) == "" {
 		return apperrors.ErrTokenInvalid
@@ -153,7 +165,7 @@ func (s *AuthService) validateToken(token string) error {
 }
 
 // RegisterStudent registers a new student
-func (s *AuthService) RegisterStudent(ctx context.Context, req *dto.RegisterStudentRequest) (*dto.TokenResponse, error) {
+func (s *authServiceImpl) RegisterStudent(ctx context.Context, req *dto.RegisterStudentRequest) (*dto.TokenResponse, error) {
 	// Validate email
 	if err := s.validateEmail(req.Email); err != nil {
 		return nil, err
@@ -193,7 +205,7 @@ func (s *AuthService) RegisterStudent(ctx context.Context, req *dto.RegisterStud
 		return nil, fmt.Errorf("error hashing password: %w", err)
 	}
 
-	// Create user
+	// Create user with department_id
 	user := &models.User{
 		Email:        req.Email,
 		Password:     string(hashedPassword),
@@ -201,7 +213,7 @@ func (s *AuthService) RegisterStudent(ctx context.Context, req *dto.RegisterStud
 		LastName:     req.LastName,
 		RoleType:     models.RoleStudent,
 		IsActive:     true,
-		DepartmentID: &req.DepartmentID,
+		DepartmentID: &req.DepartmentID, // Department bilgisi sadece user tablosunda tutulacak
 	}
 
 	// Create user in DB
@@ -214,7 +226,6 @@ func (s *AuthService) RegisterStudent(ctx context.Context, req *dto.RegisterStud
 	student := &models.Student{
 		UserID:         userID,
 		Identifier:     req.StudentID,
-		DepartmentID:   req.DepartmentID,
 		GraduationYear: req.GraduationYear,
 	}
 
@@ -226,16 +237,11 @@ func (s *AuthService) RegisterStudent(ctx context.Context, req *dto.RegisterStud
 
 	// Generate token
 	user.ID = userID // Set ID for token generation
-	tokenResponse, err := s.generateTokenResponse(ctx, user)
-	if err != nil {
-		return nil, fmt.Errorf("error generating token: %w", err)
-	}
-
-	return tokenResponse, nil
+	return s.generateTokenResponse(ctx, user)
 }
 
 // RegisterInstructor registers a new instructor
-func (s *AuthService) RegisterInstructor(ctx context.Context, req *dto.RegisterInstructorRequest) (*dto.TokenResponse, error) {
+func (s *authServiceImpl) RegisterInstructor(ctx context.Context, req *dto.RegisterInstructorRequest) (*dto.TokenResponse, error) {
 	// Validate email
 	if err := s.validateEmail(req.Email); err != nil {
 		return nil, err
@@ -261,14 +267,15 @@ func (s *AuthService) RegisterInstructor(ctx context.Context, req *dto.RegisterI
 		return nil, fmt.Errorf("error hashing password: %w", err)
 	}
 
-	// Create user
+	// Create user with department_id
 	user := &models.User{
-		Email:     req.Email,
-		Password:  string(hashedPassword),
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		RoleType:  models.RoleInstructor,
-		IsActive:  true,
+		Email:        req.Email,
+		Password:     string(hashedPassword),
+		FirstName:    req.FirstName,
+		LastName:     req.LastName,
+		RoleType:     models.RoleInstructor,
+		IsActive:     true,
+		DepartmentID: &req.DepartmentID,
 	}
 
 	// Add user to database
@@ -279,9 +286,8 @@ func (s *AuthService) RegisterInstructor(ctx context.Context, req *dto.RegisterI
 
 	// Create instructor
 	instructor := &models.Instructor{
-		UserID:       userID,
-		DepartmentID: req.DepartmentID,
-		Title:        req.Title,
+		UserID: userID,
+		Title:  req.Title,
 	}
 
 	// Add instructor to database
@@ -297,7 +303,7 @@ func (s *AuthService) RegisterInstructor(ctx context.Context, req *dto.RegisterI
 }
 
 // Login authenticates a user
-func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.TokenResponse, error) {
+func (s *authServiceImpl) Login(ctx context.Context, req *dto.LoginRequest) (*dto.TokenResponse, error) {
 	// Validate email
 	if err := s.validateEmail(req.Email); err != nil {
 		return nil, err
@@ -324,7 +330,7 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.To
 }
 
 // RefreshToken creates a new access token using a refresh token
-func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*dto.TokenResponse, error) {
+func (s *authServiceImpl) RefreshToken(ctx context.Context, refreshToken string) (*dto.TokenResponse, error) {
 	// Validate refresh token
 	if err := s.validateToken(refreshToken); err != nil {
 		return nil, err
@@ -374,7 +380,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*d
 }
 
 // GetProfile retrieves a user's profile
-func (s *AuthService) GetProfile(ctx context.Context, userID int64) (*dto.UserProfile, error) {
+func (s *authServiceImpl) GetProfile(ctx context.Context, userID int64) (*dto.BaseUserProfile, error) {
 	// Validate user ID
 	if err := s.validateUserID(userID); err != nil {
 		return nil, err
@@ -386,17 +392,54 @@ func (s *AuthService) GetProfile(ctx context.Context, userID int64) (*dto.UserPr
 		return nil, apperrors.ErrUserNotFound
 	}
 
-	// Create profile response
-	profile := &dto.UserProfile{
-		ID:                 user.ID,
-		Email:              user.Email,
-		FirstName:          user.FirstName,
-		LastName:           user.LastName,
-		RoleType:           string(user.RoleType),
-		ProfilePhotoFileId: user.ProfilePhotoFileID,
+	// Create base profile
+	baseProfile := &dto.BaseUserProfile{
+		ID:        user.ID,
+		Email:     user.Email,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		RoleType:  string(user.RoleType),
 	}
 
-	var departmentID int64
+	// Get faculty and department information if available
+	if user.DepartmentID != nil {
+		departmentID := *user.DepartmentID
+
+		// Get department details
+		departmentName, err := s.userRepo.GetDepartmentNameByID(ctx, departmentID)
+		if err == nil {
+			// Get faculty details through repository
+			facultyDetails, err := s.departmentRepo.GetFacultyByDepartmentID(ctx, departmentID)
+			if err == nil && facultyDetails != nil {
+				// Create department info
+				department := &dto.DepartmentInfo{
+					ID:   departmentID,
+					Name: departmentName,
+				}
+
+				// Create faculty info with department
+				baseProfile.Faculty = &dto.FacultyInfo{
+					ID:         facultyDetails.ID,
+					Name:       facultyDetails.Name,
+					Department: department,
+				}
+			}
+		}
+	}
+
+	// Add profile photo information if available
+	if user.ProfilePhotoFileID != nil {
+		fileID := *user.ProfilePhotoFileID
+
+		file, err := s.fileRepo.GetFileByID(ctx, fileID)
+		if err == nil {
+			baseProfile.Photo = &dto.PhotoInfo{
+				ID:       fileID,
+				URL:      file.FileURL,
+				FileType: file.FileType,
+			}
+		}
+	}
 
 	// Get role-specific information
 	switch user.RoleType {
@@ -407,9 +450,12 @@ func (s *AuthService) GetProfile(ctx context.Context, userID int64) (*dto.UserPr
 			return nil, fmt.Errorf("error retrieving student details: %w", err)
 		}
 
-		profile.Identifier = &student.Identifier
-		profile.GraduationYear = student.GraduationYear
-		departmentID = student.DepartmentID // Store department ID
+		studentProfile := &dto.StudentProfile{
+			BaseUserProfile: *baseProfile,
+			Identifier:      student.Identifier,
+			GraduationYear:  student.GraduationYear,
+		}
+		return &studentProfile.BaseUserProfile, nil
 
 	case models.RoleInstructor:
 		// Get instructor details
@@ -418,45 +464,26 @@ func (s *AuthService) GetProfile(ctx context.Context, userID int64) (*dto.UserPr
 			return nil, fmt.Errorf("error retrieving instructor details: %w", err)
 		}
 
-		profile.Title = &instructor.Title
-		departmentID = instructor.DepartmentID // Store department ID
+		instructorProfile := &dto.InstructorProfile{
+			BaseUserProfile: *baseProfile,
+			Title:           instructor.Title,
+		}
+		return &instructorProfile.BaseUserProfile, nil
 	}
 
-	// Get department details (both roles have a department)
-	if departmentID > 0 {
-		// If user has department_id set, prioritize that
-		if user.DepartmentID != nil {
-			departmentID = *user.DepartmentID
-		}
-
-		profile.DepartmentID = departmentID
-
-		// Get department name
-		departmentName, err := s.userRepo.GetDepartmentNameByID(ctx, departmentID)
-		if err == nil {
-			profile.DepartmentName = departmentName
-		}
-
-		// Get faculty details through repository
-		facultyDetails, err := s.departmentRepo.GetFacultyByDepartmentID(ctx, departmentID)
-		if err == nil && facultyDetails != nil {
-			profile.FacultyID = facultyDetails.ID
-			profile.FacultyName = facultyDetails.Name
-		}
-	}
-
-	return profile, nil
+	return baseProfile, nil
 }
 
 // UpdateProfilePhoto updates a user's profile photo
-func (s *AuthService) UpdateProfilePhoto(ctx context.Context, userID int64, fileHeader *multipart.FileHeader) (*dto.UserProfile, error) {
+func (s *authServiceImpl) UpdateProfilePhoto(ctx context.Context, userID int64, fileHeader *multipart.FileHeader) (*dto.BaseUserProfile, error) {
 	// Validate user ID
 	if err := s.validateUserID(userID); err != nil {
 		return nil, err
 	}
 
-	// Verify user exists
-	if _, err := s.userRepo.GetUserByID(ctx, userID); err != nil {
+	// Get the user to check if they exist and to find any existing profile photo
+	user, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
 		if errors.Is(err, apperrors.ErrUserNotFound) {
 			return nil, apperrors.ErrUserNotFound
 		}
@@ -468,6 +495,45 @@ func (s *AuthService) UpdateProfilePhoto(ctx context.Context, userID int64, file
 		return nil, fmt.Errorf("%w: only image files (jpg, jpeg, png, gif) are allowed for profile photos", apperrors.ErrValidationFailed)
 	}
 
+	// Check if user already has a profile photo and delete it
+	if user.ProfilePhotoFileID != nil {
+		// Get old file ID
+		oldFileID := *user.ProfilePhotoFileID
+
+		// Get file details to have the file path for physical deletion
+		oldFile, err := s.fileRepo.GetFileByID(ctx, oldFileID)
+		if err == nil && oldFile != nil {
+			// Store the file path for deletion
+			oldFilePath := oldFile.FilePath
+
+			// First set the user's profile photo file ID to NULL to remove the reference
+			if err := s.userRepo.UpdateUserProfilePhotoFileID(ctx, userID, nil); err != nil {
+				return nil, fmt.Errorf("error removing old profile photo reference: %w", err)
+			}
+
+			// Delete the file from the database
+			if err := s.fileRepo.DeleteFile(ctx, oldFileID); err != nil {
+				// Log the error but continue
+				s.logger.Error().Err(err).Int64("fileID", oldFileID).Int64("userID", userID).Msg("Error deleting old profile photo from database")
+			}
+
+			// Delete the physical file
+			if err := s.fileStorage.DeleteFile(oldFilePath); err != nil {
+				s.logger.Error().Err(err).Str("filePath", oldFilePath).Int64("userID", userID).Msg("Error deleting old profile photo file from filesystem")
+			}
+		} else {
+			// If we couldn't get file details, still try to remove DB reference
+			if err := s.userRepo.UpdateUserProfilePhotoFileID(ctx, userID, nil); err != nil {
+				return nil, fmt.Errorf("error removing old profile photo reference: %w", err)
+			}
+
+			// And try to delete the DB record
+			if err := s.fileRepo.DeleteFile(ctx, oldFileID); err != nil {
+				s.logger.Error().Err(err).Int64("fileID", oldFileID).Int64("userID", userID).Msg("Error deleting old profile photo record")
+			}
+		}
+	}
+
 	// We don't need to open the file manually, the SaveFile method will handle that
 	newFilePath, err := s.fileStorage.SaveFile(fileHeader)
 	if err != nil {
@@ -475,7 +541,7 @@ func (s *AuthService) UpdateProfilePhoto(ctx context.Context, userID int64, file
 	}
 
 	// Create file record in database
-	fileID, err := s.createFileRecord(ctx, fileHeader.Filename, newFilePath, "profile_photo")
+	fileID, err := s.createFileRecord(ctx, fileHeader.Filename, newFilePath, "profile_photo", userID)
 	if err != nil {
 		// Try to delete the file if the database insertion fails
 		_ = s.fileStorage.DeleteFile(newFilePath)
@@ -494,7 +560,7 @@ func (s *AuthService) UpdateProfilePhoto(ctx context.Context, userID int64, file
 }
 
 // Helper method to check if file is a valid image
-func (s *AuthService) isValidImageFile(filename string) bool {
+func (s *authServiceImpl) isValidImageFile(filename string) bool {
 	ext := strings.ToLower(filepath.Ext(filename))
 	validExtensions := map[string]bool{
 		".jpg":  true,
@@ -506,7 +572,7 @@ func (s *AuthService) isValidImageFile(filename string) bool {
 }
 
 // Helper method to create a file record in the database
-func (s *AuthService) createFileRecord(ctx context.Context, originalName, filePath, fileType string) (int64, error) {
+func (s *authServiceImpl) createFileRecord(ctx context.Context, originalName, filePath, fileType string, userID int64) (int64, error) {
 	// Determine MIME type based on file extension
 	ext := strings.ToLower(filepath.Ext(originalName))
 	var mimeType string
@@ -536,21 +602,32 @@ func (s *AuthService) createFileRecord(ctx context.Context, originalName, filePa
 
 	fileSize := fileInfo.Size()
 
+	// Set resource type based on the fileType parameter
+	var resourceType models.FileType
+	var resourceID int64
+
+	if fileType == "profile_photo" {
+		resourceType = models.FileTypeProfilePhoto
+		resourceID = userID // For profile photos, resourceID is the user's ID
+	}
+
 	// Create the file record in the database
 	file := &models.File{
-		FileName: originalName,
-		FilePath: filePath,
-		FileURL:  s.fileStorage.GetFileURL(filePath),
-		FileSize: fileSize,
-		FileType: mimeType,
-		// For profile photos, we're not setting ResourceType or ResourceID as they're referenced directly from user table
+		FileName:     originalName,
+		FilePath:     filePath,
+		FileURL:      s.fileStorage.GetFileURL(filePath),
+		FileSize:     fileSize,
+		FileType:     mimeType,
+		UploadedBy:   userID,
+		ResourceType: resourceType,
+		ResourceID:   resourceID,
 	}
 
 	return s.fileRepo.CreateFile(ctx, file)
 }
 
 // DeleteProfilePhoto deletes a user's profile photo
-func (s *AuthService) DeleteProfilePhoto(ctx context.Context, userID int64) (*dto.UserProfile, error) {
+func (s *authServiceImpl) DeleteProfilePhoto(ctx context.Context, userID int64) (*dto.BaseUserProfile, error) {
 	// Validate user ID
 	if err := s.validateUserID(userID); err != nil {
 		return nil, err
@@ -569,15 +646,37 @@ func (s *AuthService) DeleteProfilePhoto(ctx context.Context, userID int64) (*dt
 	if user.ProfilePhotoFileID != nil {
 		fileID := *user.ProfilePhotoFileID
 
-		// First set the user's profile photo file ID to NULL to remove the reference
-		if err := s.userRepo.UpdateUserProfilePhotoFileID(ctx, userID, nil); err != nil {
-			return nil, fmt.Errorf("error updating profile photo: %w", err)
-		}
+		// Get file details to have the file path
+		file, err := s.fileRepo.GetFileByID(ctx, fileID)
+		if err == nil && file != nil {
+			// Get the file path to delete the physical file
+			filePath := file.FilePath
 
-		// Then delete the file from the files table and filesystem
-		if err := s.fileRepo.DeleteFile(ctx, fileID); err != nil {
-			// Log the error but continue, as we've already removed the reference
-			s.logger.Error().Err(err).Int64("fileID", fileID).Int64("userID", userID).Msg("Error deleting profile photo file")
+			// First set the user's profile photo file ID to NULL to remove the reference
+			if err := s.userRepo.UpdateUserProfilePhotoFileID(ctx, userID, nil); err != nil {
+				return nil, fmt.Errorf("error updating profile photo: %w", err)
+			}
+
+			// Delete the file from the database
+			if err := s.fileRepo.DeleteFile(ctx, fileID); err != nil {
+				// Log the error but continue, as we've already removed the reference
+				s.logger.Error().Err(err).Int64("fileID", fileID).Int64("userID", userID).Msg("Error deleting profile photo from database")
+			}
+
+			// Also delete from filesystem using fileStorage
+			if err := s.fileStorage.DeleteFile(filePath); err != nil {
+				s.logger.Error().Err(err).Str("filePath", filePath).Int64("userID", userID).Msg("Error deleting profile photo file from filesystem")
+			}
+		} else {
+			// If we couldn't get file details, still try to remove DB reference
+			if err := s.userRepo.UpdateUserProfilePhotoFileID(ctx, userID, nil); err != nil {
+				return nil, fmt.Errorf("error updating profile photo: %w", err)
+			}
+
+			// And try to delete the DB record
+			if err := s.fileRepo.DeleteFile(ctx, fileID); err != nil {
+				s.logger.Error().Err(err).Int64("fileID", fileID).Int64("userID", userID).Msg("Error deleting profile photo record")
+			}
 		}
 	} else {
 		// If there's no profile photo file ID, just update to make sure it's NULL
@@ -591,7 +690,7 @@ func (s *AuthService) DeleteProfilePhoto(ctx context.Context, userID int64) (*dt
 }
 
 // UpdateUserProfile updates a user's profile information
-func (s *AuthService) UpdateUserProfile(ctx context.Context, userID int64, req *dto.UpdateUserProfileRequest) (*dto.UserProfile, error) {
+func (s *authServiceImpl) UpdateUserProfile(ctx context.Context, userID int64, req *dto.UpdateUserProfileRequest) (*dto.BaseUserProfile, error) {
 	// Validate user ID
 	if err := s.validateUserID(userID); err != nil {
 		return nil, err
@@ -677,7 +776,7 @@ func (s *AuthService) UpdateUserProfile(ctx context.Context, userID int64, req *
 // Helper functions
 
 // generateTokenResponse creates token response
-func (s *AuthService) generateTokenResponse(ctx context.Context, user *models.User) (*dto.TokenResponse, error) {
+func (s *authServiceImpl) generateTokenResponse(ctx context.Context, user *models.User) (*dto.TokenResponse, error) {
 	// Create access and refresh token pair
 	accessToken, refreshToken, expiresIn, refreshExpiresIn, err := s.jwtService.GenerateTokenPair(user)
 	if err != nil {
@@ -693,11 +792,13 @@ func (s *AuthService) generateTokenResponse(ctx context.Context, user *models.Us
 	}
 
 	// Create token response
-	return &dto.TokenResponse{
+	tokenResponse := &dto.TokenResponse{
 		AccessToken:      accessToken,
 		RefreshToken:     refreshToken,
 		TokenType:        "Bearer",
-		ExpiresIn:        int64(expiresIn),        // Convert int to int64
-		RefreshExpiresIn: int64(refreshExpiresIn), // Convert int to int64
-	}, nil
+		ExpiresIn:        int64(expiresIn),
+		RefreshExpiresIn: int64(refreshExpiresIn),
+	}
+
+	return tokenResponse, nil
 }

@@ -9,18 +9,12 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yigit/unisphere/internal/app/models"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/logger"
 )
 
-// Department error types
-var (
-	// ErrDepartmentNotFound is returned when a department is not found.
-	ErrDepartmentNotFound = ErrNotFound // Use shared ErrNotFound
-	// ErrDepartmentAlreadyExists is returned when a department with the same name or code exists.
-	ErrDepartmentAlreadyExists = errors.New("department with this name or code already exists")
-	// ErrDepartmentHasRelations is returned when trying to delete a department with associated data.
-	ErrDepartmentHasRelations = errors.New("department has associated data and cannot be deleted")
-)
+// These errors have been moved to apperrors package
+// Use apperrors.apperrors.ErrDepartmentNotFound, apperrors.apperrors.ErrDepartmentAlreadyExists, and apperrors.apperrors.ErrDepartmentHasRelations instead
 
 // DepartmentRepository handles database operations for departments
 type DepartmentRepository struct {
@@ -53,7 +47,7 @@ func (r *DepartmentRepository) Create(ctx context.Context, department *models.De
 	err = r.db.QueryRow(ctx, sql, args...).Scan(&department.ID)
 	if err != nil {
 		if isDuplicateKeyError(err) { // Assuming isDuplicateKeyError is defined or imported
-			return ErrDepartmentAlreadyExists
+			return apperrors.ErrDepartmentAlreadyExists
 		}
 		logger.Error().Err(err).Msg("Error executing create department query")
 		return fmt.Errorf("error creating department: %w", err)
@@ -84,7 +78,7 @@ func (r *DepartmentRepository) GetByID(ctx context.Context, id int64) (*models.D
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrDepartmentNotFound
+			return nil, apperrors.ErrDepartmentNotFound
 		}
 		logger.Error().Err(err).Int64("departmentID", id).Msg("Error scanning department row")
 		return nil, fmt.Errorf("error retrieving department: %w", err)
@@ -198,14 +192,14 @@ func (r *DepartmentRepository) Update(ctx context.Context, department *models.De
 	cmdTag, err := r.db.Exec(ctx, sql, args...)
 	if err != nil {
 		if isDuplicateKeyError(err) {
-			return ErrDepartmentAlreadyExists
+			return apperrors.ErrDepartmentAlreadyExists
 		}
 		logger.Error().Err(err).Int64("departmentID", department.ID).Msg("Error executing update department query")
 		return fmt.Errorf("error updating department: %w", err)
 	}
 
 	if cmdTag.RowsAffected() == 0 {
-		return ErrDepartmentNotFound
+		return apperrors.ErrDepartmentNotFound
 	}
 
 	return nil
@@ -237,7 +231,7 @@ func (r *DepartmentRepository) Delete(ctx context.Context, id int64) error {
 		}
 		if exists {
 			logger.Warn().Int64("departmentID", id).Str("table", table).Msg("Attempted to delete department with related data")
-			return ErrDepartmentHasRelations
+			return apperrors.ErrDepartmentHasRelations
 		}
 	}
 
@@ -258,7 +252,7 @@ func (r *DepartmentRepository) Delete(ctx context.Context, id int64) error {
 	}
 
 	if cmdTag.RowsAffected() == 0 {
-		return ErrDepartmentNotFound
+		return apperrors.ErrDepartmentNotFound
 	}
 
 	return nil
@@ -319,7 +313,7 @@ func (r *DepartmentRepository) GetFacultyByDepartmentID(ctx context.Context, dep
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrFacultyNotFound
+			return nil, apperrors.ErrFacultyNotFound
 		}
 		logger.Error().Err(err).Int64("departmentID", departmentID).Msg("Error scanning faculty row")
 		return nil, fmt.Errorf("error retrieving faculty for department: %w", err)

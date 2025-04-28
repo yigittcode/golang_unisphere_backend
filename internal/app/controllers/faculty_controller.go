@@ -1,54 +1,30 @@
 package controllers
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 	"time"
-
 	"github.com/gin-gonic/gin"
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/services"
+	"github.com/yigit/unisphere/internal/middleware"
 )
 
 // FacultyController handles faculty-related operations
 type FacultyController struct {
-	facultyService *services.FacultyService
+	facultyService services.FacultyService
 }
 
 // NewFacultyController creates a new FacultyController
-func NewFacultyController(facultyService *services.FacultyService) *FacultyController {
+func NewFacultyController(facultyService services.FacultyService) *FacultyController {
 	return &FacultyController{
 		facultyService: facultyService,
 	}
 }
 
 // handleFacultyError is a helper function to handle common faculty error scenarios
-func handleFacultyError(ctx *gin.Context, err error) {
-	statusCode := http.StatusInternalServerError
-	errorCode := dto.ErrorCodeInternalServer
-	errorMessage := "An unexpected error occurred"
-	errorDetails := err.Error()
-
-	// Handle specific errors
-	switch {
-	case errors.Is(err, services.ErrFacultyNotFound):
-		statusCode = http.StatusNotFound
-		errorCode = dto.ErrorCodeResourceNotFound
-		errorMessage = "Faculty not found"
-		errorDetails = "The requested faculty does not exist"
-	case errors.Is(err, services.ErrFacultyAlreadyExists):
-		statusCode = http.StatusConflict
-		errorCode = dto.ErrorCodeResourceAlreadyExists
-		errorMessage = "Faculty already exists"
-		errorDetails = "A faculty with this name or code already exists"
-	}
-
-	errorDetail := dto.NewErrorDetail(errorCode, errorMessage)
-	errorDetail = errorDetail.WithDetails(errorDetails)
-	ctx.JSON(statusCode, dto.NewErrorResponse(errorDetail))
-}
+// This controller now uses the centralized error handling middleware in middleware/error_middleware.go
 
 // CreateFaculty handles faculty creation
 // @Summary Create a new faculty
@@ -73,7 +49,7 @@ func (c *FacultyController) CreateFaculty(ctx *gin.Context) {
 
 	id, err := c.facultyService.CreateFaculty(ctx, &faculty)
 	if err != nil {
-		handleFacultyError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -108,7 +84,7 @@ func (c *FacultyController) GetFacultyByID(ctx *gin.Context) {
 
 	faculty, err := c.facultyService.GetFacultyByID(ctx, id)
 	if err != nil {
-		handleFacultyError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -131,7 +107,7 @@ func (c *FacultyController) GetFacultyByID(ctx *gin.Context) {
 func (c *FacultyController) GetAllFaculties(ctx *gin.Context) {
 	faculties, err := c.facultyService.GetAllFaculties(ctx)
 	if err != nil {
-		handleFacultyError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -179,7 +155,7 @@ func (c *FacultyController) UpdateFaculty(ctx *gin.Context) {
 
 	err = c.facultyService.UpdateFaculty(ctx, &faculty)
 	if err != nil {
-		handleFacultyError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -214,7 +190,7 @@ func (c *FacultyController) DeleteFaculty(ctx *gin.Context) {
 
 	err = c.facultyService.DeleteFaculty(ctx, id)
 	if err != nil {
-		handleFacultyError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 

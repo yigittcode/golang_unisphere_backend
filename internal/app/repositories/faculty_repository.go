@@ -10,18 +10,12 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yigit/unisphere/internal/app/models"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/logger"
 )
 
-// Faculty error types
-var (
-	// ErrFacultyNotFound is returned when a faculty is not found.
-	ErrFacultyNotFound = ErrNotFound // Use shared ErrNotFound
-	// ErrFacultyAlreadyExists is returned when a faculty with the same name or code exists.
-	ErrFacultyAlreadyExists = errors.New("faculty with this name or code already exists")
-	// ErrFacultyHasDepartments is returned when trying to delete a faculty with associated departments.
-	ErrFacultyHasDepartments = errors.New("faculty has associated departments and cannot be deleted")
-)
+// These errors have been moved to apperrors package
+// Use apperrors.apperrors.ErrFacultyNotFound, apperrors.apperrors.ErrFacultyAlreadyExists, and apperrors.ErrFacultyHasRelations instead
 
 // FacultyRepository handles faculty database operations
 type FacultyRepository struct {
@@ -61,7 +55,7 @@ func (r *FacultyRepository) CreateFaculty(ctx context.Context, faculty *models.F
 	err = r.db.QueryRow(ctx, sql, args...).Scan(&id)
 	if err != nil {
 		if isDuplicateKeyError(err) {
-			return 0, ErrFacultyAlreadyExists
+			return 0, apperrors.ErrFacultyAlreadyExists
 		}
 		logger.Error().Err(err).Msg("Error executing create faculty query")
 		return 0, fmt.Errorf("error creating faculty: %w", err)
@@ -87,7 +81,7 @@ func (r *FacultyRepository) GetFacultyByID(ctx context.Context, id int64) (*mode
 	err = r.db.QueryRow(ctx, sql, args...).Scan(&faculty.ID, &faculty.Name, &faculty.Code, &faculty.Description)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrFacultyNotFound // Use shared ErrNotFound
+			return nil, apperrors.ErrFacultyNotFound // Use shared ErrNotFound
 		}
 		logger.Error().Err(err).Int64("facultyID", id).Msg("Error scanning faculty row")
 		return nil, fmt.Errorf("error getting faculty by ID: %w", err)
@@ -155,7 +149,7 @@ func (r *FacultyRepository) UpdateFaculty(ctx context.Context, faculty *models.F
 	if err != nil {
 		if isDuplicateKeyError(err) {
 			// Attempted to update to a name/code that already exists
-			return ErrFacultyAlreadyExists
+			return apperrors.ErrFacultyAlreadyExists
 		}
 		logger.Error().Err(err).Int64("facultyID", faculty.ID).Msg("Error executing update faculty query")
 		return fmt.Errorf("error updating faculty: %w", err)
@@ -163,7 +157,7 @@ func (r *FacultyRepository) UpdateFaculty(ctx context.Context, faculty *models.F
 
 	if cmdTag.RowsAffected() == 0 {
 		// ID did not exist
-		return ErrFacultyNotFound
+		return apperrors.ErrFacultyNotFound
 	}
 
 	return nil
@@ -192,7 +186,7 @@ func (r *FacultyRepository) DeleteFaculty(ctx context.Context, id int64) error {
 	}
 
 	if hasDepartments {
-		return ErrFacultyHasDepartments
+		return apperrors.ErrFacultyHasRelations
 	}
 
 	// Proceed with deletion
@@ -213,7 +207,7 @@ func (r *FacultyRepository) DeleteFaculty(ctx context.Context, id int64) error {
 
 	if cmdTag.RowsAffected() == 0 {
 		// Faculty not found (might have been deleted between check and delete)
-		return ErrFacultyNotFound
+		return apperrors.ErrFacultyNotFound
 	}
 
 	return nil

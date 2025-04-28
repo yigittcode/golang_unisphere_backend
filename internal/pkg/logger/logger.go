@@ -9,6 +9,16 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Logger is a wrapper around zerolog.Logger
+type Logger struct {
+	zerolog.Logger
+}
+
+// NewLogger creates a new Logger instance from a zerolog.Logger
+func NewLogger(logger zerolog.Logger) *Logger {
+	return &Logger{Logger: logger}
+}
+
 var (
 	// defaultLogger is the default logger instance
 	defaultLogger zerolog.Logger

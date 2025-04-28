@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/models/dto"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/helpers"
 	"github.com/yigit/unisphere/internal/pkg/logger"
 )
@@ -90,7 +90,7 @@ func ScanClassNoteDetails(row pgx.Row) (*ClassNoteDetails, error) {
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, ErrNotFound
+			return nil, apperrors.ErrClassNoteNotFound
 		}
 		logger.Error().Err(err).Msg("Error scanning class note details")
 		return nil, err
@@ -278,7 +278,7 @@ func (r *ClassNoteRepository) UpdateClassNote(ctx context.Context, note *models.
 	}
 
 	if cmdTag.RowsAffected() == 0 {
-		return ErrNotFound // Or a more specific error like ErrUpdateFailed
+		return apperrors.ErrClassNoteNotFound // Or a more specific error like ErrUpdateFailed
 	}
 
 	return nil
@@ -303,7 +303,7 @@ func (r *ClassNoteRepository) DeleteClassNote(ctx context.Context, id int64) err
 	}
 
 	if cmdTag.RowsAffected() == 0 {
-		return ErrNotFound // Note not found or already deleted
+		return apperrors.ErrClassNoteNotFound // Note not found or already deleted
 	}
 
 	return nil
@@ -343,9 +343,8 @@ func (r *ClassNoteRepository) GetClassNotesByUploaderID(ctx context.Context, use
 	return notes, nil
 }
 
-// ErrNotFound is returned when a resource is not found.
-// Consider moving this to a common errors package if used elsewhere.
-var ErrNotFound = sql.ErrNoRows // Reusing sql.ErrNoRows for simplicity
+// This error has been moved to apperrors package
+// Use apperrors.ErrNotFound or more specific errors like apperrors.ErrClassNoteNotFound instead
 
 // GetFileRepository returns the file repository
 func (r *ClassNoteRepository) GetFileRepository() *FileRepository {

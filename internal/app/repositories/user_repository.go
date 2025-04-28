@@ -2,19 +2,14 @@ package repositories
 
 import (
 	"context"
-	"errors"
-
+	
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/repositories/user"
 )
 
-// Yaygın hatalar
-var (
-	ErrUserNotFound       = errors.New("user not found")
-	ErrEmailAlreadyExists = errors.New("email already exists")
-	ErrIdentifierExists   = errors.New("student identifier already in use")
-)
+// These errors have been moved to apperrors package
+// Use apperrors.ErrUserNotFound, apperrors.ErrEmailAlreadyExists, and apperrors.ErrIdentifierExists instead
 
 // UserRepository combines all user-related repositories
 type UserRepository struct {

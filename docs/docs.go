@@ -44,7 +44,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.LoginRequest"
+                            "$ref": "#/definitions/dto.LoginRequest"
                         }
                     }
                 ],
@@ -52,25 +52,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Login successful",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                            "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Invalid credentials",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -97,13 +97,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                    "$ref": "#/definitions/dto.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserProfile"
+                                            "$ref": "#/definitions/dto.UserProfile"
                                         }
                                     }
                                 }
@@ -113,13 +113,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized - Invalid or missing token",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -148,7 +148,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UpdateUserProfileRequest"
+                            "$ref": "#/definitions/dto.UpdateUserProfileRequest"
                         }
                     }
                 ],
@@ -158,13 +158,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                    "$ref": "#/definitions/dto.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserProfile"
+                                            "$ref": "#/definitions/dto.UserProfile"
                                         }
                                     }
                                 }
@@ -174,25 +174,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request format or validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized - Invalid or missing token",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Email already exists",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -231,13 +231,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                    "$ref": "#/definitions/dto.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserProfile"
+                                            "$ref": "#/definitions/dto.UserProfile"
                                         }
                                     }
                                 }
@@ -247,19 +247,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid file format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized - Invalid or missing token",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -284,13 +284,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                    "$ref": "#/definitions/dto.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserProfile"
+                                            "$ref": "#/definitions/dto.UserProfile"
                                         }
                                     }
                                 }
@@ -300,13 +300,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized - Invalid or missing token",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -332,7 +332,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.RefreshTokenRequest"
+                            "$ref": "#/definitions/dto.RefreshTokenRequest"
                         }
                     }
                 ],
@@ -340,25 +340,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Token refresh successful",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                            "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Invalid or expired token",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -384,7 +384,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.RegisterInstructorRequest"
+                            "$ref": "#/definitions/dto.RegisterInstructorRequest"
                         }
                     }
                 ],
@@ -392,25 +392,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Instructor successfully registered",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                            "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request format or validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Email already in use",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -436,7 +436,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.RegisterStudentRequest"
+                            "$ref": "#/definitions/dto.RegisterStudentRequest"
                         }
                     }
                 ],
@@ -444,25 +444,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Student successfully registered",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                            "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request format or validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Email or student ID already in use",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -555,13 +555,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                    "$ref": "#/definitions/dto.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ClassNoteListResponse"
+                                            "$ref": "#/definitions/dto.ClassNoteListResponse"
                                         }
                                     }
                                 }
@@ -571,13 +571,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request (e.g., invalid query parameters)",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -588,7 +588,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Adds a new class note to the system. Requires authentication. Supports optional image upload.",
+                "description": "Create a new class note with the optional file upload",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -642,7 +642,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "example": "\"Detailed notes covering topic X...\"",
+                        "example": "\"These notes cover...\"",
                         "description": "Content",
                         "name": "content",
                         "in": "formData",
@@ -650,8 +650,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "file",
-                        "description": "Optional image file (jpg, png, gif)",
-                        "name": "image",
+                        "description": "Files to upload (PDFs, images, etc.)",
+                        "name": "files",
                         "in": "formData"
                     }
                 ],
@@ -661,13 +661,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                    "$ref": "#/definitions/dto.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ClassNoteResponse"
+                                            "$ref": "#/definitions/dto.ClassNoteResponse"
                                         }
                                     }
                                 }
@@ -675,21 +675,27 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request (e.g., validation errors)",
+                        "description": "Bad Request (e.g., invalid input data)",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Unauthorized (missing or invalid token)",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden (not permitted to create)",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -719,7 +725,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                    "$ref": "#/definitions/dto.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -727,7 +733,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ClassNoteResponse"
+                                                "$ref": "#/definitions/dto.ClassNoteResponse"
                                             }
                                         }
                                     }
@@ -738,13 +744,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized (handled by middleware)\" // Middleware should handle this",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -780,13 +786,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                    "$ref": "#/definitions/dto.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ClassNoteResponse"
+                                            "$ref": "#/definitions/dto.ClassNoteResponse"
                                         }
                                     }
                                 }
@@ -796,19 +802,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request (e.g., invalid ID)",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -819,7 +825,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Updates an existing class note. Requires authentication and ownership. Supports optional image upload (replaces existing).",
+                "description": "Update a class note that the user owns",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -829,13 +835,13 @@ const docTemplate = `{
                 "tags": [
                     "ClassNotes"
                 ],
-                "summary": "Update a class note",
+                "summary": "Update an existing class note",
                 "parameters": [
                     {
                         "type": "integer",
                         "format": "int64",
                         "example": 15,
-                        "description": "Class Note ID to update",
+                        "description": "Class Note ID",
                         "name": "noteId",
                         "in": "path",
                         "required": true
@@ -882,7 +888,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "example": "\"Updated detailed notes covering topic X...\"",
+                        "example": "\"Updated notes...\"",
                         "description": "Content",
                         "name": "content",
                         "in": "formData",
@@ -890,8 +896,15 @@ const docTemplate = `{
                     },
                     {
                         "type": "file",
-                        "description": "Optional new image file (replaces existing one)",
-                        "name": "image",
+                        "description": "Files to upload (PDFs, images, etc.)",
+                        "name": "files",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"1,2,3\"",
+                        "description": "Comma-separated list of file IDs to remove",
+                        "name": "removeFileIds",
                         "in": "formData"
                     }
                 ],
@@ -901,13 +914,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                    "$ref": "#/definitions/dto.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ClassNoteResponse"
+                                            "$ref": "#/definitions/dto.ClassNoteResponse"
                                         }
                                     }
                                 }
@@ -915,33 +928,33 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request (e.g., validation errors, invalid ID)",
+                        "description": "Bad Request (e.g., invalid input data)",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Unauthorized (missing or invalid token)",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "403": {
-                        "description": "Forbidden (not owner)",
+                        "description": "Forbidden (not the owner of the note)",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Not Found (class note doesn't exist)",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -980,13 +993,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                    "$ref": "#/definitions/dto.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse"
+                                            "$ref": "#/definitions/dto.SuccessResponse"
                                         }
                                     }
                                 }
@@ -996,31 +1009,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request (e.g., invalid ID)",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized (handled by middleware)\" // Middleware should handle this",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden (not owner)",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -1052,7 +1065,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                    "$ref": "#/definitions/dto.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1071,19 +1084,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid Department ID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Department not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -1103,13 +1116,13 @@ const docTemplate = `{
                     "200": {
                         "description": "Departments retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                            "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -1141,31 +1154,31 @@ const docTemplate = `{
                     "201": {
                         "description": "Department successfully created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                            "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request format or validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Faculty not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Department already exists",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -1194,19 +1207,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Department information retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                            "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Department not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -1245,25 +1258,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Department successfully updated",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                            "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request format or validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Department not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -1290,25 +1303,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Department successfully deleted",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                            "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Department not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Cannot delete department with associated data",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -1328,13 +1341,13 @@ const docTemplate = `{
                     "200": {
                         "description": "Faculties retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                            "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -1366,25 +1379,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Faculty successfully created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                            "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request format or validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Faculty already exists",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -1413,19 +1426,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Faculty information retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                            "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Faculty not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -1464,25 +1477,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Faculty successfully updated",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                            "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request format or validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Faculty not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -1509,25 +1522,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Faculty successfully deleted",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                            "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Faculty not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Cannot delete faculty with associated departments",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -1556,19 +1569,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Departments retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                            "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Faculty not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -1595,7 +1608,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                    "$ref": "#/definitions/dto.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1611,25 +1624,25 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized - Invalid or missing token",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden - User is not an instructor or token invalid",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Instructor not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -1660,7 +1673,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UpdateTitleRequest"
+                            "$ref": "#/definitions/dto.UpdateTitleRequest"
                         }
                     }
                 ],
@@ -1668,37 +1681,37 @@ const docTemplate = `{
                     "200": {
                         "description": "Instructor title updated successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                            "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request format or validation error (e.g., empty title)",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized - Invalid or missing token",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden - User is not an instructor or token invalid",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Instructor not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -1730,7 +1743,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                    "$ref": "#/definitions/dto.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1746,19 +1759,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid Instructor ID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Instructor not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -1858,13 +1871,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                    "$ref": "#/definitions/dto.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamListResponse"
+                                            "$ref": "#/definitions/dto.PastExamListResponse"
                                         }
                                     }
                                 }
@@ -1874,13 +1887,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameter format or value",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -1953,8 +1966,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "file",
-                        "description": "Optional exam file (PDF, image, etc.)",
-                        "name": "file",
+                        "description": "Exam files (PDF, image, etc.)",
+                        "name": "files",
                         "in": "formData"
                     }
                 ],
@@ -1964,13 +1977,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                    "$ref": "#/definitions/dto.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse"
+                                            "$ref": "#/definitions/dto.PastExamResponse"
                                         }
                                     }
                                 }
@@ -1980,25 +1993,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request format or validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden - User is not an instructor",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -2031,13 +2044,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                    "$ref": "#/definitions/dto.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse"
+                                            "$ref": "#/definitions/dto.PastExamResponse"
                                         }
                                     }
                                 }
@@ -2047,19 +2060,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid Past Exam ID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Past exam not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -2070,7 +2083,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update an existing past exam. Requires instructor role and ownership. Can optionally include a new file.",
+                "description": "Update an existing past exam with the provided data and optional new file upload.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -2080,7 +2093,7 @@ const docTemplate = `{
                 "tags": [
                     "pastexams"
                 ],
-                "summary": "Update a past exam (Instructor only, Owner only)",
+                "summary": "Update a past exam (Instructor only)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2141,8 +2154,15 @@ const docTemplate = `{
                     },
                     {
                         "type": "file",
-                        "description": "Optional new exam file (replaces existing one)",
-                        "name": "file",
+                        "description": "Exam files (PDF, image, etc.)",
+                        "name": "files",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"1,2,3\"",
+                        "description": "Comma-separated list of file IDs to remove",
+                        "name": "removeFileIds",
                         "in": "formData"
                     }
                 ],
@@ -2152,13 +2172,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                    "$ref": "#/definitions/dto.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse"
+                                            "$ref": "#/definitions/dto.PastExamResponse"
                                         }
                                     }
                                 }
@@ -2168,31 +2188,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request format or validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "403": {
-                        "description": "Forbidden - User is not an instructor or not the owner",
+                        "description": "Forbidden - User does not have permission to update this exam",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Past exam not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -2226,37 +2246,37 @@ const docTemplate = `{
                     "200": {
                         "description": "Past exam successfully deleted",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                            "$ref": "#/definitions/dto.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid Past Exam ID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized - Invalid or missing token",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden - User is not an instructor or not the owner",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Past exam not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -2264,7 +2284,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_yigit_unisphere_internal_app_models_dto.APIResponse": {
+        "dto.APIResponse": {
             "type": "object",
             "properties": {
                 "data": {
@@ -2274,7 +2294,7 @@ const docTemplate = `{
                     "description": "Include error details if Success is false",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                            "$ref": "#/definitions/dto.ErrorDetail"
                         }
                     ]
                 },
@@ -2293,27 +2313,27 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.ClassNoteListResponse": {
+        "dto.ClassNoteListResponse": {
             "type": "object",
             "properties": {
                 "notes": {
                     "description": "List of class note details for the current page",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ClassNoteResponse"
+                        "$ref": "#/definitions/dto.ClassNoteResponse"
                     }
                 },
                 "pagination": {
                     "description": "Pagination metadata",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PaginationInfo"
+                            "$ref": "#/definitions/dto.PaginationInfo"
                         }
                     ]
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.ClassNoteResponse": {
+        "dto.ClassNoteResponse": {
             "type": "object",
             "properties": {
                 "content": {
@@ -2351,15 +2371,17 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Engineering Faculty"
                 },
+                "files": {
+                    "description": "Files attached to the note (new field for multiple files)",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.FileResponse"
+                    }
+                },
                 "id": {
                     "description": "Unique identifier for the class note",
                     "type": "integer",
                     "example": 15
-                },
-                "image": {
-                    "description": "Optional URL to an associated image",
-                    "type": "string",
-                    "example": "http://example.com/image.jpg"
                 },
                 "term": {
                     "description": "Term (FALL or SPRING)",
@@ -2398,7 +2420,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.ErrorCode": {
+        "dto.ErrorCode": {
             "type": "string",
             "enum": [
                 "AUTH_001",
@@ -2439,13 +2461,13 @@ const docTemplate = `{
                 "ErrorCodeForbidden"
             ]
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail": {
+        "dto.ErrorDetail": {
             "type": "object",
             "properties": {
                 "code": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorCode"
+                            "$ref": "#/definitions/dto.ErrorCode"
                         }
                     ],
                     "example": "AUTH_001"
@@ -2465,18 +2487,18 @@ const docTemplate = `{
                 "severity": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorSeverity"
+                            "$ref": "#/definitions/dto.ErrorSeverity"
                         }
                     ],
                     "example": "ERROR"
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse": {
+        "dto.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
-                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                    "$ref": "#/definitions/dto.ErrorDetail"
                 },
                 "success": {
                     "type": "boolean",
@@ -2488,7 +2510,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.ErrorSeverity": {
+        "dto.ErrorSeverity": {
             "type": "string",
             "enum": [
                 "INFO",
@@ -2503,7 +2525,47 @@ const docTemplate = `{
                 "ErrorSeverityCritical"
             ]
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.LoginRequest": {
+        "dto.FileResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "Timestamp when the file was created",
+                    "type": "string",
+                    "example": "2024-01-15T10:00:00Z"
+                },
+                "fileName": {
+                    "description": "Name of the file",
+                    "type": "string",
+                    "example": "lecture_slides.pdf"
+                },
+                "fileSize": {
+                    "description": "Size of the file in bytes",
+                    "type": "integer",
+                    "example": 1048576
+                },
+                "fileType": {
+                    "description": "MIME type of the file",
+                    "type": "string",
+                    "example": "application/pdf"
+                },
+                "fileUrl": {
+                    "description": "URL to access the file",
+                    "type": "string",
+                    "example": "http://example.com/uploads/123"
+                },
+                "id": {
+                    "description": "Unique identifier for the file",
+                    "type": "integer",
+                    "example": 123
+                },
+                "resourceType": {
+                    "description": "Type of resource this file is attached to",
+                    "type": "string",
+                    "example": "PAST_EXAM"
+                }
+            }
+        },
+        "dto.LoginRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -2522,7 +2584,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.PaginationInfo": {
+        "dto.PaginationInfo": {
             "type": "object",
             "properties": {
                 "currentPage": {
@@ -2547,27 +2609,27 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.PastExamListResponse": {
+        "dto.PastExamListResponse": {
             "type": "object",
             "properties": {
                 "exams": {
                     "description": "List of past exam details for the current page",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse"
+                        "$ref": "#/definitions/dto.PastExamResponse"
                     }
                 },
                 "pagination": {
                     "description": "Pagination metadata",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PaginationInfo"
+                            "$ref": "#/definitions/dto.PaginationInfo"
                         }
                     ]
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse": {
+        "dto.PastExamResponse": {
             "type": "object",
             "properties": {
                 "content": {
@@ -2579,6 +2641,11 @@ const docTemplate = `{
                     "description": "Course code",
                     "type": "string",
                     "example": "CENG301"
+                },
+                "createdAt": {
+                    "description": "Creation timestamp",
+                    "type": "string",
+                    "example": "2024-01-15T10:00:00Z"
                 },
                 "departmentId": {
                     "description": "ID of the department for the course",
@@ -2600,10 +2667,12 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Engineering Faculty"
                 },
-                "fileUrl": {
-                    "description": "URL to the exam file, if available",
-                    "type": "string",
-                    "example": "http://example.com/exam.pdf"
+                "files": {
+                    "description": "Files attached to the exam (new field for multiple files)",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.FileResponse"
+                    }
                 },
                 "id": {
                     "description": "Unique identifier for the past exam",
@@ -2625,6 +2694,11 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Midterm 1"
                 },
+                "updatedAt": {
+                    "description": "Last update timestamp",
+                    "type": "string",
+                    "example": "2024-01-16T11:30:00Z"
+                },
                 "uploadedByEmail": {
                     "description": "Email of the instructor who uploaded the exam",
                     "type": "string",
@@ -2637,7 +2711,27 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.RefreshTokenRequest": {
+        "dto.ProfilePhoto": {
+            "type": "object",
+            "properties": {
+                "fileType": {
+                    "description": "File MIME type",
+                    "type": "string",
+                    "example": "image/jpeg"
+                },
+                "id": {
+                    "description": "File ID",
+                    "type": "integer",
+                    "example": 4
+                },
+                "url": {
+                    "description": "File URL",
+                    "type": "string",
+                    "example": "http://example.com/uploads/profile.jpg"
+                }
+            }
+        },
+        "dto.RefreshTokenRequest": {
             "type": "object",
             "required": [
                 "refreshToken"
@@ -2650,7 +2744,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.RegisterInstructorRequest": {
+        "dto.RegisterInstructorRequest": {
             "type": "object",
             "required": [
                 "departmentId",
@@ -2694,7 +2788,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.RegisterStudentRequest": {
+        "dto.RegisterStudentRequest": {
             "type": "object",
             "required": [
                 "departmentId",
@@ -2744,7 +2838,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse": {
+        "dto.SuccessResponse": {
             "type": "object",
             "properties": {
                 "message": {
@@ -2753,7 +2847,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.UpdateTitleRequest": {
+        "dto.UpdateTitleRequest": {
             "type": "object",
             "required": [
                 "title"
@@ -2764,7 +2858,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.UpdateUserProfileRequest": {
+        "dto.UpdateUserProfileRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -2786,16 +2880,16 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.UserProfile": {
+        "dto.UserProfile": {
             "type": "object",
             "properties": {
                 "departmentId": {
-                    "description": "ID of the user's department",
+                    "description": "Department and Faculty information - flattened for easier access",
                     "type": "integer",
                     "example": 1
                 },
                 "departmentName": {
-                    "description": "Name of the user's department",
+                    "description": "Department name",
                     "type": "string",
                     "example": "Computer Engineering"
                 },
@@ -2805,12 +2899,12 @@ const docTemplate = `{
                     "example": "user@school.edu.tr"
                 },
                 "facultyId": {
-                    "description": "ID of the user's faculty",
+                    "description": "Faculty ID",
                     "type": "integer",
                     "example": 1
                 },
                 "facultyName": {
-                    "description": "Name of the user's faculty",
+                    "description": "Faculty name",
                     "type": "string",
                     "example": "Engineering Faculty"
                 },
@@ -2839,8 +2933,16 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Doe"
                 },
+                "profilePhoto": {
+                    "description": "Profile photo information",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.ProfilePhoto"
+                        }
+                    ]
+                },
                 "profilePhotoFileId": {
-                    "description": "ID of the user's profile photo file (null if not set)",
+                    "description": "ID of the profile photo file",
                     "type": "integer",
                     "example": 123
                 },
@@ -2937,9 +3039,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/models.Department"
                         }
                     ]
-                },
-                "departmentId": {
-                    "type": "integer"
                 },
                 "id": {
                     "type": "integer"

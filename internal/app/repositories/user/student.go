@@ -31,8 +31,8 @@ func NewStudentRepository(db *pgxpool.Pool) *StudentRepository {
 // CreateStudent creates a new student
 func (r *StudentRepository) CreateStudent(ctx context.Context, student *models.Student) error {
 	sql, args, err := r.sb.Insert("students").
-		Columns("user_id", "identifier", "department_id", "graduation_year").
-		Values(student.UserID, student.Identifier, student.DepartmentID, student.GraduationYear).
+		Columns("user_id", "identifier", "graduation_year").
+		Values(student.UserID, student.Identifier, student.GraduationYear).
 		ToSql()
 
 	if err != nil {
@@ -57,7 +57,7 @@ func (r *StudentRepository) CreateStudent(ctx context.Context, student *models.S
 // GetStudentByUserID retrieves a student by user ID
 func (r *StudentRepository) GetStudentByUserID(ctx context.Context, userID int64) (*models.Student, error) {
 	var student models.Student
-	sql, args, err := r.sb.Select("id", "user_id", "identifier", "department_id", "graduation_year").
+	sql, args, err := r.sb.Select("id", "user_id", "identifier", "graduation_year").
 		From("students").
 		Where(squirrel.Eq{"user_id": userID}).
 		Limit(1).
@@ -69,7 +69,7 @@ func (r *StudentRepository) GetStudentByUserID(ctx context.Context, userID int64
 	}
 
 	err = r.db.QueryRow(ctx, sql, args...).Scan(
-		&student.ID, &student.UserID, &student.Identifier, &student.DepartmentID, &student.GraduationYear)
+		&student.ID, &student.UserID, &student.Identifier, &student.GraduationYear)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

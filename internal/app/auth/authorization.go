@@ -8,15 +8,15 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/repositories"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/logger"
 )
 
-// Common errors
+// Common errors specific to authorization that aren't in the central apperrors
 var (
-	ErrUserNotFound     = errors.New("user not found")
 	ErrNotInstructor    = errors.New("only instructors can perform this action")
 	ErrPermissionDenied = errors.New("you don't have permission for this action")
-	ErrResourceNotFound = errors.New("resource not found")
+	ErrResourceNotFound = errors.New("resource not found") // Keep this temporarily to avoid breaking changes
 )
 
 // AuthorizationService handles authorization operations
@@ -39,14 +39,14 @@ func NewAuthorizationService(userRepo *repositories.UserRepository, pastExamRepo
 func (s *AuthorizationService) IsInstructor(ctx context.Context, userID int64) (bool, error) {
 	user, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, repositories.ErrNotFound) {
-			return false, ErrUserNotFound
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return false, apperrors.ErrUserNotFound
 		}
 		logger.Error().Err(err).Int64("userID", userID).Msg("Error getting user by ID in IsInstructor")
 		return false, err
 	}
 	if user == nil {
-		return false, ErrUserNotFound
+		return false, apperrors.ErrUserNotFound
 	}
 	return user.RoleType == models.RoleInstructor, nil
 }
@@ -80,8 +80,8 @@ func (s *AuthorizationService) CanModifyPastExam(ctx context.Context, pastExamID
 	// Get the past exam
 	pastExam, err := s.pastExamRepo.GetPastExamByID(ctx, pastExamID)
 	if err != nil {
-		if errors.Is(err, repositories.ErrPastExamNotFound) || errors.Is(err, repositories.ErrNotFound) {
-			return false, ErrResourceNotFound
+		if errors.Is(err, apperrors.ErrPastExamNotFound) || errors.Is(err, apperrors.ErrNotFound) {
+			return false, ErrResourceNotFound // Use our local error definition
 		}
 		logger.Error().Err(err).Int64("pastExamID", pastExamID).Msg("Error getting past exam by ID")
 		return false, err
@@ -90,16 +90,16 @@ func (s *AuthorizationService) CanModifyPastExam(ctx context.Context, pastExamID
 	// Get instructor ID for the current user
 	instructor, err := s.userRepo.GetInstructorByUserID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, repositories.ErrNotFound) {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			logger.Warn().Int64("userID", userID).Msg("Instructor record not found for user marked as instructor")
-			return false, ErrUserNotFound
+			return false, apperrors.ErrUserNotFound
 		}
 		logger.Error().Err(err).Int64("userID", userID).Msg("Error getting instructor by user ID")
 		return false, fmt.Errorf("error getting instructor: %w", err)
 	}
 	if instructor == nil {
 		logger.Warn().Int64("userID", userID).Msg("Instructor record is nil for user marked as instructor")
-		return false, ErrUserNotFound
+		return false, apperrors.ErrUserNotFound
 	}
 
 	// Check if the user is the owner of this exam by comparing instructor IDs
@@ -110,7 +110,7 @@ func (s *AuthorizationService) CanModifyPastExam(ctx context.Context, pastExamID
 func (s *AuthorizationService) ValidatePastExamOwnership(ctx context.Context, pastExamID, userID int64) error {
 	canModify, err := s.CanModifyPastExam(ctx, pastExamID, userID)
 	if err != nil {
-		if errors.Is(err, ErrResourceNotFound) || errors.Is(err, ErrUserNotFound) {
+		if errors.Is(err, ErrResourceNotFound) || errors.Is(err, apperrors.ErrUserNotFound) {
 			return err
 		}
 		logger.Error().Err(err).Int64("pastExamID", pastExamID).Int64("userID", userID).Msg("Unexpected error during past exam ownership validation")
@@ -133,7 +133,7 @@ func (s *AuthorizationService) CanModifyClassNote(ctx context.Context, noteID in
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return false, ErrResourceNotFound // Use the common error
+			return false, ErrResourceNotFound // Use the local error
 		}
 		logger.Error().Err(err).Int64("noteID", noteID).Int64("userID", userID).Msg("Error fetching class note owner ID")
 		return false, fmt.Errorf("failed to check class note ownership: %w", err)
@@ -157,14 +157,14 @@ func (s *AuthorizationService) ValidateClassNoteOwnership(ctx context.Context, n
 func (s *AuthorizationService) GetUserInfo(ctx context.Context, userID int64) (*models.User, error) {
 	user, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, repositories.ErrNotFound) {
-			return nil, ErrUserNotFound
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, apperrors.ErrUserNotFound
 		}
 		logger.Error().Err(err).Int64("userID", userID).Msg("Error getting user by ID in GetUserInfo")
 		return nil, fmt.Errorf("failed to get user information: %w", err)
 	}
 	if user == nil {
-		return nil, ErrUserNotFound
+		return nil, apperrors.ErrUserNotFound
 	}
 
 	return user, nil
@@ -185,16 +185,16 @@ func (s *AuthorizationService) GetInstructorByUserID(ctx context.Context, userID
 	// Get instructor information
 	instructor, err := s.userRepo.GetInstructorByUserID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, repositories.ErrNotFound) {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			logger.Warn().Int64("userID", userID).Msg("Instructor record not found for user marked as instructor in GetInstructorByUserID")
-			return nil, ErrUserNotFound
+			return nil, apperrors.ErrUserNotFound
 		}
 		logger.Error().Err(err).Int64("userID", userID).Msg("Error getting instructor by user ID in GetInstructorByUserID")
 		return nil, fmt.Errorf("failed to get instructor information: %w", err)
 	}
 
 	if instructor == nil {
-		return nil, ErrUserNotFound
+		return nil, apperrors.ErrUserNotFound
 	}
 
 	return instructor, nil

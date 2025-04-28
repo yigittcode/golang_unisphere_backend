@@ -5,17 +5,11 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-
-	// "time" // Removed, timestamp handled by common DTO response
-
 	"github.com/gin-gonic/gin"
-	"github.com/yigit/unisphere/internal/app/auth" // Still needed for error checking
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/models/dto" // Added DTO import
-
-	// Needed for mapping pagination
-
 	"github.com/yigit/unisphere/internal/app/services"
+	"github.com/yigit/unisphere/internal/middleware"
 	"github.com/yigit/unisphere/internal/pkg/filestorage" // Import filestorage
 	"github.com/yigit/unisphere/internal/pkg/logger"
 )
@@ -107,35 +101,7 @@ func NewErrorResponse(statusCode int, err error, message string) APIResponse {
 
 // --- Controller Methods ---
 
-// handleClassNoteError maps service errors to HTTP status codes and dto.ErrorDetail
-func handleClassNoteError(ctx *gin.Context, err error) {
-	statusCode := http.StatusInternalServerError
-	errorDetail := dto.NewErrorDetail(dto.ErrorCodeInternalServer, "An internal server error occurred")
-	errorDetail = errorDetail.WithDetails(err.Error()) // Start with the raw error
-
-	switch {
-	case errors.Is(err, services.ErrClassNotFound), errors.Is(err, auth.ErrResourceNotFound):
-		statusCode = http.StatusNotFound
-		errorDetail = dto.NewErrorDetail(dto.ErrorCodeResourceNotFound, "Class note not found")
-		errorDetail = errorDetail.WithDetails("The requested class note does not exist or you don't have access.") // Generic not found/access denied
-	case errors.Is(err, services.ErrNoteDepartmentNotFound):
-		statusCode = http.StatusBadRequest // Department not found usually means bad input
-		errorDetail = dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Invalid Department ID")
-		errorDetail = errorDetail.WithDetails("The specified department ID does not exist.")
-	case errors.Is(err, auth.ErrPermissionDenied):
-		statusCode = http.StatusForbidden
-		errorDetail = dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "Permission Denied")
-		errorDetail = errorDetail.WithDetails("You do not have permission to perform this action.")
-	default:
-		// Log unexpected internal errors
-		logger.Error().Err(err).Msg("Unhandled error in class note controller")
-		// Keep generic message for the client
-		errorDetail = dto.NewErrorDetail(dto.ErrorCodeInternalServer, "An unexpected error occurred while processing your request")
-
-	}
-
-	ctx.JSON(statusCode, dto.NewErrorResponse(errorDetail)) // Use common error response constructor
-}
+// This controller now uses the centralized error handling middleware
 
 // mapServiceNoteToDTO converts a single service note response to a DTO response
 func mapServiceNoteToDTO(serviceResp *services.ClassNoteResponse) dto.ClassNoteResponse {
@@ -275,7 +241,7 @@ func (ctrl *ClassNoteController) GetAllClassNotes(c *gin.Context) {
 	// Call service
 	serviceResponse, err := ctrl.classNoteService.GetAllClassNotes(c.Request.Context(), &serviceParams)
 	if err != nil {
-		handleClassNoteError(c, err) // Use the new error handler
+		middleware.HandleAPIError(c, err) // Use the new error handler
 		return
 	}
 
@@ -313,7 +279,7 @@ func (ctrl *ClassNoteController) GetClassNoteByID(c *gin.Context) {
 	// Call service
 	serviceResponse, err := ctrl.classNoteService.GetClassNoteByID(c.Request.Context(), noteID)
 	if err != nil {
-		handleClassNoteError(c, err) // Use the new error handler
+		middleware.HandleAPIError(c, err) // Use the new error handler
 		return
 	}
 
@@ -336,7 +302,7 @@ func (ctrl *ClassNoteController) GetClassNoteByID(c *gin.Context) {
 // @Param courseCode formData string true "Course Code" example(CENG304)
 // @Param title formData string true "Title" example("Lecture Notes - Week 5")
 // @Param content formData string true "Content" example("These notes cover...")
-// @Param files formData file false "Files to upload (PDFs, images, etc.)" collectionFormat(multi)
+// @Param files formData file false "Files to upload (PDFs, images, etc.)"
 // @Success 201 {object} dto.APIResponse{data=dto.ClassNoteResponse} "Class note created successfully"
 // @Failure 400 {object} dto.ErrorResponse "Bad Request (e.g., invalid input data)"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized (missing or invalid token)"
@@ -380,7 +346,7 @@ func (ctrl *ClassNoteController) CreateClassNote(c *gin.Context) {
 	// Call service to create class note
 	noteResponse, err := ctrl.classNoteService.CreateClassNote(c.Request.Context(), userIDInt, classNoteReq)
 	if err != nil {
-		handleClassNoteError(c, err)
+		middleware.HandleAPIError(c, err)
 		return
 	}
 
@@ -437,7 +403,7 @@ func (ctrl *ClassNoteController) CreateClassNote(c *gin.Context) {
 	// Get updated class note with all details
 	updatedNoteResponse, err := ctrl.classNoteService.GetClassNoteByID(c.Request.Context(), noteResponse.ID)
 	if err != nil {
-		handleClassNoteError(c, err)
+		middleware.HandleAPIError(c, err)
 		return
 	}
 
@@ -458,7 +424,7 @@ func (ctrl *ClassNoteController) CreateClassNote(c *gin.Context) {
 // @Param courseCode formData string true "Course Code" example(CENG304)
 // @Param title formData string true "Title" example("Updated Lecture Notes - Week 5")
 // @Param content formData string true "Content" example("Updated notes...")
-// @Param files formData file false "Files to upload (PDFs, images, etc.)" collectionFormat(multi)
+// @Param files formData file false "Files to upload (PDFs, images, etc.)"
 // @Param removeFileIds formData string false "Comma-separated list of file IDs to remove" example("1,2,3")
 // @Success 200 {object} dto.APIResponse{data=dto.ClassNoteResponse} "Class note updated successfully"
 // @Failure 400 {object} dto.ErrorResponse "Bad Request (e.g., invalid input data)"
@@ -513,7 +479,7 @@ func (ctrl *ClassNoteController) UpdateClassNote(c *gin.Context) {
 	// Call service to update class note
 	_, err = ctrl.classNoteService.UpdateClassNote(c.Request.Context(), userIDInt, noteId, updateNoteReq)
 	if err != nil {
-		handleClassNoteError(c, err)
+		middleware.HandleAPIError(c, err)
 		return
 	}
 
@@ -588,7 +554,7 @@ func (ctrl *ClassNoteController) UpdateClassNote(c *gin.Context) {
 	// Get updated class note with all details
 	updatedNoteResponse, err := ctrl.classNoteService.GetClassNoteByID(c.Request.Context(), noteId)
 	if err != nil {
-		handleClassNoteError(c, err)
+		middleware.HandleAPIError(c, err)
 		return
 	}
 
@@ -642,7 +608,7 @@ func (ctrl *ClassNoteController) DeleteClassNote(c *gin.Context) {
 	// Call service to delete the note from database
 	err = ctrl.classNoteService.DeleteClassNote(c.Request.Context(), userIDInt, noteID)
 	if err != nil {
-		handleClassNoteError(c, err) // Use the new error handler
+		middleware.HandleAPIError(c, err) // Use the new error handler
 		return
 	}
 
@@ -683,7 +649,7 @@ func (ctrl *ClassNoteController) GetMyClassNotes(c *gin.Context) {
 	// Call service
 	serviceResponse, err := ctrl.classNoteService.GetMyClassNotes(c.Request.Context(), userIDInt)
 	if err != nil {
-		handleClassNoteError(c, err) // Use the new error handler
+		middleware.HandleAPIError(c, err) // Use the new error handler
 		return
 	}
 

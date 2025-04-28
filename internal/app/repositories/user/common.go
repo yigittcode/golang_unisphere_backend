@@ -32,11 +32,22 @@ func NewRepository(db *pgxpool.Pool) *CommonRepository {
 
 // CreateUser creates a new user
 func (r *CommonRepository) CreateUser(ctx context.Context, user *models.User) (int64, error) {
-	sql, args, err := r.sb.Insert("users").
-		Columns("email", "password", "first_name", "last_name", "role_type", "is_active").
-		Values(user.Email, user.Password, user.FirstName, user.LastName, user.RoleType, user.IsActive).
-		Suffix("RETURNING id").
-		ToSql()
+	columns := []string{"email", "password", "first_name", "last_name", "role_type", "is_active"}
+	values := []interface{}{user.Email, user.Password, user.FirstName, user.LastName, user.RoleType, user.IsActive}
+
+	// Add department_id if it exists
+	if user.DepartmentID != nil {
+		columns = append(columns, "department_id")
+		values = append(values, *user.DepartmentID)
+		logger.Info().Int64("departmentID", *user.DepartmentID).Msg("Adding department_id to user creation")
+	}
+
+	sqlBuilder := r.sb.Insert("users").
+		Columns(columns...).
+		Values(values...).
+		Suffix("RETURNING id")
+
+	sql, args, err := sqlBuilder.ToSql()
 
 	if err != nil {
 		logger.Error().Err(err).Msg("Error building create user SQL")
@@ -54,7 +65,13 @@ func (r *CommonRepository) CreateUser(ctx context.Context, user *models.User) (i
 		return 0, fmt.Errorf("error creating user: %w", err)
 	}
 
-	logger.Info().Int64("userID", id).Str("email", user.Email).Msg("User created successfully")
+	// Log successful user creation with department information
+	logEvent := logger.Info().Int64("userID", id).Str("email", user.Email)
+	if user.DepartmentID != nil {
+		logEvent = logEvent.Int64("departmentID", *user.DepartmentID)
+	}
+	logEvent.Msg("User created successfully")
+
 	return id, nil
 }
 

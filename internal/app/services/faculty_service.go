@@ -8,46 +8,49 @@ import (
 
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/repositories"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 )
 
-// Common faculty errors
-var (
-	ErrFacultyNotFound      = errors.New("faculty not found")
-	ErrFacultyAlreadyExists = errors.New("faculty with this name or code already exists")
-	ErrFacultyValidation    = errors.New("faculty validation failed")
-)
+// FacultyService defines the interface for faculty-related operations
+type FacultyService interface {
+	CreateFaculty(ctx context.Context, faculty *models.Faculty) (int64, error)
+	GetFacultyByID(ctx context.Context, id int64) (*models.Faculty, error)
+	GetAllFaculties(ctx context.Context) ([]*models.Faculty, error)
+	UpdateFaculty(ctx context.Context, faculty *models.Faculty) error
+	DeleteFaculty(ctx context.Context, id int64) error
+}
 
-// FacultyService handles faculty-related operations
-type FacultyService struct {
+// facultyServiceImpl implements the FacultyService interface
+type facultyServiceImpl struct {
 	facultyRepo *repositories.FacultyRepository
 }
 
 // NewFacultyService creates a new faculty service instance
-func NewFacultyService(facultyRepo *repositories.FacultyRepository) *FacultyService {
-	return &FacultyService{
+func NewFacultyService(facultyRepo *repositories.FacultyRepository) FacultyService {
+	return &facultyServiceImpl{
 		facultyRepo: facultyRepo,
 	}
 }
 
 // validateFaculty validates faculty data before database operations
-func (s *FacultyService) validateFaculty(faculty *models.Faculty) error {
+func (s *facultyServiceImpl) validateFaculty(faculty *models.Faculty) error {
 	if faculty == nil {
-		return fmt.Errorf("%w: faculty is nil", ErrFacultyValidation)
+		return fmt.Errorf("%w: faculty is nil", apperrors.ErrValidationFailed)
 	}
 
 	// Validate name
 	if strings.TrimSpace(faculty.Name) == "" {
-		return fmt.Errorf("%w: name cannot be empty", ErrFacultyValidation)
+		return fmt.Errorf("%w: name cannot be empty", apperrors.ErrValidationFailed)
 	}
 
 	// Validate faculty code
 	if strings.TrimSpace(faculty.Code) == "" {
-		return fmt.Errorf("%w: code cannot be empty", ErrFacultyValidation)
+		return fmt.Errorf("%w: code cannot be empty", apperrors.ErrValidationFailed)
 	}
 
 	// Faculty code should be alphanumeric and uppercase
 	if !isValidFacultyCode(faculty.Code) {
-		return fmt.Errorf("%w: code must be alphanumeric and uppercase", ErrFacultyValidation)
+		return fmt.Errorf("%w: code must be alphanumeric and uppercase", apperrors.ErrValidationFailed)
 	}
 
 	return nil
@@ -77,7 +80,7 @@ func isValidFacultyCode(code string) bool {
 }
 
 // CreateFaculty creates a new faculty
-func (s *FacultyService) CreateFaculty(ctx context.Context, faculty *models.Faculty) (int64, error) {
+func (s *facultyServiceImpl) CreateFaculty(ctx context.Context, faculty *models.Faculty) (int64, error) {
 	// Validate faculty data
 	if err := s.validateFaculty(faculty); err != nil {
 		return 0, err
@@ -85,8 +88,8 @@ func (s *FacultyService) CreateFaculty(ctx context.Context, faculty *models.Facu
 
 	id, err := s.facultyRepo.CreateFaculty(ctx, faculty)
 	if err != nil {
-		if errors.Is(err, repositories.ErrFacultyAlreadyExists) {
-			return 0, ErrFacultyAlreadyExists
+		if errors.Is(err, apperrors.ErrFacultyAlreadyExists) {
+			return 0, apperrors.ErrFacultyAlreadyExists
 		}
 		return 0, fmt.Errorf("error creating faculty: %w", err)
 	}
@@ -94,16 +97,16 @@ func (s *FacultyService) CreateFaculty(ctx context.Context, faculty *models.Facu
 }
 
 // GetFacultyByID retrieves a faculty by ID
-func (s *FacultyService) GetFacultyByID(ctx context.Context, id int64) (*models.Faculty, error) {
+func (s *facultyServiceImpl) GetFacultyByID(ctx context.Context, id int64) (*models.Faculty, error) {
 	// Validate ID
 	if id <= 0 {
-		return nil, fmt.Errorf("%w: invalid faculty ID", ErrFacultyValidation)
+		return nil, fmt.Errorf("%w: invalid faculty ID", apperrors.ErrValidationFailed)
 	}
 
 	faculty, err := s.facultyRepo.GetFacultyByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, repositories.ErrFacultyNotFound) {
-			return nil, ErrFacultyNotFound
+		if errors.Is(err, apperrors.ErrFacultyNotFound) {
+			return nil, apperrors.ErrFacultyNotFound
 		}
 		return nil, fmt.Errorf("error retrieving faculty: %w", err)
 	}
@@ -111,7 +114,7 @@ func (s *FacultyService) GetFacultyByID(ctx context.Context, id int64) (*models.
 }
 
 // GetAllFaculties retrieves all faculties
-func (s *FacultyService) GetAllFaculties(ctx context.Context) ([]*models.Faculty, error) {
+func (s *facultyServiceImpl) GetAllFaculties(ctx context.Context) ([]*models.Faculty, error) {
 	faculties, err := s.facultyRepo.GetAllFaculties(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving faculties: %w", err)
@@ -120,7 +123,7 @@ func (s *FacultyService) GetAllFaculties(ctx context.Context) ([]*models.Faculty
 }
 
 // UpdateFaculty updates an existing faculty
-func (s *FacultyService) UpdateFaculty(ctx context.Context, faculty *models.Faculty) error {
+func (s *facultyServiceImpl) UpdateFaculty(ctx context.Context, faculty *models.Faculty) error {
 	// Validate faculty data
 	if err := s.validateFaculty(faculty); err != nil {
 		return err
@@ -128,16 +131,16 @@ func (s *FacultyService) UpdateFaculty(ctx context.Context, faculty *models.Facu
 
 	// Validate ID
 	if faculty.ID <= 0 {
-		return fmt.Errorf("%w: invalid faculty ID", ErrFacultyValidation)
+		return fmt.Errorf("%w: invalid faculty ID", apperrors.ErrValidationFailed)
 	}
 
 	err := s.facultyRepo.UpdateFaculty(ctx, faculty)
 	if err != nil {
-		if errors.Is(err, repositories.ErrFacultyNotFound) {
-			return ErrFacultyNotFound
+		if errors.Is(err, apperrors.ErrFacultyNotFound) {
+			return apperrors.ErrFacultyNotFound
 		}
-		if errors.Is(err, repositories.ErrFacultyAlreadyExists) {
-			return ErrFacultyAlreadyExists
+		if errors.Is(err, apperrors.ErrFacultyAlreadyExists) {
+			return apperrors.ErrFacultyAlreadyExists
 		}
 		return fmt.Errorf("error updating faculty: %w", err)
 	}
@@ -145,16 +148,16 @@ func (s *FacultyService) UpdateFaculty(ctx context.Context, faculty *models.Facu
 }
 
 // DeleteFaculty deletes a faculty by ID
-func (s *FacultyService) DeleteFaculty(ctx context.Context, id int64) error {
+func (s *facultyServiceImpl) DeleteFaculty(ctx context.Context, id int64) error {
 	// Validate ID
 	if id <= 0 {
-		return fmt.Errorf("%w: invalid faculty ID", ErrFacultyValidation)
+		return fmt.Errorf("%w: invalid faculty ID", apperrors.ErrValidationFailed)
 	}
 
 	err := s.facultyRepo.DeleteFaculty(ctx, id)
 	if err != nil {
-		if errors.Is(err, repositories.ErrFacultyNotFound) {
-			return ErrFacultyNotFound
+		if errors.Is(err, apperrors.ErrFacultyNotFound) {
+			return apperrors.ErrFacultyNotFound
 		}
 		// If there's a specific repository error for faculty with departments, handle it here
 		return fmt.Errorf("error deleting faculty: %w", err)

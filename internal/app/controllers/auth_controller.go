@@ -1,124 +1,94 @@
 package controllers
 
 import (
-	"errors"
 	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/yigit/unisphere/internal/app/models/dto" // Ensure DTO import
 	"github.com/yigit/unisphere/internal/app/services"
+	"github.com/yigit/unisphere/internal/middleware"
 	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/auth"
+	"github.com/yigit/unisphere/internal/pkg/logger"
 )
 
 // AuthController handles authentication related operations
 type AuthController struct {
-	authService *services.AuthService
+	authService services.AuthService  // Interface instead of pointer to struct
 	jwtService  *auth.JWTService
+	logger      *logger.Logger
 }
 
 // NewAuthController creates a new AuthController
-func NewAuthController(authService *services.AuthService, jwtService *auth.JWTService) *AuthController {
+func NewAuthController(authService services.AuthService, jwtService *auth.JWTService, logger *logger.Logger) *AuthController {
 	return &AuthController{
 		authService: authService,
 		jwtService:  jwtService,
+		logger:      logger,
 	}
 }
 
-// handleError maps service errors to HTTP status codes and dto.ErrorDetail
-// This is a local helper for AuthController.
-func handleError(ctx *gin.Context, err error) {
-	var statusCode int
-	var errDetail *dto.ErrorDetail
-
-	// Default error details
-	statusCode = http.StatusInternalServerError
-	errDetail = dto.NewErrorDetail(dto.ErrorCodeInternalServer, "An unexpected internal error occurred.")
-	if err != nil {
-		errDetail = errDetail.WithDetails(err.Error())
-	}
-
-	// --- Specific Auth Service Error Mapping ---
-	switch {
-	// Validation errors from service
-	case errors.Is(err, apperrors.ErrInvalidEmail):
-		statusCode = http.StatusBadRequest
-		errDetail = dto.NewErrorDetail(dto.ErrorCodeInvalidEmail, "Invalid email format")
-	case errors.Is(err, apperrors.ErrInvalidPassword):
-		statusCode = http.StatusBadRequest
-		errDetail = dto.NewErrorDetail(dto.ErrorCodeInvalidPassword, "Invalid password format")
-	case errors.Is(err, apperrors.ErrInvalidIdentifier), errors.Is(err, apperrors.ErrInvalidStudentID):
-		statusCode = http.StatusBadRequest
-		errDetail = dto.NewErrorDetail(dto.ErrorCodeInvalidStudentID, "Invalid student ID format")
-	// Conflict errors
-	case errors.Is(err, apperrors.ErrEmailAlreadyExists):
-		statusCode = http.StatusConflict
-		errDetail = dto.NewErrorDetail(dto.ErrorCodeResourceAlreadyExists, "Email already exists")
-	case errors.Is(err, apperrors.ErrIdentifierExists), errors.Is(err, apperrors.ErrStudentIDAlreadyExists):
-		statusCode = http.StatusConflict
-		errDetail = dto.NewErrorDetail(dto.ErrorCodeResourceAlreadyExists, "Student ID already exists")
-	// Authentication errors
-	case errors.Is(err, apperrors.ErrInvalidCredentials):
-		statusCode = http.StatusUnauthorized
-		errDetail = dto.NewErrorDetail(dto.ErrorCodeInvalidCredentials, "Invalid credentials")
-	case errors.Is(err, apperrors.ErrTokenNotFound), errors.Is(err, apperrors.ErrTokenExpired),
-		errors.Is(err, apperrors.ErrTokenRevoked), errors.Is(err, apperrors.ErrTokenInvalid):
-		statusCode = http.StatusUnauthorized
-		errDetail = dto.NewErrorDetail(dto.ErrorCodeInvalidToken, "Invalid or expired token")
-	// Not found errors
-	case errors.Is(err, apperrors.ErrUserNotFound):
-		statusCode = http.StatusNotFound
-		errDetail = dto.NewErrorDetail(dto.ErrorCodeResourceNotFound, "User not found")
-	default:
-		// If the error is not specifically handled, keep the default InternalServerError
-		// Log the raw error for debugging if needed (could be done in a central middleware)
-		// logger.Error().Err(err).Msg("Unhandled error in auth controller")
-		// Keep errDetail as initialized for generic internal server error
-	}
-
-	ctx.JSON(statusCode, dto.NewErrorResponse(errDetail))
-}
+// This controller now uses the centralized error handling middleware
 
 // RegisterStudent handles student registration
 // @Summary Register a new student
-// @Description Create a new student account
+// @Description Create a new student account and return authentication tokens
 // @Tags auth
 // @Accept json
 // @Produce json
 // @Param request body dto.RegisterStudentRequest true "Student registration information"
-// @Success 201 {object} dto.APIResponse "Student successfully registered"
+// @Success 201 {object} dto.TokenResponse "Registration successful, tokens returned"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
 // @Failure 409 {object} dto.ErrorResponse "Email or student ID already in use"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /auth/register-student [post]
 func (c *AuthController) RegisterStudent(ctx *gin.Context) {
-	var req dto.RegisterStudentRequest // Use dto type
+	var req dto.RegisterStudentRequest
+
+	// Bind JSON and validate
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		// Use dto helper for validation errors from binding
-		errorDetail := dto.HandleValidationError(err)
-		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
+		c.logger.Warn().Err(err).Msg("Invalid registration request payload")
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Map DTO to service request (Assuming service expects dto.RegisterStudentRequest)
-	// If service expects a different struct, mapping is needed here.
-	tokenResponse, err := c.authService.RegisterStudent(ctx, &req)
+	// Log registration request data for debugging
+	c.logger.Info().
+		Str("email", req.Email).
+		Str("firstName", req.FirstName).
+		Str("lastName", req.LastName).
+		Str("studentId", req.StudentID).
+		Int64("departmentId", req.DepartmentID).
+		Msg("Student registration request received")
+
+	if req.GraduationYear != nil {
+		c.logger.Info().Int("graduationYear", *req.GraduationYear).Msg("Student registration includes graduation year")
+	}
+
+	// Register student
+	token, err := c.authService.RegisterStudent(ctx.Request.Context(), &req)
 	if err != nil {
-		handleError(ctx, err) // Use local error handler
+		c.logger.Error().Err(err).Msg("Failed to register student")
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, dto.NewSuccessResponse(tokenResponse, "Student registration successful")) // Use dto helper
+	// Log successful registration
+	c.logger.Info().
+		Str("email", req.Email).
+		Msg("Student registered successfully")
+
+	// Return success response
+	ctx.JSON(http.StatusCreated, dto.NewSuccessResponse(token, "Student registration successful"))
 }
 
 // RegisterInstructor handles instructor registration
 // @Summary Register a new instructor
-// @Description Create a new instructor account
+// @Description Create a new instructor account and return authentication tokens
 // @Tags auth
 // @Accept json
 // @Produce json
 // @Param request body dto.RegisterInstructorRequest true "Instructor registration information"
-// @Success 201 {object} dto.APIResponse "Instructor successfully registered"
+// @Success 201 {object} dto.TokenResponse "Registration successful, tokens returned"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
 // @Failure 409 {object} dto.ErrorResponse "Email already in use"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
@@ -126,47 +96,78 @@ func (c *AuthController) RegisterStudent(ctx *gin.Context) {
 func (c *AuthController) RegisterInstructor(ctx *gin.Context) {
 	var req dto.RegisterInstructorRequest // Use dto type
 	if err := ctx.ShouldBindJSON(&req); err != nil {
+		c.logger.Warn().Err(err).Msg("Invalid registration request payload")
 		errorDetail := dto.HandleValidationError(err)
 		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
 		return
 	}
 
-	// Map DTO to service request (Assuming service expects dto.RegisterInstructorRequest)
+	// Log registration request data
+	c.logger.Info().
+		Str("email", req.Email).
+		Str("firstName", req.FirstName).
+		Str("lastName", req.LastName).
+		Str("title", req.Title).
+		Int64("departmentId", req.DepartmentID).
+		Msg("Instructor registration request received")
+
+	// Register instructor
 	tokenResponse, err := c.authService.RegisterInstructor(ctx, &req)
 	if err != nil {
-		handleError(ctx, err)
+		c.logger.Error().Err(err).Msg("Failed to register instructor")
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
+
+	// Log successful registration
+	c.logger.Info().
+		Str("email", req.Email).
+		Msg("Instructor registered successfully")
 
 	ctx.JSON(http.StatusCreated, dto.NewSuccessResponse(tokenResponse, "Instructor registration successful"))
 }
 
 // Login handles user login
 // @Summary User login
-// @Description Authenticate with email and password
+// @Description Authenticate with email and password and return tokens
 // @Tags auth
 // @Accept json
 // @Produce json
 // @Param request body dto.LoginRequest true "Login credentials"
-// @Success 200 {object} dto.APIResponse "Login successful"
+// @Success 200 {object} dto.TokenResponse "Login successful, tokens returned"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format"
 // @Failure 401 {object} dto.ErrorResponse "Invalid credentials"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /auth/login [post]
 func (c *AuthController) Login(ctx *gin.Context) {
-	var req dto.LoginRequest // Use dto type
+	var req dto.LoginRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
+		c.logger.Warn().Err(err).Msg("Invalid login request payload")
 		errorDetail := dto.HandleValidationError(err)
 		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
 		return
 	}
 
-	// Map DTO to service request (Assuming service expects dto.LoginRequest)
+	// Log login attempt (only email for security)
+	c.logger.Info().
+		Str("email", req.Email).
+		Msg("Login attempt received")
+
+	// Process login request
 	tokenResponse, err := c.authService.Login(ctx, &req)
 	if err != nil {
-		handleError(ctx, err)
+		c.logger.Warn().
+			Err(err).
+			Str("email", req.Email).
+			Msg("Login failed")
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
+
+	// Log successful login
+	c.logger.Info().
+		Str("email", req.Email).
+		Msg("Login successful")
 
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(tokenResponse, "Login successful"))
 }
@@ -178,7 +179,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body dto.RefreshTokenRequest true "Refresh token information"
-// @Success 200 {object} dto.APIResponse "Token refresh successful"
+// @Success 200 {object} dto.TokenResponse "Token refresh successful"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format"
 // @Failure 401 {object} dto.ErrorResponse "Invalid or expired token"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
@@ -193,7 +194,7 @@ func (c *AuthController) RefreshToken(ctx *gin.Context) {
 
 	tokenResponse, err := c.authService.RefreshToken(ctx, req.RefreshToken)
 	if err != nil {
-		handleError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -206,27 +207,45 @@ func (c *AuthController) RefreshToken(ctx *gin.Context) {
 // @Tags auth
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} dto.APIResponse{data=dto.UserProfile} "User profile retrieved successfully"
+// @Success 200 {object} dto.APIResponse{data=dto.BaseUserProfile} "User profile retrieved successfully"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
+// @Failure 404 {object} dto.ErrorResponse "User not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /auth/profile [get]
 func (c *AuthController) GetProfile(ctx *gin.Context) {
-	userIDAny, exists := ctx.Get("userID")
+	// Get user ID from context
+	userID, exists := ctx.Get("userID")
 	if !exists {
-		handleError(ctx, errors.New("authentication required: userID not found in context"))
-		return
-	}
-	userID, ok := userIDAny.(int64)
-	if !ok {
-		handleError(ctx, errors.New("internal server error: invalid userID type in context"))
+		c.logger.Warn().Msg("User ID not found in context")
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
-	profile, err := c.authService.GetProfile(ctx, userID)
-	if err != nil {
-		handleError(ctx, err)
+	// Convert userID to int64
+	userIDInt64, ok := userID.(int64)
+	if !ok {
+		c.logger.Error().
+			Interface("userID", userID).
+			Msg("Failed to convert user ID to int64")
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		return
 	}
+
+	c.logger.Info().Int64("userID", userIDInt64).Msg("Fetching profile for user")
+
+	// Get user profile
+	profile, err := c.authService.GetProfile(ctx.Request.Context(), userIDInt64)
+	if err != nil {
+		c.logger.Error().Err(err).Int64("userID", userIDInt64).Msg("Failed to get user profile")
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Log profile data for debugging
+	c.logger.Info().
+		Int64("userID", userIDInt64).
+		Interface("faculty", profile.Faculty).
+		Msg("Profile data retrieved successfully")
 
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(profile, "Profile retrieved successfully"))
 }
@@ -239,7 +258,7 @@ func (c *AuthController) GetProfile(ctx *gin.Context) {
 // @Produce json
 // @Param photo formData file true "Profile photo"
 // @Security BearerAuth
-// @Success 200 {object} dto.APIResponse{data=dto.UserProfile} "Profile photo updated successfully"
+// @Success 200 {object} dto.APIResponse{data=dto.BaseUserProfile} "Profile photo updated successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid file format"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
@@ -247,12 +266,12 @@ func (c *AuthController) GetProfile(ctx *gin.Context) {
 func (c *AuthController) UpdateProfilePhoto(ctx *gin.Context) {
 	userIDAny, exists := ctx.Get("userID")
 	if !exists {
-		handleError(ctx, errors.New("authentication required: userID not found in context"))
+		middleware.HandleAPIError(ctx, apperrors.ErrPermissionDenied)
 		return
 	}
 	userID, ok := userIDAny.(int64)
 	if !ok {
-		handleError(ctx, errors.New("internal server error: invalid userID type in context"))
+		middleware.HandleAPIError(ctx, apperrors.ErrInternalServer)
 		return
 	}
 
@@ -266,7 +285,7 @@ func (c *AuthController) UpdateProfilePhoto(ctx *gin.Context) {
 
 	profile, err := c.authService.UpdateProfilePhoto(ctx, userID, file)
 	if err != nil {
-		handleError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -279,25 +298,25 @@ func (c *AuthController) UpdateProfilePhoto(ctx *gin.Context) {
 // @Tags auth
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} dto.APIResponse{data=dto.UserProfile} "Profile photo deleted successfully"
+// @Success 200 {object} dto.APIResponse{data=dto.BaseUserProfile} "Profile photo deleted successfully"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /auth/profile/photo [delete]
 func (c *AuthController) DeleteProfilePhoto(ctx *gin.Context) {
 	userIDAny, exists := ctx.Get("userID")
 	if !exists {
-		handleError(ctx, errors.New("authentication required: userID not found in context"))
+		middleware.HandleAPIError(ctx, apperrors.ErrPermissionDenied)
 		return
 	}
 	userID, ok := userIDAny.(int64)
 	if !ok {
-		handleError(ctx, errors.New("internal server error: invalid userID type in context"))
+		middleware.HandleAPIError(ctx, apperrors.ErrInternalServer)
 		return
 	}
 
 	profile, err := c.authService.DeleteProfilePhoto(ctx, userID)
 	if err != nil {
-		handleError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -312,7 +331,7 @@ func (c *AuthController) DeleteProfilePhoto(ctx *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param request body dto.UpdateUserProfileRequest true "Profile update data"
-// @Success 200 {object} dto.APIResponse{data=dto.UserProfile} "Profile updated successfully"
+// @Success 200 {object} dto.APIResponse{data=dto.BaseUserProfile} "Profile updated successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
 // @Failure 409 {object} dto.ErrorResponse "Email already exists"
@@ -321,12 +340,12 @@ func (c *AuthController) DeleteProfilePhoto(ctx *gin.Context) {
 func (c *AuthController) UpdateProfile(ctx *gin.Context) {
 	userIDAny, exists := ctx.Get("userID")
 	if !exists {
-		handleError(ctx, errors.New("authentication required: userID not found in context"))
+		middleware.HandleAPIError(ctx, apperrors.ErrPermissionDenied)
 		return
 	}
 	userID, ok := userIDAny.(int64)
 	if !ok {
-		handleError(ctx, errors.New("internal server error: invalid userID type in context"))
+		middleware.HandleAPIError(ctx, apperrors.ErrInternalServer)
 		return
 	}
 
@@ -339,7 +358,7 @@ func (c *AuthController) UpdateProfile(ctx *gin.Context) {
 
 	profile, err := c.authService.UpdateUserProfile(ctx, userID, &req)
 	if err != nil {
-		handleError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 

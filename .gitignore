@@ -12,6 +12,9 @@ unisphere-api
 # Test binary, built with `go test -c`
 *.test
 
+configs/config.yaml
+
+
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 

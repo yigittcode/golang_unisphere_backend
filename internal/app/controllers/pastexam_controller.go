@@ -11,6 +11,8 @@ import (
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/services"
+	"github.com/yigit/unisphere/internal/middleware"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/filestorage"
 	"github.com/yigit/unisphere/internal/pkg/helpers"
 	"github.com/yigit/unisphere/internal/pkg/logger"
@@ -18,48 +20,19 @@ import (
 
 // PastExamController handles past exam related operations
 type PastExamController struct {
-	pastExamService *services.PastExamService
+	pastExamService services.PastExamService
 	fileStorage     *filestorage.LocalStorage
 }
 
 // NewPastExamController creates a new PastExamController
-func NewPastExamController(pastExamService *services.PastExamService, fileStorage *filestorage.LocalStorage) *PastExamController {
+func NewPastExamController(pastExamService services.PastExamService, fileStorage *filestorage.LocalStorage) *PastExamController {
 	return &PastExamController{
 		pastExamService: pastExamService,
 		fileStorage:     fileStorage,
 	}
 }
 
-// handlePastExamError is a helper function to handle common past exam error scenarios
-func handlePastExamError(ctx *gin.Context, err error) {
-	statusCode := http.StatusInternalServerError
-	errorCode := dto.ErrorCodeInternalServer
-	errorMessage := "An unexpected error occurred"
-	errorDetails := err.Error()
-
-	// Handle specific errors
-	switch {
-	case errors.Is(err, services.ErrPastExamNotFound):
-		statusCode = http.StatusNotFound
-		errorCode = dto.ErrorCodeResourceNotFound
-		errorMessage = "Past exam not found"
-		errorDetails = "The requested past exam does not exist"
-	case errors.Is(err, services.ErrInstructorOnly):
-		statusCode = http.StatusForbidden
-		errorCode = dto.ErrorCodeUnauthorized
-		errorMessage = "Instructors only"
-		errorDetails = "Only instructors can create past exams"
-	case errors.Is(err, services.ErrPermissionDenied):
-		statusCode = http.StatusForbidden
-		errorCode = dto.ErrorCodeUnauthorized
-		errorMessage = "Permission denied"
-		errorDetails = "You don't have permission to perform this action"
-	}
-
-	errorDetail := dto.NewErrorDetail(errorCode, errorMessage)
-	errorDetail = errorDetail.WithDetails(errorDetails)
-	ctx.JSON(statusCode, dto.NewErrorResponse(errorDetail))
-}
+// This controller now uses the centralized error handling middleware
 
 // GetAllPastExams retrieves all past exams with pagination and filtering
 // @Summary Get all past exams
@@ -138,7 +111,7 @@ func (c *PastExamController) GetAllPastExams(ctx *gin.Context) {
 	// Get past exams from service (page is 0-based)
 	pastExams, paginationInfo, err := c.pastExamService.GetAllPastExams(ctx, page, pageSize, filters)
 	if err != nil {
-		handlePastExamError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -181,7 +154,7 @@ func (c *PastExamController) GetPastExamByID(ctx *gin.Context) {
 
 	pastExam, err := c.pastExamService.GetPastExamByID(ctx, id)
 	if err != nil {
-		handlePastExamError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -207,7 +180,7 @@ func (c *PastExamController) GetPastExamByID(ctx *gin.Context) {
 // @Param courseCode formData string true "Course Code" example(CENG301)
 // @Param title formData string true "Title" example("Midterm Exam")
 // @Param content formData string true "Content" example("Exam content details...")
-// @Param files formData file false "Exam files (PDF, image, etc.)" collectionFormat(multi)
+// @Param files formData file false "Exam files (PDF, image, etc.)"
 // @Success 201 {object} dto.APIResponse{data=dto.PastExamResponse} "Past exam successfully created"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized"
@@ -252,7 +225,7 @@ func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
 	// Call service to create past exam
 	id, err := c.pastExamService.CreatePastExam(ctx, pastExam, userIDInt)
 	if err != nil {
-		handlePastExamError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -309,7 +282,7 @@ func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
 	// Get the created past exam with all details
 	createdExam, err := c.pastExamService.GetPastExamByID(ctx, id)
 	if err != nil {
-		handlePastExamError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -336,7 +309,7 @@ func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
 // @Param courseCode formData string true "Course Code" example(CENG301)
 // @Param title formData string true "Title" example("Midterm 1 - Updated")
 // @Param content formData string true "Content" example("Updated exam content...")
-// @Param files formData file false "Exam files (PDF, image, etc.)" collectionFormat(multi)
+// @Param files formData file false "Exam files (PDF, image, etc.)"
 // @Param removeFileIds formData string false "Comma-separated list of file IDs to remove" example("1,2,3")
 // @Success 200 {object} dto.APIResponse{data=dto.PastExamResponse} "Past exam successfully updated"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
@@ -394,7 +367,7 @@ func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
 	// Call service to update past exam
 	err = c.pastExamService.UpdatePastExam(ctx, pastExam, userIDInt, nil)
 	if err != nil {
-		handlePastExamError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -469,7 +442,7 @@ func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
 	// Get the updated past exam with all details
 	updatedExam, err := c.pastExamService.GetPastExamByID(ctx, id)
 	if err != nil {
-		handlePastExamError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
@@ -517,9 +490,9 @@ func (c *PastExamController) DeletePastExam(ctx *gin.Context) {
 	// First get the exam to retrieve the file path before deletion
 	pastExam, err := c.pastExamService.GetPastExamByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, services.ErrPastExamNotFound) {
+		if errors.Is(err, apperrors.ErrPastExamNotFound) {
 			// If exam doesn't exist, just return the error
-			handlePastExamError(ctx, err)
+			middleware.HandleAPIError(ctx, err)
 			return
 		}
 		// For other errors, log and continue with deletion attempt
@@ -529,7 +502,7 @@ func (c *PastExamController) DeletePastExam(ctx *gin.Context) {
 	// Call service to delete past exam from database
 	err = c.pastExamService.DeletePastExam(ctx, id, userID.(int64))
 	if err != nil {
-		handlePastExamError(ctx, err)
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
 

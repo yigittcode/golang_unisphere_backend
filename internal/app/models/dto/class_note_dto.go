@@ -49,16 +49,7 @@ type ClassNoteResponse struct {
 	UpdatedAt         string         `json:"updatedAt" example:"2024-01-16T11:30:00Z"`             // Timestamp when the note was last updated
 }
 
-// PaginationInfo represents pagination metadata for list responses.
-// Copied from pastexam_dto.go for consistency
-/* // Removed redundant definition, will use the one from response.go
-type PaginationInfo struct {
-	CurrentPage int `json:"currentPage" example:"0"` // Current page number (0-based)
-	TotalPages  int `json:"totalPages" example:"5"`  // Total number of pages available
-	PageSize    int `json:"pageSize" example:"10"`   // Number of items per page
-	TotalItems  int `json:"totalItems" example:"48"` // Total number of items matching the query
-}
-*/
+// PaginationInfo is defined in response.go to avoid duplication
 
 // ClassNoteListResponse represents the response for a list of class notes with pagination metadata.
 type ClassNoteListResponse struct {

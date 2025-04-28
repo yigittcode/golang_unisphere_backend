@@ -35,12 +35,12 @@ import (
 
 // Dependencies holds the core application components (DI container).
 type Dependencies struct {
-	AuthService          *appServices.AuthService       // Pointer type
-	InstructorService    *appServices.InstructorService // Assuming it returns a pointer
-	FacultyService       *appServices.FacultyService    // Assuming it returns a pointer
-	DepartmentService    *appServices.DepartmentService // Assuming it returns a pointer
-	PastExamService      *appServices.PastExamService   // Assuming it returns a pointer
-	ClassNoteService     appServices.ClassNoteService   // Assuming interface implementation (value type)
+	AuthService          appServices.AuthService       // Interface type
+	InstructorService    appServices.InstructorService // Interface type
+	FacultyService       appServices.FacultyService    // Interface type
+	DepartmentService    appServices.DepartmentService // Interface type
+	PastExamService      appServices.PastExamService   // Interface type
+	ClassNoteService     appServices.ClassNoteService  // Interface type
 	AuthController       *appControllers.AuthController
 	FacultyController    *appControllers.FacultyController
 	DepartmentController *appControllers.DepartmentController
@@ -169,7 +169,7 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 
 	deps.AuthMiddleware = appMiddleware.NewAuthMiddleware(deps.JWTService)
 
-	deps.AuthController = appControllers.NewAuthController(deps.AuthService, deps.JWTService)
+	deps.AuthController = appControllers.NewAuthController(deps.AuthService, deps.JWTService, logger.NewLogger(lgr))
 	deps.FacultyController = appControllers.NewFacultyController(deps.FacultyService)
 	deps.DepartmentController = appControllers.NewDepartmentController(deps.DepartmentService)
 	deps.InstructorController = appControllers.NewInstructorController(deps.InstructorService)

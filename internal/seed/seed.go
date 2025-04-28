@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog"
 	appModels "github.com/yigit/unisphere/internal/app/models"
 	appRepos "github.com/yigit/unisphere/internal/app/repositories"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 )
 
 // CreateDefaultData creates default faculties and departments if they don't exist.
@@ -22,10 +23,10 @@ func CreateDefaultData(ctx context.Context, dbPool *pgxpool.Pool, lgr zerolog.Lo
 	// --- Engineering Faculty & Departments --- //
 	engineeringFaculty := &appModels.Faculty{Name: "Engineering Faculty", Code: "ENG"}
 	engineeringID, err := facultyRepo.CreateFaculty(ctx, engineeringFaculty)
-	if err != nil && !errors.Is(err, appRepos.ErrFacultyAlreadyExists) {
+	if err != nil && !errors.Is(err, apperrors.ErrFacultyAlreadyExists) {
 		lgr.Error().Err(err).Msg("Error creating engineering faculty")
 		finalErr = errors.Join(finalErr, err)
-	} else if errors.Is(err, appRepos.ErrFacultyAlreadyExists) {
+	} else if errors.Is(err, apperrors.ErrFacultyAlreadyExists) {
 		// Find existing ID if needed
 		faculties, errGet := facultyRepo.GetAllFaculties(ctx)
 		if errGet == nil {
@@ -45,14 +46,14 @@ func CreateDefaultData(ctx context.Context, dbPool *pgxpool.Pool, lgr zerolog.Lo
 		// Create Computer Engineering
 		compEngDept := &appModels.Department{FacultyID: engineeringID, Name: "Computer Engineering", Code: "CENG"}
 		err = departmentRepo.Create(ctx, compEngDept)
-		if err != nil && !errors.Is(err, appRepos.ErrDepartmentAlreadyExists) {
+		if err != nil && !errors.Is(err, apperrors.ErrDepartmentAlreadyExists) {
 			lgr.Error().Err(err).Msg("Error creating computer engineering department")
 			finalErr = errors.Join(finalErr, err)
 		}
 		// Create Electrical Engineering
 		eeeDept := &appModels.Department{FacultyID: engineeringID, Name: "Electrical Engineering", Code: "EEE"}
 		err = departmentRepo.Create(ctx, eeeDept)
-		if err != nil && !errors.Is(err, appRepos.ErrDepartmentAlreadyExists) {
+		if err != nil && !errors.Is(err, apperrors.ErrDepartmentAlreadyExists) {
 			lgr.Error().Err(err).Msg("Error creating electrical engineering department")
 			finalErr = errors.Join(finalErr, err)
 		}
@@ -61,10 +62,10 @@ func CreateDefaultData(ctx context.Context, dbPool *pgxpool.Pool, lgr zerolog.Lo
 	// --- Science Faculty & Departments --- //
 	scienceFaculty := &appModels.Faculty{Name: "Science Faculty", Code: "SCI"}
 	scienceID, err := facultyRepo.CreateFaculty(ctx, scienceFaculty)
-	if err != nil && !errors.Is(err, appRepos.ErrFacultyAlreadyExists) {
+	if err != nil && !errors.Is(err, apperrors.ErrFacultyAlreadyExists) {
 		lgr.Error().Err(err).Msg("Error creating science faculty")
 		finalErr = errors.Join(finalErr, err)
-	} else if errors.Is(err, appRepos.ErrFacultyAlreadyExists) {
+	} else if errors.Is(err, apperrors.ErrFacultyAlreadyExists) {
 		// Find existing ID if needed
 		faculties, errGet := facultyRepo.GetAllFaculties(ctx)
 		if errGet == nil {
@@ -84,14 +85,14 @@ func CreateDefaultData(ctx context.Context, dbPool *pgxpool.Pool, lgr zerolog.Lo
 		// Create Mathematics
 		mathDept := &appModels.Department{FacultyID: scienceID, Name: "Mathematics", Code: "MATH"}
 		err = departmentRepo.Create(ctx, mathDept)
-		if err != nil && !errors.Is(err, appRepos.ErrDepartmentAlreadyExists) {
+		if err != nil && !errors.Is(err, apperrors.ErrDepartmentAlreadyExists) {
 			lgr.Error().Err(err).Msg("Error creating mathematics department")
 			finalErr = errors.Join(finalErr, err)
 		}
 		// Create Physics
 		physDept := &appModels.Department{FacultyID: scienceID, Name: "Physics", Code: "PHYS"}
 		err = departmentRepo.Create(ctx, physDept)
-		if err != nil && !errors.Is(err, appRepos.ErrDepartmentAlreadyExists) {
+		if err != nil && !errors.Is(err, apperrors.ErrDepartmentAlreadyExists) {
 			lgr.Error().Err(err).Msg("Error creating physics department")
 			finalErr = errors.Join(finalErr, err)
 		}

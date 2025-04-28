@@ -31,8 +31,8 @@ func NewInstructorRepository(db *pgxpool.Pool) *InstructorRepository {
 // CreateInstructor creates a new instructor
 func (r *InstructorRepository) CreateInstructor(ctx context.Context, instructor *models.Instructor) error {
 	sql, args, err := r.sb.Insert("instructors").
-		Columns("user_id", "department_id", "title").
-		Values(instructor.UserID, instructor.DepartmentID, instructor.Title).
+		Columns("user_id", "title").
+		Values(instructor.UserID, instructor.Title).
 		ToSql()
 
 	if err != nil {
@@ -57,7 +57,7 @@ func (r *InstructorRepository) CreateInstructor(ctx context.Context, instructor 
 // GetInstructorByUserID retrieves an instructor by user ID
 func (r *InstructorRepository) GetInstructorByUserID(ctx context.Context, userID int64) (*models.Instructor, error) {
 	var instructor models.Instructor
-	sql, args, err := r.sb.Select("id", "user_id", "department_id", "title").
+	sql, args, err := r.sb.Select("id", "user_id", "title").
 		From("instructors").
 		Where(squirrel.Eq{"user_id": userID}).
 		Limit(1).
@@ -69,7 +69,7 @@ func (r *InstructorRepository) GetInstructorByUserID(ctx context.Context, userID
 	}
 
 	err = r.db.QueryRow(ctx, sql, args...).Scan(
-		&instructor.ID, &instructor.UserID, &instructor.DepartmentID, &instructor.Title)
+		&instructor.ID, &instructor.UserID, &instructor.Title)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -86,12 +86,12 @@ func (r *InstructorRepository) GetInstructorByUserID(ctx context.Context, userID
 // GetInstructorsByDepartmentID retrieves all instructors in a department, including user details
 func (r *InstructorRepository) GetInstructorsByDepartmentID(ctx context.Context, departmentID int64) ([]*models.Instructor, error) {
 	sql, args, err := r.sb.Select(
-		"i.id", "i.user_id", "i.department_id", "i.title",
-		"u.first_name", "u.last_name", "u.email",
+		"i.id", "i.user_id", "i.title",
+		"u.first_name", "u.last_name", "u.email", "u.department_id",
 	).
 		From("instructors i").
 		Join("users u ON i.user_id = u.id").
-		Where(squirrel.Eq{"i.department_id": departmentID}).
+		Where(squirrel.Eq{"u.department_id": departmentID}).
 		OrderBy("u.last_name", "u.first_name").
 		ToSql()
 
@@ -112,19 +112,23 @@ func (r *InstructorRepository) GetInstructorsByDepartmentID(ctx context.Context,
 		instructor := &models.Instructor{
 			User: &models.User{},
 		}
+		var deptID *int64
 		err := rows.Scan(
 			&instructor.ID,
 			&instructor.UserID,
-			&instructor.DepartmentID,
 			&instructor.Title,
 			&instructor.User.FirstName,
 			&instructor.User.LastName,
 			&instructor.User.Email,
+			&deptID,
 		)
 		if err != nil {
 			logger.Error().Err(err).Int64("departmentID", departmentID).Msg("Error scanning instructor row during department fetch")
 			return nil, fmt.Errorf("error scanning instructor: %w", err)
 		}
+
+		instructor.User.DepartmentID = deptID
+
 		instructors = append(instructors, instructor)
 	}
 

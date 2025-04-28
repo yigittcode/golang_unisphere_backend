@@ -10,6 +10,7 @@ import (
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/repositories"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/logger"
 )
 
@@ -149,8 +150,8 @@ func (s *classNoteServiceImpl) GetAllClassNotes(ctx context.Context, params *Get
 func (s *classNoteServiceImpl) GetClassNoteByID(ctx context.Context, noteID int64) (*ClassNoteResponse, error) {
 	noteDetails, err := s.noteRepo.GetClassNoteByID(ctx, noteID)
 	if err != nil {
-		if errors.Is(err, repositories.ErrNotFound) {
-			return nil, ErrClassNotFound // Define specific service error
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, apperrors.ErrClassNoteNotFound
 		}
 		logger.Error().Err(err).Int64("noteID", noteID).Msg("Error getting class note by ID from repository")
 		return nil, fmt.Errorf("failed to retrieve class note: %w", err)
@@ -163,14 +164,14 @@ func (s *classNoteServiceImpl) CreateClassNote(ctx context.Context, userID int64
 	// Validate Department exists
 	dept, err := s.deptRepo.GetByID(ctx, req.DepartmentID)
 	if err != nil {
-		if errors.Is(err, repositories.ErrNotFound) {
-			return nil, ErrNoteDepartmentNotFound // Define specific service error
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, apperrors.ErrDepartmentNotFound
 		}
 		logger.Error().Err(err).Int64("departmentID", req.DepartmentID).Msg("Error checking department existence")
 		return nil, fmt.Errorf("failed to validate department: %w", err)
 	}
 	if dept == nil { // Should be covered by ErrNotFound
-		return nil, ErrNoteDepartmentNotFound
+		return nil, apperrors.ErrDepartmentNotFound
 	}
 
 	note := &models.ClassNote{
@@ -212,14 +213,14 @@ func (s *classNoteServiceImpl) UpdateClassNote(ctx context.Context, userID int64
 	// 2. Validate Department exists (if changed, though request makes it required)
 	dept, err := s.deptRepo.GetByID(ctx, req.DepartmentID)
 	if err != nil {
-		if errors.Is(err, repositories.ErrNotFound) {
-			return nil, ErrNoteDepartmentNotFound
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, apperrors.ErrDepartmentNotFound
 		}
 		logger.Error().Err(err).Int64("departmentID", req.DepartmentID).Msg("Error checking department existence for update")
 		return nil, fmt.Errorf("failed to validate department for update: %w", err)
 	}
 	if dept == nil { // Should be covered by ErrNotFound
-		return nil, ErrNoteDepartmentNotFound
+		return nil, apperrors.ErrDepartmentNotFound
 	}
 
 	// 3. Fetch existing note to preserve fields not in request (like UserID)
@@ -228,8 +229,8 @@ func (s *classNoteServiceImpl) UpdateClassNote(ctx context.Context, userID int64
 	// Alternatively, pass individual fields to repo update.
 	existingNote, err := s.noteRepo.GetClassNoteByID(ctx, noteID)
 	if err != nil {
-		if errors.Is(err, repositories.ErrNotFound) {
-			return nil, ErrClassNotFound
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, apperrors.ErrClassNoteNotFound
 		}
 		logger.Error().Err(err).Int64("noteID", noteID).Msg("Failed to fetch existing class note for update")
 		return nil, fmt.Errorf("failed to fetch existing note: %w", err)
@@ -251,9 +252,9 @@ func (s *classNoteServiceImpl) UpdateClassNote(ctx context.Context, userID int64
 	// 5. Perform update in repository
 	err = s.noteRepo.UpdateClassNote(ctx, noteToUpdate)
 	if err != nil {
-		if errors.Is(err, repositories.ErrNotFound) {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			// This means the note disappeared between ownership check and update, or ID was wrong
-			return nil, ErrClassNotFound
+			return nil, apperrors.ErrClassNoteNotFound
 		}
 		logger.Error().Err(err).Int64("noteID", noteID).Msg("Error updating class note in repository")
 		return nil, fmt.Errorf("failed to update class note: %w", err)
@@ -279,9 +280,9 @@ func (s *classNoteServiceImpl) DeleteClassNote(ctx context.Context, userID int64
 	// 2. Perform delete in repository
 	err = s.noteRepo.DeleteClassNote(ctx, noteID)
 	if err != nil {
-		if errors.Is(err, repositories.ErrNotFound) {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			// Note already deleted or never existed (after ownership check? Unlikely but possible)
-			return ErrClassNotFound
+			return apperrors.ErrClassNoteNotFound
 		}
 		logger.Error().Err(err).Int64("noteID", noteID).Msg("Error deleting class note from repository")
 		return fmt.Errorf("failed to delete class note: %w", err)
@@ -312,8 +313,8 @@ func (s *classNoteServiceImpl) AddFileToClassNote(ctx context.Context, noteID in
 	// Check if the class note exists
 	_, err := s.noteRepo.GetClassNoteByID(ctx, noteID)
 	if err != nil {
-		if errors.Is(err, repositories.ErrNotFound) {
-			return 0, ErrClassNotFound
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return 0, apperrors.ErrClassNoteNotFound
 		}
 		return 0, fmt.Errorf("error checking class note existence: %w", err)
 	}
@@ -348,8 +349,8 @@ func (s *classNoteServiceImpl) RemoveFileFromClassNote(ctx context.Context, note
 	// Check if the class note exists
 	_, err := s.noteRepo.GetClassNoteByID(ctx, noteID)
 	if err != nil {
-		if errors.Is(err, repositories.ErrNotFound) {
-			return ErrClassNotFound
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return apperrors.ErrClassNoteNotFound
 		}
 		return fmt.Errorf("error checking class note existence: %w", err)
 	}
@@ -383,8 +384,8 @@ func (s *classNoteServiceImpl) GetClassNoteFiles(ctx context.Context, noteID int
 	// Check if the class note exists
 	_, err := s.noteRepo.GetClassNoteByID(ctx, noteID)
 	if err != nil {
-		if errors.Is(err, repositories.ErrNotFound) {
-			return nil, ErrClassNotFound
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, apperrors.ErrClassNoteNotFound
 		}
 		return nil, fmt.Errorf("error checking class note existence: %w", err)
 	}
@@ -432,11 +433,5 @@ func mapNoteDetailsToResponse(details *repositories.ClassNoteDetails) *ClassNote
 	return resp
 }
 
-// --- Service Specific Errors ---
-// Define specific errors for the service layer for better handling in the controller.
-var (
-	ErrClassNotFound          = errors.New("class note not found")
-	ErrNoteDepartmentNotFound = errors.New("department for class note not found")
-	// Add other specific errors as needed
-)
- 
+// --- Service now uses apperrors instead of local error definitions ---
+// These imports are now centralized in the apperrors package

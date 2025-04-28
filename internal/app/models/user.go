@@ -26,7 +26,6 @@ type Student struct {
 	ID             int64       `json:"id" db:"id"`
 	UserID         int64       `json:"userId" db:"user_id"`
 	Identifier     string      `json:"identifier" db:"identifier"`
-	DepartmentID   int64       `json:"departmentId" db:"department_id"`
 	GraduationYear *int        `json:"graduationYear,omitempty" db:"graduation_year"` // Pointer for potential NULL
 	User           *User       `json:"user,omitempty"`                                // Relation, no db tag
 	Department     *Department `json:"department,omitempty"`                          // Relation, no db tag
@@ -34,10 +33,9 @@ type Student struct {
 
 // Instructor defines the instructor model based on the 'instructors' table
 type Instructor struct {
-	ID           int64       `json:"id" db:"id"`
-	UserID       int64       `json:"userId" db:"user_id"`
-	DepartmentID int64       `json:"departmentId" db:"department_id"`
-	Title        string      `json:"title" db:"title"`
-	User         *User       `json:"user,omitempty"`       // Relation, no db tag
-	Department   *Department `json:"department,omitempty"` // Relation, no db tag
+	ID         int64       `json:"id" db:"id"`
+	UserID     int64       `json:"userId" db:"user_id"`
+	Title      string      `json:"title" db:"title"`
+	User       *User       `json:"user,omitempty"`       // Relation, no db tag
+	Department *Department `json:"department,omitempty"` // Relation, no db tag
 }
