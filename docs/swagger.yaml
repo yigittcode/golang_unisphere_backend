@@ -62,7 +62,7 @@ definitions:
         type: string
       files:
         items:
-          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ClassNoteFileResponse'
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SimpleClassNoteFileResponse'
         type: array
       id:
         type: integer
@@ -393,6 +393,11 @@ definitions:
     - lastName
     - password
     - studentId
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.SimpleClassNoteFileResponse:
+    properties:
+      id:
+        type: integer
     type: object
   github_com_yigit_unisphere_internal_app_models_dto.StudentResponse:
     properties:
@@ -1945,6 +1950,71 @@ paths:
       summary: List faculty departments
       tags:
       - departments
+  /files/{fileId}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific file (works for any file
+        type)
+      parameters:
+      - description: File ID
+        in: path
+        name: fileId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ClassNoteFileResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get file details
+      tags:
+      - files
   /instructors/{id}:
     get:
       consumes:

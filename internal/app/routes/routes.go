@@ -42,6 +42,9 @@ func SetupRouter(
 		authenticated.POST("/auth/profile/photo", authController.UpdateProfilePhoto)
 		authenticated.DELETE("/auth/profile/photo", authController.DeleteProfilePhoto)
 
+		// Files endpoint (global access to file details)
+		authenticated.GET("/files/:fileId", classNoteController.GetFileDetails)
+
 		// Faculty routes (now under authenticated group)
 		faculties := authenticated.Group("/faculties")
 		{

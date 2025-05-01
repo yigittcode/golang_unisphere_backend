@@ -25,7 +25,7 @@ type UpdateClassNoteRequest struct {
 
 // --- Response DTOs ---
 
-// ClassNoteFileResponse represents file information specific to class notes
+// ClassNoteFileResponse represents complete file information for class notes
 type ClassNoteFileResponse struct {
 	ID        int64     `json:"id"`
 	FileName  string    `json:"fileName"`
@@ -35,18 +35,24 @@ type ClassNoteFileResponse struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+// SimpleClassNoteFileResponse represents just the file ID for class notes
+// Used when returning file lists within note responses to minimize payload size
+type SimpleClassNoteFileResponse struct {
+	ID int64 `json:"id"`
+}
+
 // ClassNoteResponse represents basic class note information
 type ClassNoteResponse struct {
-	ID           int64                   `json:"id"`
-	CourseCode   string                  `json:"courseCode"`
-	Title        string                  `json:"title"`
-	Description  string                  `json:"description"`
-	Content      string                  `json:"content"`
-	DepartmentID int64                   `json:"departmentId"`
-	UserID       int64                   `json:"userId"`
-	CreatedAt    time.Time               `json:"createdAt"`
-	UpdatedAt    time.Time               `json:"updatedAt"`
-	Files        []ClassNoteFileResponse `json:"files,omitempty"`
+	ID           int64                         `json:"id"`
+	CourseCode   string                        `json:"courseCode"`
+	Title        string                        `json:"title"`
+	Description  string                        `json:"description"`
+	Content      string                        `json:"content"`
+	DepartmentID int64                         `json:"departmentId"`
+	UserID       int64                         `json:"userId"`
+	CreatedAt    time.Time                     `json:"createdAt"`
+	UpdatedAt    time.Time                     `json:"updatedAt"`
+	Files        []SimpleClassNoteFileResponse `json:"files,omitempty"`
 }
 
 // PaginationInfo is defined in response.go to avoid duplication

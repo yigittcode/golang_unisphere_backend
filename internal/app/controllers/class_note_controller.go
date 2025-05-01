@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/services"
+	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/filestorage"
 )
 
@@ -317,4 +319,46 @@ func (c *ClassNoteController) AddFilesToNote(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(updatedNote))
+}
+
+// GetFileDetails godoc
+// @Summary Get file details
+// @Description Get detailed information about a specific file (works for any file type)
+// @Tags files
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param fileId path int true "File ID"
+// @Success 200 {object} dto.APIResponse{data=dto.ClassNoteFileResponse}
+// @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 404 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Router /files/{fileId} [get]
+func (c *ClassNoteController) GetFileDetails(ctx *gin.Context) {
+	// Parse ID from path
+	id, err := parseIDParam(ctx, "fileId")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid file ID")))
+		return
+	}
+
+	// Get file details
+	fileDetails, err := c.classNoteService.GetFileDetails(ctx, id)
+	if err != nil {
+		// Handle common error types
+		if errors.Is(err, apperrors.ErrResourceNotFound) {
+			ctx.JSON(http.StatusNotFound, dto.NewErrorResponse(
+				dto.NewErrorDetail(dto.ErrorCodeResourceNotFound, "File not found")))
+			return
+		}
+
+		// Handle other errors
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to get file details")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(fileDetails))
 }
