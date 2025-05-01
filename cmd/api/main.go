@@ -1,6 +1,6 @@
 package main
 
-//go:generate swag init -g main.go -d ./,../../internal/app -o ../../docs --parseDependency
+//go:generate swag init -g main.go -d ../../internal/app -o ../../docs --parseDependency
 
 import (
 	"os"

@@ -172,8 +172,22 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 	deps.FacultyService = appServices.NewFacultyService(deps.Repos.FacultyRepository)
 	deps.DepartmentService = appServices.NewDepartmentService(deps.Repos.DepartmentRepository, deps.Repos.FacultyRepository)
 	deps.InstructorService = appServices.NewInstructorService(deps.Repos.UserRepository, deps.Repos.DepartmentRepository)
-	deps.PastExamService = appServices.NewPastExamService(deps.Repos.PastExamRepository, deps.Repos.DepartmentRepository, deps.AuthzService)
-	deps.ClassNoteService = appServices.NewClassNoteService(deps.Repos.ClassNoteRepository, deps.Repos.DepartmentRepository, deps.AuthzService)
+	deps.PastExamService = appServices.NewPastExamService(
+		deps.Repos.PastExamRepository,
+		deps.Repos.DepartmentRepository,
+		deps.Repos.FileRepository,
+		deps.FileStorage,
+		deps.AuthzService,
+		deps.Logger,
+	)
+	deps.ClassNoteService = appServices.NewClassNoteService(
+		deps.Repos.ClassNoteRepository,
+		deps.Repos.DepartmentRepository,
+		deps.Repos.FileRepository,
+		deps.FileStorage,
+		deps.AuthzService,
+		deps.Logger,
+	)
 
 	deps.AuthMiddleware = appMiddleware.NewAuthMiddleware(deps.JWTService)
 

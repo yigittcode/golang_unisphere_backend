@@ -66,10 +66,8 @@ install-swag:
 .PHONY: swagger
 swagger: install-swag
 	@echo "Generating Swagger documentation using $(SWAG_CMD)..."
-	# Change directory to where main.go is located, as swag init often works best there
-	# Execute swag init using the potentially full path
-	cd $(MAIN_DIR) && $(SWAG_CMD) init
-	@echo "Swagger files generated in $(MAIN_DIR)/docs directory"
+	$(SWAG_CMD) init -g cmd/api/main.go -d . -o docs --parseDependency
+	@echo "Swagger files generated in docs directory"
 
 # All-in-one command to regenerate swagger and run the application
 .PHONY: dev

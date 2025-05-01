@@ -112,24 +112,20 @@ func (ls *LocalStorage) SaveFile(fileHeader *multipart.FileHeader) (string, erro
 }
 
 // DeleteFile removes a file from the storage filesystem.
-// It accepts the file path as stored in the database (e.g., uploads/filename.jpg).
+// It accepts the file path as stored in the database (e.g., uploads/profile_photos/filename.jpg).
 // Returns nil if deletion is successful or if the file doesn't exist.
 func (ls *LocalStorage) DeleteFile(filePath string) error {
 	if filePath == "" {
 		return nil // Nothing to delete
 	}
 
-	// Extract the filename from the path
-	// The stored path is typically in the format: "uploads/filename.ext"
-	filename := filepath.Base(filePath)
-
-	// Ensure we're only getting the filename portion
-	if filename == "" || filename == "." || filename == "/" || filename == "uploads" {
-		return fmt.Errorf("invalid file path: %s", filePath)
-	}
+	// Extract the filename and subpath from the path
+	// The stored path is typically in the format: "uploads/profile_photos/filename.ext"
+	relativePath := strings.TrimPrefix(filePath, ls.baseURL)
+	relativePath = strings.TrimPrefix(relativePath, "/")
 
 	// Construct the full physical path to the file
-	physicalPath := filepath.Join(ls.basePath, filename)
+	physicalPath := filepath.Join(ls.basePath, relativePath)
 
 	// Check if the file exists first
 	if _, err := os.Stat(physicalPath); os.IsNotExist(err) {
@@ -157,6 +153,11 @@ func (ls *LocalStorage) GetFullPath(fileURL string) string {
 	}
 
 	return filepath.Join(ls.basePath, filename)
+}
+
+// GetBaseURL returns the base URL for file access
+func (ls *LocalStorage) GetBaseURL() string {
+	return ls.baseURL
 }
 
 // GetFileURL returns the public URL for a saved file

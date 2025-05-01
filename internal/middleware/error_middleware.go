@@ -2,10 +2,12 @@ package middleware
 
 import (
 	"errors"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/yigit/unisphere/internal/app/models/dto" // Keep dto import for ErrorDetail etc.
+	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/pkg/apperrors"
+	"github.com/yigit/unisphere/internal/pkg/logger"
 )
 
 /* // REMOVED ErrorCode, ErrorSeverity, ErrorDetail, ErrorResponse structs and helpers
@@ -31,60 +33,51 @@ func HandleAPIError(c *gin.Context, err error) {
 	// Check for specific error types
 	switch {
 	case errors.Is(err, apperrors.ErrResourceNotFound):
-		c.JSON(404, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeResourceNotFound, "Resource not found"),
-		})
+		c.JSON(http.StatusNotFound, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeResourceNotFound, "Resource not found")))
 		return
 	case errors.Is(err, apperrors.ErrPermissionDenied):
-		c.JSON(403, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeForbidden, "Permission denied"),
-		})
+		c.JSON(http.StatusForbidden, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeForbidden, "Permission denied")))
 		return
 	case errors.Is(err, apperrors.ErrInvalidCredentials):
-		c.JSON(401, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInvalidCredentials, "Invalid credentials"),
-		})
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidCredentials, "Invalid credentials")))
 		return
 	case errors.Is(err, apperrors.ErrTokenExpired):
-		c.JSON(401, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeExpiredToken, "Token expired"),
-		})
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeExpiredToken, "Token expired")))
 		return
 	case errors.Is(err, apperrors.ErrTokenInvalid):
-		c.JSON(401, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInvalidToken, "Invalid token"),
-		})
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidToken, "Invalid token")))
 		return
 	case errors.Is(err, apperrors.ErrTokenNotFound):
-		c.JSON(401, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeTokenNotFound, "Token not found"),
-		})
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeTokenNotFound, "Token not found")))
 		return
 	case errors.Is(err, apperrors.ErrTokenRevoked):
-		c.JSON(401, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInvalidToken, "Token revoked"),
-		})
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidToken, "Token revoked")))
 		return
-	case errors.Is(err, apperrors.ErrValidationFailed):
-		c.JSON(400, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Validation failed"),
-		})
+	case errors.Is(err, apperrors.ErrValidationFailed) || errors.Is(err, apperrors.ErrInvalidPassword):
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Validation failed")
+		errorDetail = errorDetail.WithDetails(err.Error())
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
 		return
 	case errors.Is(err, apperrors.ErrEmailAlreadyExists):
-		c.JSON(409, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeResourceAlreadyExists, "Email already exists"),
-		})
+		c.JSON(http.StatusConflict, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeResourceAlreadyExists, "Email already exists")))
 		return
 	case errors.Is(err, apperrors.ErrIdentifierExists):
-		c.JSON(409, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeResourceAlreadyExists, "Student ID already exists"),
-		})
+		c.JSON(http.StatusConflict, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeResourceAlreadyExists, "Student ID already exists")))
 		return
 	default:
-		// Handle unknown errors
-		c.JSON(500, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Internal server error"),
-		})
+		// Log unexpected errors
+		logger.Error().Err(err).Msg("Unexpected error occurred")
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "An unexpected error occurred")))
 		return
 	}
 }

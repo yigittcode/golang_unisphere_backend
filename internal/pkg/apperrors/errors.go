@@ -14,6 +14,7 @@ var (
 	ErrTokenInvalid       = errors.New("invalid token")
 	ErrTokenNotFound      = errors.New("token not found")
 	ErrTokenRevoked       = errors.New("token revoked")
+	ErrAccountDisabled    = errors.New("account is disabled")
 
 	// Authorization errors
 	ErrPermissionDenied = errors.New("permission denied")

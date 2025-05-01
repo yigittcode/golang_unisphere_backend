@@ -22,7 +22,8 @@ func NewFileRepository(db *pgxpool.Pool) *FileRepository {
 // GetByID retrieves a file by ID
 func (r *FileRepository) GetByID(ctx context.Context, id int64) (*models.File, error) {
 	query := `
-		SELECT id, file_name, file_url, file_size, file_type, uploaded_by, created_at
+		SELECT id, file_name, file_path, file_url, file_size, file_type,
+			   resource_type, resource_id, uploaded_by, created_at, updated_at
 		FROM files
 		WHERE id = $1
 	`
@@ -31,11 +32,15 @@ func (r *FileRepository) GetByID(ctx context.Context, id int64) (*models.File, e
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&file.ID,
 		&file.FileName,
+		&file.FilePath,
 		&file.FileURL,
 		&file.FileSize,
 		&file.FileType,
+		&file.ResourceType,
+		&file.ResourceID,
 		&file.UploadedBy,
 		&file.CreatedAt,
+		&file.UpdatedAt,
 	)
 
 	if err != nil {
@@ -48,17 +53,23 @@ func (r *FileRepository) GetByID(ctx context.Context, id int64) (*models.File, e
 // Create creates a new file
 func (r *FileRepository) Create(ctx context.Context, file *models.File) (int64, error) {
 	query := `
-		INSERT INTO files (file_name, file_url, file_size, file_type, uploaded_by)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO files (
+			file_name, file_path, file_url, file_size, file_type,
+			resource_type, resource_id, uploaded_by, created_at, updated_at
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
 		RETURNING id
 	`
 
 	var id int64
 	err := r.db.QueryRow(ctx, query,
 		file.FileName,
+		file.FilePath,
 		file.FileURL,
 		file.FileSize,
 		file.FileType,
+		file.ResourceType,
+		file.ResourceID,
 		file.UploadedBy,
 	).Scan(&id)
 

@@ -48,21 +48,3 @@ func ValidateRequest(obj interface{}) gin.HandlerFunc {
 		c.Next()
 	}
 }
-
-// formatValidationError creates a human-readable validation error message
-func formatValidationError(e validator.FieldError) string {
-	switch e.Tag() {
-	case "required":
-		return e.Field() + " is required"
-	case "min":
-		return e.Field() + " must be at least " + e.Param()
-	case "max":
-		return e.Field() + " must be at most " + e.Param()
-	case "email":
-		return e.Field() + " must be a valid email address"
-	case "oneof":
-		return e.Field() + " must be one of: " + e.Param()
-	default:
-		return e.Field() + " validation failed: " + e.Tag()
-	}
-}

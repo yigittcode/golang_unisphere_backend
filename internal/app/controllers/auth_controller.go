@@ -3,6 +3,8 @@ package controllers
 
 import (
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
@@ -38,11 +40,11 @@ func NewAuthController(authService services.AuthService, userRepo repositories.I
 // @Accept json
 // @Produce json
 // @Param request body dto.RegisterStudentRequest true "Student registration information"
-// @Success 201 {object} dto.APIResponse{data=dto.AuthResponse} "Student registered successfully"
+// @Success 201 {object} dto.APIResponse{data=dto.TokenResponse} "Student registered successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format"
-// @Failure 409 {object} dto.ErrorResponse "Email or student ID already exists"
+// @Failure 409 {object} dto.ErrorResponse "Email already exists"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /auth/register/student [post]
+// @Router /auth/register-student [post]
 func (c *AuthController) RegisterStudent(ctx *gin.Context) {
 	var req dto.RegisterStudentRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -57,16 +59,12 @@ func (c *AuthController) RegisterStudent(ctx *gin.Context) {
 		Str("email", req.Email).
 		Str("firstName", req.FirstName).
 		Str("lastName", req.LastName).
-		Str("studentId", req.StudentID).
 		Int64("departmentId", req.DepartmentID).
+		Str("studentId", req.StudentID).
 		Msg("Student registration request received")
 
-	if req.GraduationYear != nil {
-		c.logger.Info().Int("graduationYear", *req.GraduationYear).Msg("Student registration includes graduation year")
-	}
-
 	// Register student
-	token, err := c.authService.RegisterStudent(ctx.Request.Context(), &req)
+	tokenResponse, err := c.authService.RegisterStudent(ctx.Request.Context(), &req)
 	if err != nil {
 		c.logger.Error().Err(err).Msg("Failed to register student")
 		middleware.HandleAPIError(ctx, err)
@@ -78,8 +76,10 @@ func (c *AuthController) RegisterStudent(ctx *gin.Context) {
 		Str("email", req.Email).
 		Msg("Student registered successfully")
 
-	// Return success response
-	ctx.JSON(http.StatusCreated, token)
+	// Return token response
+	ctx.JSON(http.StatusCreated, dto.APIResponse{
+		Data: tokenResponse,
+	})
 }
 
 // RegisterInstructor handles instructor registration
@@ -89,16 +89,25 @@ func (c *AuthController) RegisterStudent(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body dto.RegisterInstructorRequest true "Instructor registration information"
-// @Success 201 {object} dto.APIResponse{data=dto.AuthResponse} "Instructor registered successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid request format"
+// @Success 201 {object} dto.APIResponse{data=dto.TokenResponse} "Instructor registered successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid request format or validation error"
 // @Failure 409 {object} dto.ErrorResponse "Email already exists"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /auth/register/instructor [post]
+// @Router /auth/register-instructor [post]
 func (c *AuthController) RegisterInstructor(ctx *gin.Context) {
 	var req dto.RegisterInstructorRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		c.logger.Warn().Err(err).Msg("Invalid instructor registration request payload")
 		errorDetail := dto.HandleValidationError(err)
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
+		return
+	}
+
+	// Validate password
+	if err := c.authService.ValidatePassword(req.Password); err != nil {
+		c.logger.Warn().Err(err).Msg("Invalid password format")
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Invalid password format")
+		errorDetail = errorDetail.WithDetails(err.Error())
 		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
 		return
 	}
@@ -113,7 +122,7 @@ func (c *AuthController) RegisterInstructor(ctx *gin.Context) {
 		Msg("Instructor registration request received")
 
 	// Register instructor
-	token, err := c.authService.RegisterInstructor(ctx.Request.Context(), &req)
+	tokenResponse, err := c.authService.RegisterInstructor(ctx.Request.Context(), &req)
 	if err != nil {
 		c.logger.Error().Err(err).Msg("Failed to register instructor")
 		middleware.HandleAPIError(ctx, err)
@@ -125,8 +134,10 @@ func (c *AuthController) RegisterInstructor(ctx *gin.Context) {
 		Str("email", req.Email).
 		Msg("Instructor registered successfully")
 
-	// Return success response
-	ctx.JSON(http.StatusCreated, token)
+	// Return token response
+	ctx.JSON(http.StatusCreated, dto.APIResponse{
+		Data: tokenResponse,
+	})
 }
 
 // Login handles user login
@@ -172,8 +183,10 @@ func (c *AuthController) Login(ctx *gin.Context) {
 		Str("email", req.Email).
 		Msg("Login successful")
 
-	// Return success response
-	ctx.JSON(http.StatusOK, tokenResponse)
+	// Return token response
+	ctx.JSON(http.StatusOK, dto.APIResponse{
+		Data: tokenResponse,
+	})
 }
 
 // RefreshToken handles token refresh
@@ -209,7 +222,9 @@ func (c *AuthController) RefreshToken(ctx *gin.Context) {
 	c.logger.Info().Msg("Token refreshed successfully")
 
 	// Return success response
-	ctx.JSON(http.StatusOK, tokenResponse)
+	ctx.JSON(http.StatusOK, dto.APIResponse{
+		Data: tokenResponse,
+	})
 }
 
 // GetCurrentUser godoc
@@ -219,9 +234,12 @@ func (c *AuthController) RefreshToken(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Success 200 {object} dto.APIResponse{data=dto.UserResponse}
-// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Success 200 {object} dto.APIResponse{data=dto.StudentResponse} "Response for student users"
+// @Success 200 {object} dto.APIResponse{data=dto.InstructorResponse} "Response for instructor users"
+// @Success 200 {object} dto.APIResponse{data=dto.UserResponse} "Response for other user types"
+// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail} "Unauthorized - Invalid or missing token"
+// @Failure 404 {object} dto.APIResponse{error=dto.ErrorDetail} "User not found"
+// @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail} "Internal server error"
 // @Router /auth/profile [get]
 func (c *AuthController) GetCurrentUser(ctx *gin.Context) {
 	userID, exists := ctx.Get("userID")
@@ -232,7 +250,8 @@ func (c *AuthController) GetCurrentUser(ctx *gin.Context) {
 		return
 	}
 
-	user, err := c.authService.GetUserByID(ctx, userID.(int64))
+	// Get user profile using the service which already handles profile photo URL
+	response, err := c.authService.GetProfile(ctx, userID.(int64))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, dto.APIResponse{
 			Error: dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to get user profile"),
@@ -240,18 +259,9 @@ func (c *AuthController) GetCurrentUser(ctx *gin.Context) {
 		return
 	}
 
-	// Create response
-	response := dto.UserResponse{
-		ID:           user.ID,
-		Email:        user.Email,
-		FirstName:    user.FirstName,
-		LastName:     user.LastName,
-		Role:         string(user.RoleType),
-		DepartmentID: user.DepartmentID,
-	}
-
 	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Data: response,
+		Data:      response,
+		Timestamp: time.Now(),
 	})
 }
 
@@ -263,7 +273,7 @@ func (c *AuthController) GetCurrentUser(ctx *gin.Context) {
 // @Produce json
 // @Param request body dto.UpdateProfileRequest true "Profile update details"
 // @Success 200 {object} dto.APIResponse{data=dto.SuccessResponse}
-// @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail} "Invalid request format or validation error (e.g., invalid email format)"
 // @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Router /auth/profile [put]
@@ -278,20 +288,37 @@ func (c *AuthController) UpdateProfile(ctx *gin.Context) {
 
 	var req dto.UpdateProfileRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
+		c.logger.Warn().Err(err).
+			Interface("request", req).
+			Msg("Invalid profile update request")
+		errorDetail := dto.HandleValidationError(err)
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
+		return
+	}
+
+	// Validate email format
+	if !strings.Contains(req.Email, "@") {
 		ctx.JSON(http.StatusBadRequest, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid request format"),
+			Error: dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Invalid email format").
+				WithDetails("Email must contain @ symbol"),
 		})
 		return
 	}
 
-	// Update profile
 	err := c.authService.UpdateProfile(ctx, userID.(int64), &req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to update profile"),
-		})
+		c.logger.Error().Err(err).
+			Int64("userID", userID.(int64)).
+			Interface("request", req).
+			Msg("Failed to update profile")
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
+
+	c.logger.Info().
+		Int64("userID", userID.(int64)).
+		Interface("request", req).
+		Msg("Profile updated successfully")
 
 	ctx.JSON(http.StatusOK, dto.APIResponse{
 		Data: dto.SuccessResponse{
@@ -306,12 +333,12 @@ func (c *AuthController) UpdateProfile(ctx *gin.Context) {
 // @Tags auth
 // @Accept multipart/form-data
 // @Produce json
-// @Param file formData file true "Profile photo file"
+// @Param image formData file true "Profile photo image"
 // @Success 200 {object} dto.APIResponse{data=dto.SuccessResponse}
 // @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Router /auth/profile/photo [put]
+// @Router /auth/profile/photo [post]
 func (c *AuthController) UpdateProfilePhoto(ctx *gin.Context) {
 	userID, exists := ctx.Get("userID")
 	if !exists {
@@ -321,22 +348,29 @@ func (c *AuthController) UpdateProfilePhoto(ctx *gin.Context) {
 		return
 	}
 
-	file, err := ctx.FormFile("file")
+	file, err := ctx.FormFile("image")
 	if err != nil {
+		c.logger.Warn().Err(err).Msg("Invalid or missing image file")
 		ctx.JSON(http.StatusBadRequest, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid or missing file"),
+			Error: dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid or missing image"),
 		})
 		return
 	}
 
-	// Update profile photo
 	err = c.authService.UpdateProfilePhoto(ctx, userID.(int64), file)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to update profile photo"),
-		})
+		c.logger.Error().Err(err).
+			Int64("userID", userID.(int64)).
+			Str("fileName", file.Filename).
+			Msg("Failed to update profile photo")
+		middleware.HandleAPIError(ctx, err)
 		return
 	}
+
+	c.logger.Info().
+		Int64("userID", userID.(int64)).
+		Str("fileName", file.Filename).
+		Msg("Profile photo updated successfully")
 
 	ctx.JSON(http.StatusOK, dto.APIResponse{
 		Data: dto.SuccessResponse{

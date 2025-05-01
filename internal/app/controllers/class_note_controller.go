@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"mime/multipart"
+
 	"github.com/gin-gonic/gin"
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/services"
@@ -54,24 +56,20 @@ func (c *ClassNoteController) GetAllNotes(ctx *gin.Context) {
 	// Parse filter parameters
 	var filter dto.ClassNoteFilterRequest
 	if err := ctx.ShouldBindQuery(&filter); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid filter parameters"),
-		})
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid filter parameters")))
 		return
 	}
 
 	// Get notes with pagination
 	notes, err := c.classNoteService.GetAllNotes(ctx, &filter)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to get class notes"),
-		})
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to get class notes")))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Data: notes,
-	})
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(notes))
 }
 
 // GetNoteByID godoc
@@ -87,29 +85,25 @@ func (c *ClassNoteController) GetAllNotes(ctx *gin.Context) {
 // @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 404 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Router /class-notes/{id} [get]
+// @Router /class-notes/{noteId} [get]
 func (c *ClassNoteController) GetNoteByID(ctx *gin.Context) {
 	// Parse ID from path
-	id, err := parseIDParam(ctx, "id")
+	id, err := parseIDParam(ctx, "noteId")
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid class note ID"),
-		})
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid class note ID")))
 		return
 	}
 
 	// Get note
 	note, err := c.classNoteService.GetNoteByID(ctx, id)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to get class note"),
-		})
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to get class note")))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Data: note,
-	})
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(note))
 }
 
 // CreateNote godoc
@@ -123,7 +117,7 @@ func (c *ClassNoteController) GetNoteByID(ctx *gin.Context) {
 // @Param title formData string true "Title"
 // @Param description formData string true "Description"
 // @Param departmentId formData int true "Department ID"
-// @Param file formData file true "File to upload"
+// @Param files formData file false "Files to upload" collectionFormat multi
 // @Success 201 {object} dto.APIResponse{data=dto.ClassNoteResponse}
 // @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
@@ -133,33 +127,28 @@ func (c *ClassNoteController) CreateNote(ctx *gin.Context) {
 	// Parse request data
 	var req dto.CreateClassNoteRequest
 	if err := ctx.ShouldBind(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid request format"),
-		})
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid request format")))
 		return
 	}
 
-	// Get file
-	file, err := ctx.FormFile("file")
+	// Get files (if any)
+	form, err := ctx.MultipartForm()
+	var files []*multipart.FileHeader
+
+	if err == nil && form != nil && form.File != nil {
+		files = form.File["files"]
+	}
+
+	// Create note (even without files)
+	note, err := c.classNoteService.CreateNote(ctx, &req, files)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid or missing file"),
-		})
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to create class note")))
 		return
 	}
 
-	// Create note
-	note, err := c.classNoteService.CreateNote(ctx, &req, file)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to create class note"),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusCreated, dto.APIResponse{
-		Data: note,
-	})
+	ctx.JSON(http.StatusCreated, dto.NewSuccessResponse(note))
 }
 
 // UpdateNote godoc
@@ -176,38 +165,33 @@ func (c *ClassNoteController) CreateNote(ctx *gin.Context) {
 // @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 404 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Router /class-notes/{id} [put]
+// @Router /class-notes/{noteId} [put]
 func (c *ClassNoteController) UpdateNote(ctx *gin.Context) {
 	// Parse ID from path
-	id, err := parseIDParam(ctx, "id")
+	id, err := parseIDParam(ctx, "noteId")
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid class note ID"),
-		})
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid class note ID")))
 		return
 	}
 
 	// Parse request data
 	var req dto.UpdateClassNoteRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid request format"),
-		})
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid request format")))
 		return
 	}
 
 	// Update note
 	note, err := c.classNoteService.UpdateNote(ctx, id, &req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to update class note"),
-		})
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to update class note")))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Data: note,
-	})
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(note))
 }
 
 // DeleteNote godoc
@@ -223,27 +207,74 @@ func (c *ClassNoteController) UpdateNote(ctx *gin.Context) {
 // @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 404 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Router /class-notes/{id} [delete]
+// @Router /class-notes/{noteId} [delete]
 func (c *ClassNoteController) DeleteNote(ctx *gin.Context) {
 	// Parse ID from path
-	id, err := parseIDParam(ctx, "id")
+	id, err := parseIDParam(ctx, "noteId")
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid class note ID"),
-		})
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid class note ID")))
 		return
 	}
 
 	// Delete note
 	err = c.classNoteService.DeleteNote(ctx, id)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.APIResponse{
-			Error: dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to delete class note"),
-		})
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to delete class note")))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Data: dto.SuccessResponse{Message: "Class note deleted successfully"},
-	})
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(
+		dto.SuccessResponse{Message: "Class note deleted successfully"}))
+}
+
+// AddFilesToNote godoc
+// @Summary Add files to an existing class note
+// @Description Add multiple files to an existing class note
+// @Tags class-notes
+// @Accept multipart/form-data
+// @Produce json
+// @Security ApiKeyAuth
+// @Param id path int true "Class note ID"
+// @Param files formData file true "Files to upload" collectionFormat multi
+// @Success 200 {object} dto.APIResponse{data=dto.ClassNoteResponse}
+// @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 404 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Router /class-notes/{noteId}/files [post]
+func (c *ClassNoteController) AddFilesToNote(ctx *gin.Context) {
+	// Parse ID from path
+	id, err := parseIDParam(ctx, "noteId")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid class note ID")))
+		return
+	}
+
+	// Get files
+	form, err := ctx.MultipartForm()
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid form data")))
+		return
+	}
+
+	files := form.File["files"]
+	if len(files) == 0 {
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "No files uploaded")))
+		return
+	}
+
+	// Add files to note
+	updatedNote, err := c.classNoteService.AddFilesToNote(ctx, id, files)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to add files to class note")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(updatedNote))
 }

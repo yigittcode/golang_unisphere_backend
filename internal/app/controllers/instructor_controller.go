@@ -3,7 +3,6 @@ package controllers
 import (
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yigit/unisphere/internal/app/models/dto"
@@ -60,31 +59,15 @@ func (c *InstructorController) GetInstructorByID(ctx *gin.Context) {
 
 	// Convert model to DTO response
 	response := dto.InstructorResponse{
-		ID:     instructor.ID,
-		UserID: instructor.UserID,
-		Title:  instructor.Title,
-	}
-
-	// Add user info if available
-	if instructor.User != nil {
-		response.FirstName = instructor.User.FirstName
-		response.LastName = instructor.User.LastName
-		response.Email = instructor.User.Email
-		response.CreatedAt = instructor.User.CreatedAt.Format(time.RFC3339)
-
-		if instructor.User.DepartmentID != nil {
-			response.DepartmentID = *instructor.User.DepartmentID
-		}
-	}
-
-	// Add department info if available
-	if instructor.Department != nil {
-		response.DepartmentName = instructor.Department.Name
-
-		// Add faculty info if available
-		if instructor.Department.Faculty != nil {
-			response.FacultyName = instructor.Department.Faculty.Name
-		}
+		UserResponse: dto.UserResponse{
+			ID:           instructor.User.ID,
+			Email:        instructor.User.Email,
+			FirstName:    instructor.User.FirstName,
+			LastName:     instructor.User.LastName,
+			Role:         string(instructor.User.RoleType),
+			DepartmentID: instructor.User.DepartmentID,
+		},
+		Title: instructor.Title,
 	}
 
 	// Return instructor information
@@ -104,7 +87,7 @@ func (c *InstructorController) GetInstructorByID(ctx *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
 // @Failure 404 {object} dto.ErrorResponse "Department not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /instructors/department/{departmentId} [get]
+// @Router /api/v1/department-instructors/{departmentId} [get]
 func (c *InstructorController) GetInstructorsByDepartment(ctx *gin.Context) {
 	// Get department ID from URL
 	departmentIdParam := ctx.Param("departmentId")
@@ -126,36 +109,24 @@ func (c *InstructorController) GetInstructorsByDepartment(ctx *gin.Context) {
 	// Convert models to DTOs
 	instructorResponses := make([]dto.InstructorResponse, 0, len(instructors))
 	for _, instructor := range instructors {
-		response := dto.InstructorResponse{
-			ID:     instructor.ID,
-			UserID: instructor.UserID,
-			Title:  instructor.Title,
-		}
-
-		// Add user info if available
 		if instructor.User != nil {
-			response.FirstName = instructor.User.FirstName
-			response.LastName = instructor.User.LastName
-			response.Email = instructor.User.Email
-			response.CreatedAt = instructor.User.CreatedAt.Format(time.RFC3339)
-
-			if instructor.User.DepartmentID != nil {
-				response.DepartmentID = *instructor.User.DepartmentID
+			response := dto.InstructorResponse{
+				UserResponse: dto.UserResponse{
+					ID:           instructor.User.ID,
+					Email:        instructor.User.Email,
+					FirstName:    instructor.User.FirstName,
+					LastName:     instructor.User.LastName,
+					Role:         string(instructor.User.RoleType),
+					DepartmentID: instructor.User.DepartmentID,
+				},
+				Title: instructor.Title,
 			}
+			instructorResponses = append(instructorResponses, response)
 		}
-
-		// Add department info if available
-		if instructor.Department != nil {
-			response.DepartmentName = instructor.Department.Name
-		}
-
-		instructorResponses = append(instructorResponses, response)
 	}
 
 	// Return instructor information
-	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(
-		dto.InstructorsResponse{Instructors: instructorResponses},
-	))
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(instructorResponses))
 }
 
 // GetInstructorProfile retrieves the profile of authenticated instructor
@@ -169,7 +140,7 @@ func (c *InstructorController) GetInstructorsByDepartment(ctx *gin.Context) {
 // @Failure 403 {object} dto.ErrorResponse "Forbidden - User is not an instructor or token invalid"
 // @Failure 404 {object} dto.ErrorResponse "Instructor not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /instructors/profile [get]
+// @Router /api/v1/instructors/profile [get]
 func (c *InstructorController) GetInstructorProfile(ctx *gin.Context) {
 	// Get user ID from context (set by auth middleware)
 	userIDInterface, exists := ctx.Get("userID")
@@ -197,31 +168,15 @@ func (c *InstructorController) GetInstructorProfile(ctx *gin.Context) {
 
 	// Convert model to DTO
 	response := dto.InstructorResponse{
-		ID:     profile.ID,
-		UserID: profile.UserID,
-		Title:  profile.Title,
-	}
-
-	// Add user info if available
-	if profile.User != nil {
-		response.FirstName = profile.User.FirstName
-		response.LastName = profile.User.LastName
-		response.Email = profile.User.Email
-		response.CreatedAt = profile.User.CreatedAt.Format(time.RFC3339)
-
-		if profile.User.DepartmentID != nil {
-			response.DepartmentID = *profile.User.DepartmentID
-		}
-	}
-
-	// Add department info if available
-	if profile.Department != nil {
-		response.DepartmentName = profile.Department.Name
-
-		// Add faculty info if available
-		if profile.Department.Faculty != nil {
-			response.FacultyName = profile.Department.Faculty.Name
-		}
+		UserResponse: dto.UserResponse{
+			ID:           profile.User.ID,
+			Email:        profile.User.Email,
+			FirstName:    profile.User.FirstName,
+			LastName:     profile.User.LastName,
+			Role:         string(profile.User.RoleType),
+			DepartmentID: profile.User.DepartmentID,
+		},
+		Title: profile.Title,
 	}
 
 	// Return instructor profile
@@ -242,7 +197,7 @@ func (c *InstructorController) GetInstructorProfile(ctx *gin.Context) {
 // @Failure 403 {object} dto.ErrorResponse "Forbidden - User is not an instructor or token invalid"
 // @Failure 404 {object} dto.ErrorResponse "Instructor not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /instructors/title [put]
+// @Router /api/v1/instructors/title [put]
 func (c *InstructorController) UpdateTitle(ctx *gin.Context) {
 	// Get user ID from context (set by auth middleware)
 	userIDInterface, exists := ctx.Get("userID")

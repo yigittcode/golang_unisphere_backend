@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -23,7 +24,10 @@ func NewClassNoteRepository(db *pgxpool.Pool) *ClassNoteRepository {
 // GetAll retrieves all class notes with filtering and pagination
 func (r *ClassNoteRepository) GetAll(ctx context.Context, departmentID *int64, courseCode *string, page, pageSize int) ([]models.ClassNote, int64, error) {
 	// Build base query
-	query := squirrel.Select("id", "course_code", "title", "description", "file_id", "department_id", "instructor_id").
+	query := squirrel.Select(
+		"id", "course_code", "title", "description", "content",
+		"department_id", "user_id", "created_at", "updated_at",
+	).
 		From("class_notes").
 		PlaceholderFormat(squirrel.Dollar)
 
@@ -62,9 +66,11 @@ func (r *ClassNoteRepository) GetAll(ctx context.Context, departmentID *int64, c
 			&note.CourseCode,
 			&note.Title,
 			&note.Description,
-			&note.FileID,
+			&note.Content,
 			&note.DepartmentID,
-			&note.InstructorID,
+			&note.UserID,
+			&note.CreatedAt,
+			&note.UpdatedAt,
 			&total,
 		)
 		if err != nil {
@@ -78,7 +84,10 @@ func (r *ClassNoteRepository) GetAll(ctx context.Context, departmentID *int64, c
 
 // GetByID retrieves a class note by ID
 func (r *ClassNoteRepository) GetByID(ctx context.Context, id int64) (*models.ClassNote, error) {
-	query := squirrel.Select("id", "course_code", "title", "description", "file_id", "department_id", "instructor_id").
+	query := squirrel.Select(
+		"id", "course_code", "title", "description", "content",
+		"department_id", "user_id", "created_at", "updated_at",
+	).
 		From("class_notes").
 		Where("id = ?", id).
 		PlaceholderFormat(squirrel.Dollar)
@@ -94,9 +103,11 @@ func (r *ClassNoteRepository) GetByID(ctx context.Context, id int64) (*models.Cl
 		&note.CourseCode,
 		&note.Title,
 		&note.Description,
-		&note.FileID,
+		&note.Content,
 		&note.DepartmentID,
-		&note.InstructorID,
+		&note.UserID,
+		&note.CreatedAt,
+		&note.UpdatedAt,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -105,14 +116,27 @@ func (r *ClassNoteRepository) GetByID(ctx context.Context, id int64) (*models.Cl
 		return nil, fmt.Errorf("error executing query: %w", err)
 	}
 
+	// Dosyaları getir
+	files, err := r.GetClassNoteFiles(ctx, note.ID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting files: %w", err)
+	}
+	note.Files = files
+
 	return &note, nil
 }
 
 // Create creates a new class note
 func (r *ClassNoteRepository) Create(ctx context.Context, note *models.ClassNote) (int64, error) {
 	query := squirrel.Insert("class_notes").
-		Columns("course_code", "title", "description", "file_id", "department_id", "instructor_id").
-		Values(note.CourseCode, note.Title, note.Description, note.FileID, note.DepartmentID, note.InstructorID).
+		Columns(
+			"course_code", "title", "description", "content",
+			"department_id", "user_id",
+		).
+		Values(
+			note.CourseCode, note.Title, note.Description, note.Content,
+			note.DepartmentID, note.UserID,
+		).
 		Suffix("RETURNING id").
 		PlaceholderFormat(squirrel.Dollar)
 
@@ -136,9 +160,10 @@ func (r *ClassNoteRepository) Update(ctx context.Context, note *models.ClassNote
 		Set("course_code", note.CourseCode).
 		Set("title", note.Title).
 		Set("description", note.Description).
-		Set("file_id", note.FileID).
+		Set("content", note.Content).
 		Set("department_id", note.DepartmentID).
-		Set("instructor_id", note.InstructorID).
+		Set("user_id", note.UserID).
+		Set("updated_at", time.Now()).
 		Where("id = ?", note.ID).
 		PlaceholderFormat(squirrel.Dollar)
 
@@ -180,4 +205,94 @@ func (r *ClassNoteRepository) Delete(ctx context.Context, id int64) error {
 	}
 
 	return nil
+}
+
+// AddFileToClassNote adds a file to a class note
+func (r *ClassNoteRepository) AddFileToClassNote(ctx context.Context, classNoteID int64, fileID int64) error {
+	query := squirrel.Insert("class_note_files").
+		Columns("class_note_id", "file_id").
+		Values(classNoteID, fileID).
+		PlaceholderFormat(squirrel.Dollar)
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return fmt.Errorf("error building SQL: %w", err)
+	}
+
+	_, err = r.db.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("error executing query: %w", err)
+	}
+
+	return nil
+}
+
+// RemoveFileFromClassNote removes a file from a class note
+func (r *ClassNoteRepository) RemoveFileFromClassNote(ctx context.Context, classNoteID int64, fileID int64) error {
+	query := squirrel.Delete("class_note_files").
+		Where("class_note_id = ?", classNoteID).
+		Where("file_id = ?", fileID).
+		PlaceholderFormat(squirrel.Dollar)
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return fmt.Errorf("error building SQL: %w", err)
+	}
+
+	result, err := r.db.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("error executing query: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("no rows affected")
+	}
+
+	return nil
+}
+
+// GetClassNoteFiles gets all files associated with a class note
+func (r *ClassNoteRepository) GetClassNoteFiles(ctx context.Context, classNoteID int64) ([]*models.File, error) {
+	query := squirrel.Select("f.id", "f.file_name", "f.file_path", "f.file_url",
+		"f.file_size", "f.file_type", "f.resource_type", "f.resource_id",
+		"f.uploaded_by", "f.created_at", "f.updated_at").
+		From("files f").
+		Join("class_note_files cnf ON f.id = cnf.file_id").
+		Where("cnf.class_note_id = ?", classNoteID).
+		PlaceholderFormat(squirrel.Dollar)
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("error building SQL: %w", err)
+	}
+
+	rows, err := r.db.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, fmt.Errorf("error executing query: %w", err)
+	}
+	defer rows.Close()
+
+	var files []*models.File
+	for rows.Next() {
+		var file models.File
+		err := rows.Scan(
+			&file.ID,
+			&file.FileName,
+			&file.FilePath,
+			&file.FileURL,
+			&file.FileSize,
+			&file.FileType,
+			&file.ResourceType,
+			&file.ResourceID,
+			&file.UploadedBy,
+			&file.CreatedAt,
+			&file.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning row: %w", err)
+		}
+		files = append(files, &file)
+	}
+
+	return files, nil
 }

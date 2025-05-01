@@ -41,8 +41,8 @@ func isDuplicateKeyError(err error) bool {
 // CreateFaculty creates a new faculty
 func (r *FacultyRepository) CreateFaculty(ctx context.Context, faculty *models.Faculty) (int64, error) {
 	sql, args, err := r.sb.Insert("faculties").
-		Columns("name", "code", "description").
-		Values(faculty.Name, faculty.Code, faculty.Description).
+		Columns("name", "code").
+		Values(faculty.Name, faculty.Code).
 		Suffix("RETURNING id").
 		ToSql()
 
@@ -66,7 +66,7 @@ func (r *FacultyRepository) CreateFaculty(ctx context.Context, faculty *models.F
 
 // GetFacultyByID retrieves a faculty by ID
 func (r *FacultyRepository) GetFacultyByID(ctx context.Context, id int64) (*models.Faculty, error) {
-	sql, args, err := r.sb.Select("id", "name", "code", "description").
+	sql, args, err := r.sb.Select("id", "name", "code").
 		From("faculties").
 		Where(squirrel.Eq{"id": id}).
 		Limit(1).
@@ -78,7 +78,7 @@ func (r *FacultyRepository) GetFacultyByID(ctx context.Context, id int64) (*mode
 	}
 
 	faculty := &models.Faculty{}
-	err = r.db.QueryRow(ctx, sql, args...).Scan(&faculty.ID, &faculty.Name, &faculty.Code, &faculty.Description)
+	err = r.db.QueryRow(ctx, sql, args...).Scan(&faculty.ID, &faculty.Name, &faculty.Code)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperrors.ErrFacultyNotFound // Use shared ErrNotFound
@@ -92,7 +92,7 @@ func (r *FacultyRepository) GetFacultyByID(ctx context.Context, id int64) (*mode
 
 // GetAllFaculties retrieves all faculties
 func (r *FacultyRepository) GetAllFaculties(ctx context.Context) ([]*models.Faculty, error) {
-	sql, args, err := r.sb.Select("id", "name", "code", "description").
+	sql, args, err := r.sb.Select("id", "name", "code").
 		From("faculties").
 		OrderBy("name ASC").
 		ToSql()
@@ -112,7 +112,7 @@ func (r *FacultyRepository) GetAllFaculties(ctx context.Context) ([]*models.Facu
 	faculties := []*models.Faculty{}
 	for rows.Next() {
 		faculty := &models.Faculty{}
-		if err := rows.Scan(&faculty.ID, &faculty.Name, &faculty.Code, &faculty.Description); err != nil {
+		if err := rows.Scan(&faculty.ID, &faculty.Name, &faculty.Code); err != nil {
 			logger.Error().Err(err).Msg("Error scanning faculty row during get all")
 			// Decide whether to return partial list or error out
 			return nil, fmt.Errorf("error scanning faculty row: %w", err)
@@ -134,7 +134,6 @@ func (r *FacultyRepository) UpdateFaculty(ctx context.Context, faculty *models.F
 		SetMap(map[string]interface{}{
 			"name":        faculty.Name,
 			"code":        faculty.Code,
-			"description": faculty.Description,
 			// updated_at is not explicitly managed here, assuming a trigger or manual update elsewhere if needed
 		}).
 		Where(squirrel.Eq{"id": faculty.ID}).

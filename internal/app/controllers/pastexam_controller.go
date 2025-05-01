@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"mime/multipart"
+
 	"github.com/gin-gonic/gin"
-	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/services"
 	"github.com/yigit/unisphere/internal/middleware"
@@ -33,19 +34,6 @@ func NewPastExamController(pastExamService services.PastExamService, fileStorage
 
 // This controller now uses the centralized error handling middleware
 
-// toPastExamResponse converts a PastExam model to a PastExamResponse DTO
-func toPastExamResponse(exam *models.PastExam) dto.PastExamResponse {
-	return dto.PastExamResponse{
-		ID:           exam.ID,
-		CourseCode:   exam.CourseCode,
-		Year:         exam.Year,
-		Term:         exam.Term,
-		FileID:       exam.FileID,
-		DepartmentID: exam.DepartmentID,
-		InstructorID: exam.InstructorID,
-	}
-}
-
 // GetAllPastExams handles retrieving all past exams with optional filtering
 // @Summary Get all past exams
 // @Description Retrieves a list of past exams with optional filtering and pagination
@@ -56,15 +44,15 @@ func toPastExamResponse(exam *models.PastExam) dto.PastExamResponse {
 // @Param departmentId query int false "Filter by department ID"
 // @Param courseCode query string false "Filter by course code"
 // @Param year query int false "Filter by year"
-// @Param term query string false "Filter by term (FALL, SPRING, SUMMER)"
+// @Param term query string false "Filter by term (FALL, SPRING)"
 // @Param sortBy query string false "Sort field (year, term, courseCode, title, departmentName, facultyName, instructorName, createdAt, updatedAt)"
 // @Param sortOrder query string false "Sort order (ASC, DESC)"
 // @Param page query int false "Page number (default: 1)"
 // @Param pageSize query int false "Page size (default: 10)"
-// @Success 200 {object} dto.APIResponse{data=[]models.PastExam,pagination=dto.PaginationInfo} "Past exams retrieved successfully"
+// @Success 200 {object} dto.APIResponse{data=dto.PastExamListResponse} "Past exams retrieved successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request parameters"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /past-exams [get]
+// @Router /pastexams [get]
 func (c *PastExamController) GetAllPastExams(ctx *gin.Context) {
 	// Parse pagination parameters (0-based)
 	page, err := strconv.Atoi(ctx.DefaultQuery("page", strconv.Itoa(helpers.DefaultPage)))
@@ -157,11 +145,11 @@ func (c *PastExamController) GetAllPastExams(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path int true "Past exam ID"
-// @Success 200 {object} dto.APIResponse{data=models.PastExam} "Past exam retrieved successfully"
+// @Success 200 {object} dto.APIResponse{data=dto.PastExamResponse} "Past exam retrieved successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid past exam ID"
 // @Failure 404 {object} dto.ErrorResponse "Past exam not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /past-exams/{id} [get]
+// @Router /api/v1/pastexams/{id} [get]
 func (c *PastExamController) GetPastExamByID(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -182,61 +170,62 @@ func (c *PastExamController) GetPastExamByID(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(exam))
 }
 
-// CreatePastExam handles creating a new past exam
+// CreatePastExam godoc
 // @Summary Create a new past exam
-// @Description Creates a new past exam with the provided information
+// @Description Create a new past exam with file upload
 // @Tags past-exams
 // @Accept multipart/form-data
 // @Produce json
-// @Param year formData int true "Year of the exam"
-// @Param term formData string true "Term of the exam (FALL, SPRING, SUMMER)"
+// @Security ApiKeyAuth
+// @Param year formData int true "Year"
+// @Param term formData string true "Term (FALL, SPRING)"
 // @Param departmentId formData int true "Department ID"
 // @Param courseCode formData string true "Course code"
-// @Param title formData string true "Exam title"
+// @Param title formData string true "Title"
 // @Param instructorId formData int false "Instructor ID"
 // @Param file formData file true "Exam file"
-// @Success 201 {object} dto.APIResponse{data=models.PastExam} "Past exam created successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid request format"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 403 {object} dto.ErrorResponse "Forbidden"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Success 201 {object} dto.APIResponse{data=dto.PastExamResponse}
+// @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Router /past-exams [post]
 func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
-	// Parse form data instead of JSON
 	var req dto.CreatePastExamRequest
-	// Bind form values to the struct (note: file needs separate handling)
 	if err := ctx.ShouldBind(&req); err != nil {
-		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Invalid form data")
-		errorDetail = errorDetail.WithDetails(err.Error())
-		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid request format")))
 		return
 	}
 
-	// Get user ID from context
-	_, exists := ctx.Get("userID")
-	if !exists {
-		errorDetail := dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "User not authenticated")
-		ctx.JSON(http.StatusUnauthorized, dto.NewErrorResponse(errorDetail))
+	// Validate term
+	termValue := dto.Term(req.Term)
+	if termValue != dto.TermFall && termValue != dto.TermSpring {
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid term value. Must be FALL or SPRING")))
 		return
 	}
 
-	// Get file from form
+	// Get file
 	file, err := ctx.FormFile("file")
 	if err != nil {
-		errorDetail := dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid or missing file")
-		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid or missing file")))
 		return
 	}
 
-	// Call service to create past exam
-	createdExam, err := c.pastExamService.CreateExam(ctx, &req, file)
+	// Tek dosyayı bir slice'a dönüştür
+	files := []*multipart.FileHeader{file}
+
+	// Create exam
+	exam, err := c.pastExamService.CreateExam(ctx, &req, files)
 	if err != nil {
-		middleware.HandleAPIError(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to create past exam")))
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, dto.NewSuccessResponse(createdExam))
-	}
+	ctx.JSON(http.StatusCreated, dto.NewSuccessResponse(exam))
+}
 
 // UpdatePastExam handles updating an existing past exam
 // @Summary Update a past exam
@@ -246,19 +235,19 @@ func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
 // @Produce json
 // @Param id path int true "Past exam ID"
 // @Param year formData int false "Year of the exam"
-// @Param term formData string false "Term of the exam (FALL, SPRING, SUMMER)"
+// @Param term formData string false "Term of the exam (FALL, SPRING)"
 // @Param departmentId formData int false "Department ID"
 // @Param courseCode formData string false "Course code"
 // @Param title formData string false "Exam title"
 // @Param instructorId formData int false "Instructor ID"
 // @Param file formData file false "Exam file"
-// @Success 200 {object} dto.APIResponse{data=models.PastExam} "Past exam updated successfully"
+// @Success 200 {object} dto.APIResponse{data=dto.PastExamResponse} "Past exam updated successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized"
 // @Failure 403 {object} dto.ErrorResponse "Forbidden"
 // @Failure 404 {object} dto.ErrorResponse "Past exam not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /past-exams/{id} [put]
+// @Router /api/v1/pastexams/{id} [put]
 func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
 	// Get exam ID from URL
 	idStr := ctx.Param("id")
@@ -296,7 +285,7 @@ func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(updatedExam))
-	}
+}
 
 // DeletePastExam handles deleting a past exam
 // @Summary Delete a past exam
@@ -311,7 +300,7 @@ func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
 // @Failure 403 {object} dto.ErrorResponse "Forbidden"
 // @Failure 404 {object} dto.ErrorResponse "Past exam not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /past-exams/{id} [delete]
+// @Router /api/v1/pastexams/{id} [delete]
 func (c *PastExamController) DeletePastExam(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)

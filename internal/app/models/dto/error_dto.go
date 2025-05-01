@@ -9,6 +9,10 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+// ErrorResponse represents a standardized error response format
+// It's an alias of APIResponse to maintain backward compatibility with Swagger documentation
+type ErrorResponse = APIResponse
+
 // ErrorCode represents standardized error codes
 type ErrorCode string
 
@@ -55,12 +59,6 @@ type ErrorDetail struct {
 	DebugInfo string        `json:"debugInfo,omitempty"`
 }
 
-// ErrorResponse represents the standard error response structure
-type ErrorResponse struct {
-	Error     *ErrorDetail `json:"error"`
-	Timestamp time.Time    `json:"timestamp" example:"2025-04-23T12:01:05.123Z"`
-}
-
 // --- Error Helper Functions ---
 
 // NewErrorDetail creates a new error detail
@@ -97,8 +95,9 @@ func (e *ErrorDetail) WithDebugInfo(format string, args ...interface{}) *ErrorDe
 }
 
 // NewErrorResponse creates a standard error response
-func NewErrorResponse(errorDetail *ErrorDetail) *ErrorResponse {
-	return &ErrorResponse{
+// Returns APIResponse to ensure consistency with success responses
+func NewErrorResponse(errorDetail *ErrorDetail) APIResponse {
+	return APIResponse{
 		Error:     errorDetail,
 		Timestamp: time.Now(),
 	}

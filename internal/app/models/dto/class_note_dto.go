@@ -1,5 +1,9 @@
 package dto
 
+import (
+	"time"
+)
+
 // --- Request DTOs ---
 
 // CreateClassNoteRequest represents class note creation data
@@ -7,6 +11,7 @@ type CreateClassNoteRequest struct {
 	CourseCode   string `json:"courseCode" binding:"required"`
 	Title        string `json:"title" binding:"required"`
 	Description  string `json:"description" binding:"required"`
+	Content      string `json:"content" binding:"required"`
 	DepartmentID int64  `json:"departmentId" binding:"required,gt=0"`
 }
 
@@ -15,19 +20,33 @@ type UpdateClassNoteRequest struct {
 	CourseCode  string `json:"courseCode" binding:"required"`
 	Title       string `json:"title" binding:"required"`
 	Description string `json:"description" binding:"required"`
+	Content     string `json:"content" binding:"required"`
 }
 
 // --- Response DTOs ---
 
+// ClassNoteFileResponse represents file information specific to class notes
+type ClassNoteFileResponse struct {
+	ID        int64     `json:"id"`
+	FileName  string    `json:"fileName"`
+	FileURL   string    `json:"fileUrl"`
+	FileSize  int64     `json:"fileSize"`
+	FileType  string    `json:"fileType"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
 // ClassNoteResponse represents basic class note information
 type ClassNoteResponse struct {
-	ID           int64  `json:"id"`
-	CourseCode   string `json:"courseCode"`
-	Title        string `json:"title"`
-	Description  string `json:"description"`
-	FileID       string `json:"fileId"`
-	DepartmentID int64  `json:"departmentId"`
-	InstructorID int64  `json:"instructorId"`
+	ID           int64                   `json:"id"`
+	CourseCode   string                  `json:"courseCode"`
+	Title        string                  `json:"title"`
+	Description  string                  `json:"description"`
+	Content      string                  `json:"content"`
+	DepartmentID int64                   `json:"departmentId"`
+	UserID       int64                   `json:"userId"`
+	CreatedAt    time.Time               `json:"createdAt"`
+	UpdatedAt    time.Time               `json:"updatedAt"`
+	Files        []ClassNoteFileResponse `json:"files,omitempty"`
 }
 
 // PaginationInfo is defined in response.go to avoid duplication

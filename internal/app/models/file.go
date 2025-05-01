@@ -33,11 +33,3 @@ type PastExamFile struct {
 	FileID     int64     `json:"fileId" db:"file_id"`
 	CreatedAt  time.Time `json:"createdAt" db:"created_at"`
 }
-
-// ClassNoteFile represents the association between class notes and files
-type ClassNoteFile struct {
-	ID          int64     `json:"id" db:"id"`
-	ClassNoteID int64     `json:"classNoteId" db:"class_note_id"`
-	FileID      int64     `json:"fileId" db:"file_id"`
-	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
-}

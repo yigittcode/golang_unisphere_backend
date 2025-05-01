@@ -24,6 +24,447 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/department-instructors/{departmentId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves a list of instructors for a specific department",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "instructors"
+                ],
+                "summary": "Get instructors by department",
+                "parameters": [
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Department ID",
+                        "name": "departmentId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Instructors retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.InstructorResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid department ID format",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or missing token",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Department not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/instructors/profile": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get detailed profile information for the currently authenticated instructor (Requires instructor role)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "instructors"
+                ],
+                "summary": "Get instructor profile",
+                "responses": {
+                    "200": {
+                        "description": "Instructor profile retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.InstructorResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or missing token",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - User is not an instructor or token invalid",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Instructor not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/instructors/title": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update the academic title for the currently authenticated instructor (Requires instructor role)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "instructors"
+                ],
+                "summary": "Update instructor title",
+                "parameters": [
+                    {
+                        "description": "New title information",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UpdateTitleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Instructor title updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format or validation error (e.g., empty title)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or missing token",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - User is not an instructor or token invalid",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Instructor not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/pastexams/{id}": {
+            "get": {
+                "description": "Retrieves a specific past exam by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "past-exams"
+                ],
+                "summary": "Get past exam by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Past exam ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Past exam retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid past exam ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Past exam not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Updates an existing past exam with the provided information",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "past-exams"
+                ],
+                "summary": "Update a past exam",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Past exam ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Year of the exam",
+                        "name": "year",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Term of the exam (FALL, SPRING)",
+                        "name": "term",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Department ID",
+                        "name": "departmentId",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Course code",
+                        "name": "courseCode",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Exam title",
+                        "name": "title",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Instructor ID",
+                        "name": "instructorId",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "Exam file",
+                        "name": "file",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Past exam updated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Past exam not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes an existing past exam by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "past-exams"
+                ],
+                "summary": "Delete a past exam",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Past exam ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Past exam deleted successfully"
+                    },
+                    "400": {
+                        "description": "Invalid past exam ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Past exam not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "Authenticates a user and returns access and refresh tokens",
@@ -114,7 +555,7 @@ const docTemplate = `{
                 "summary": "Get current user profile",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Response for other user types",
                         "schema": {
                             "allOf": [
                                 {
@@ -132,7 +573,25 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Unauthorized - Invalid or missing token",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
                         "schema": {
                             "allOf": [
                                 {
@@ -150,7 +609,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error",
                         "schema": {
                             "allOf": [
                                 {
@@ -212,7 +671,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid request format or validation error (e.g., invalid email format)",
                         "schema": {
                             "allOf": [
                                 {
@@ -269,7 +728,7 @@ const docTemplate = `{
             }
         },
         "/auth/profile/photo": {
-            "put": {
+            "post": {
                 "description": "Update the current user's profile photo",
                 "consumes": [
                     "multipart/form-data"
@@ -284,8 +743,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "file",
-                        "description": "Profile photo file",
-                        "name": "file",
+                        "description": "Profile photo image",
+                        "name": "image",
                         "in": "formData",
                         "required": true
                     }
@@ -499,7 +958,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/register/instructor": {
+        "/auth/register-instructor": {
             "post": {
                 "description": "Creates a new instructor account with the provided information",
                 "consumes": [
@@ -535,7 +994,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.AuthResponse"
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.TokenResponse"
                                         }
                                     }
                                 }
@@ -543,7 +1002,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid request format",
+                        "description": "Invalid request format or validation error",
                         "schema": {
                             "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
                         }
@@ -563,7 +1022,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/register/student": {
+        "/auth/register-student": {
             "post": {
                 "description": "Creates a new student account with the provided information",
                 "consumes": [
@@ -599,7 +1058,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.AuthResponse"
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.TokenResponse"
                                         }
                                     }
                                 }
@@ -613,7 +1072,7 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "Email or student ID already exists",
+                        "description": "Email already exists",
                         "schema": {
                             "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
                         }
@@ -794,10 +1253,9 @@ const docTemplate = `{
                     },
                     {
                         "type": "file",
-                        "description": "File to upload",
-                        "name": "file",
-                        "in": "formData",
-                        "required": true
+                        "description": "Files to upload",
+                        "name": "files",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
@@ -876,7 +1334,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/class-notes/{id}": {
+        "/class-notes/{noteId}": {
             "get": {
                 "security": [
                     {
@@ -1244,6 +1702,134 @@ const docTemplate = `{
                 }
             }
         },
+        "/class-notes/{noteId}/files": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Add multiple files to an existing class note",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "class-notes"
+                ],
+                "summary": "Add files to an existing class note",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Class note ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Files to upload",
+                        "name": "files",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ClassNoteResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/departments": {
             "get": {
                 "description": "Retrieves a list of all departments",
@@ -1277,10 +1863,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models.Department"
-                                            }
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.DepartmentListResponse"
                                         }
                                     }
                                 }
@@ -1426,7 +2009,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models.Department"
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.DepartmentResponse"
                                         }
                                     }
                                 }
@@ -1506,7 +2089,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models.Department"
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.DepartmentResponse"
                                         }
                                     }
                                 }
@@ -1615,7 +2198,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Retrieves a list of all faculties",
                 "consumes": [
                     "application/json"
                 ],
@@ -1638,14 +2220,17 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models.Faculty"
-                                            }
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.FacultyListResponse"
                                         }
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or missing token",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
                         }
                     },
                     "500": {
@@ -1662,7 +2247,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates a new faculty with the provided information",
                 "consumes": [
                     "application/json"
                 ],
@@ -1743,7 +2327,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Retrieves detailed information about a specific faculty by its ID",
                 "consumes": [
                     "application/json"
                 ],
@@ -1816,7 +2399,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Updates an existing faculty with new information",
                 "consumes": [
                     "application/json"
                 ],
@@ -1904,7 +2486,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Deletes a faculty and its associated data",
                 "consumes": [
                     "application/json"
                 ],
@@ -1927,11 +2508,8 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Faculty deleted successfully",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
-                        }
+                    "204": {
+                        "description": "Faculty deleted successfully"
                     },
                     "400": {
                         "description": "Invalid faculty ID",
@@ -2007,10 +2585,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.DepartmentResponse"
-                                            }
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.DepartmentListResponse"
                                         }
                                     }
                                 }
@@ -2031,214 +2606,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Faculty not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/instructors/department/{departmentId}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieves a list of instructors for a specific department",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "instructors"
-                ],
-                "summary": "Get instructors by department",
-                "parameters": [
-                    {
-                        "minimum": 1,
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "Department ID",
-                        "name": "departmentId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Instructors retrieved successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.InstructorResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid department ID format",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized - Invalid or missing token",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Department not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/instructors/profile": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get detailed profile information for the currently authenticated instructor (Requires instructor role)",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "instructors"
-                ],
-                "summary": "Get instructor profile",
-                "responses": {
-                    "200": {
-                        "description": "Instructor profile retrieved successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.InstructorResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized - Invalid or missing token",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden - User is not an instructor or token invalid",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Instructor not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/instructors/title": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Update the academic title for the currently authenticated instructor (Requires instructor role)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "instructors"
-                ],
-                "summary": "Update instructor title",
-                "parameters": [
-                    {
-                        "description": "New title information",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UpdateTitleRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Instructor title updated successfully",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request format or validation error (e.g., empty title)",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized - Invalid or missing token",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden - User is not an instructor or token invalid",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Instructor not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
                         }
@@ -2328,6 +2695,150 @@ const docTemplate = `{
             }
         },
         "/past-exams": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Create a new past exam with file upload",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "past-exams"
+                ],
+                "summary": "Create a new past exam",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Year",
+                        "name": "year",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Term (FALL, SPRING)",
+                        "name": "term",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Department ID",
+                        "name": "departmentId",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Course code",
+                        "name": "courseCode",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Title",
+                        "name": "title",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Instructor ID",
+                        "name": "instructorId",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "Exam file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/pastexams": {
             "get": {
                 "description": "Retrieves a list of past exams with optional filtering and pagination",
                 "consumes": [
@@ -2367,7 +2878,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Filter by term (FALL, SPRING, SUMMER)",
+                        "description": "Filter by term (FALL, SPRING)",
                         "name": "term",
                         "in": "query"
                     },
@@ -2408,13 +2919,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models.PastExam"
-                                            }
-                                        },
-                                        "pagination": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PaginationInfo"
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamListResponse"
                                         }
                                     }
                                 }
@@ -2434,443 +2939,10 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "post": {
-                "description": "Creates a new past exam with the provided information",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "past-exams"
-                ],
-                "summary": "Create a new past exam",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Year of the exam",
-                        "name": "year",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Term of the exam (FALL, SPRING, SUMMER)",
-                        "name": "term",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Department ID",
-                        "name": "departmentId",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Course code",
-                        "name": "courseCode",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Exam title",
-                        "name": "title",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Instructor ID",
-                        "name": "instructorId",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "file",
-                        "description": "Exam file",
-                        "name": "file",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Past exam created successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models.PastExam"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request format",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/past-exams/{id}": {
-            "get": {
-                "description": "Retrieves a specific past exam by its ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "past-exams"
-                ],
-                "summary": "Get past exam by ID",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Past exam ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Past exam retrieved successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models.PastExam"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid past exam ID",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Past exam not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "Updates an existing past exam with the provided information",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "past-exams"
-                ],
-                "summary": "Update a past exam",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Past exam ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Year of the exam",
-                        "name": "year",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Term of the exam (FALL, SPRING, SUMMER)",
-                        "name": "term",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Department ID",
-                        "name": "departmentId",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Course code",
-                        "name": "courseCode",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Exam title",
-                        "name": "title",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Instructor ID",
-                        "name": "instructorId",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "file",
-                        "description": "Exam file",
-                        "name": "file",
-                        "in": "formData"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Past exam updated successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models.PastExam"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request format",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Past exam not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Deletes an existing past exam by its ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "past-exams"
-                ],
-                "summary": "Delete a past exam",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Past exam ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Past exam deleted successfully"
-                    },
-                    "400": {
-                        "description": "Invalid past exam ID",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Past exam not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    }
-                }
             }
         }
     },
     "definitions": {
-        "github_com_yigit_unisphere_internal_app_models.Department": {
-            "type": "object",
-            "required": [
-                "code",
-                "faculty_id",
-                "name"
-            ],
-            "properties": {
-                "code": {
-                    "description": "Unique code for the department (e.g., CENG, EEE, MATH)",
-                    "type": "string",
-                    "example": "CENG"
-                },
-                "faculty": {
-                    "description": "Associated faculty details (populated in some responses)",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models.Faculty"
-                        }
-                    ]
-                },
-                "faculty_id": {
-                    "description": "ID of the faculty this department belongs to (required)",
-                    "type": "integer",
-                    "example": 1
-                },
-                "id": {
-                    "description": "Unique identifier for the department",
-                    "type": "integer",
-                    "example": 1
-                },
-                "name": {
-                    "description": "Name of the department (required)",
-                    "type": "string",
-                    "example": "Computer Engineering"
-                }
-            }
-        },
-        "github_com_yigit_unisphere_internal_app_models.Faculty": {
-            "type": "object",
-            "required": [
-                "code",
-                "name"
-            ],
-            "properties": {
-                "code": {
-                    "description": "Unique code for the faculty (e.g., ENG, SCI)",
-                    "type": "string",
-                    "example": "ENG"
-                },
-                "description": {
-                    "description": "Optional description of the faculty",
-                    "type": "string",
-                    "example": "Faculty of Engineering and Natural Sciences"
-                },
-                "id": {
-                    "description": "Unique identifier for the faculty",
-                    "type": "integer",
-                    "example": 1
-                },
-                "name": {
-                    "description": "Name of the faculty (required)",
-                    "type": "string",
-                    "example": "Engineering Faculty"
-                }
-            }
-        },
-        "github_com_yigit_unisphere_internal_app_models.PastExam": {
-            "type": "object",
-            "properties": {
-                "courseCode": {
-                    "type": "string"
-                },
-                "departmentID": {
-                    "type": "integer"
-                },
-                "fileID": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "instructorID": {
-                    "type": "integer"
-                },
-                "term": {
-                    "type": "string"
-                },
-                "year": {
-                    "type": "integer"
-                }
-            }
-        },
         "github_com_yigit_unisphere_internal_app_models_dto.APIResponse": {
             "description": "Generic response structure for all API endpoints",
             "type": "object",
@@ -2885,14 +2957,26 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.AuthResponse": {
+        "github_com_yigit_unisphere_internal_app_models_dto.ClassNoteFileResponse": {
             "type": "object",
             "properties": {
-                "token": {
-                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.TokenResponse"
+                "createdAt": {
+                    "type": "string"
                 },
-                "user": {
-                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserResponse"
+                "fileName": {
+                    "type": "string"
+                },
+                "fileSize": {
+                    "type": "integer"
+                },
+                "fileType": {
+                    "type": "string"
+                },
+                "fileUrl": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
                 }
             }
         },
@@ -2930,7 +3014,13 @@ const docTemplate = `{
         "github_com_yigit_unisphere_internal_app_models_dto.ClassNoteResponse": {
             "type": "object",
             "properties": {
+                "content": {
+                    "type": "string"
+                },
                 "courseCode": {
+                    "type": "string"
+                },
+                "createdAt": {
                     "type": "string"
                 },
                 "departmentId": {
@@ -2939,27 +3029,37 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
-                "fileId": {
-                    "type": "string"
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ClassNoteFileResponse"
+                    }
                 },
                 "id": {
                     "type": "integer"
                 },
-                "instructorId": {
-                    "type": "integer"
-                },
                 "title": {
                     "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "integer"
                 }
             }
         },
         "github_com_yigit_unisphere_internal_app_models_dto.CreateDepartmentRequest": {
             "type": "object",
             "required": [
+                "code",
                 "facultyId",
                 "name"
             ],
             "properties": {
+                "code": {
+                    "type": "string"
+                },
                 "facultyId": {
                     "type": "integer"
                 },
@@ -2971,17 +3071,55 @@ const docTemplate = `{
         "github_com_yigit_unisphere_internal_app_models_dto.CreateFacultyRequest": {
             "type": "object",
             "required": [
+                "code",
                 "name"
             ],
             "properties": {
+                "code": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_yigit_unisphere_internal_app_models_dto.DepartmentListResponse": {
+            "type": "object",
+            "properties": {
+                "currentPage": {
+                    "description": "Current page number (0-based)",
+                    "type": "integer",
+                    "example": 0
+                },
+                "departments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.DepartmentResponse"
+                    }
+                },
+                "pageSize": {
+                    "description": "Number of items per page",
+                    "type": "integer",
+                    "example": 10
+                },
+                "totalItems": {
+                    "description": "Total number of items matching the query",
+                    "type": "integer",
+                    "example": 48
+                },
+                "totalPages": {
+                    "description": "Total number of pages available",
+                    "type": "integer",
+                    "example": 5
                 }
             }
         },
         "github_com_yigit_unisphere_internal_app_models_dto.DepartmentResponse": {
             "type": "object",
             "properties": {
+                "code": {
+                    "type": "string"
+                },
                 "facultyId": {
                     "type": "integer"
                 },
@@ -3070,12 +3208,14 @@ const docTemplate = `{
             }
         },
         "github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse": {
+            "description": "Generic response structure for all API endpoints",
             "type": "object",
             "properties": {
-                "error": {
-                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                "data": {
+                    "description": "Response payload - specific to each endpoint"
                 },
                 "timestamp": {
+                    "description": "Timestamp of when the response was generated",
                     "type": "string",
                     "example": "2025-04-23T12:01:05.123Z"
                 }
@@ -3096,9 +3236,43 @@ const docTemplate = `{
                 "ErrorSeverityCritical"
             ]
         },
+        "github_com_yigit_unisphere_internal_app_models_dto.FacultyListResponse": {
+            "type": "object",
+            "properties": {
+                "currentPage": {
+                    "description": "Current page number (0-based)",
+                    "type": "integer",
+                    "example": 0
+                },
+                "faculties": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.FacultyResponse"
+                    }
+                },
+                "pageSize": {
+                    "description": "Number of items per page",
+                    "type": "integer",
+                    "example": 10
+                },
+                "totalItems": {
+                    "description": "Total number of items matching the query",
+                    "type": "integer",
+                    "example": 48
+                },
+                "totalPages": {
+                    "description": "Total number of pages available",
+                    "type": "integer",
+                    "example": 5
+                }
+            }
+        },
         "github_com_yigit_unisphere_internal_app_models_dto.FacultyResponse": {
             "type": "object",
             "properties": {
+                "code": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "integer"
                 },
@@ -3110,45 +3284,29 @@ const docTemplate = `{
         "github_com_yigit_unisphere_internal_app_models_dto.InstructorResponse": {
             "type": "object",
             "properties": {
-                "createdAt": {
-                    "description": "When instructor account was created",
-                    "type": "string"
-                },
                 "departmentId": {
-                    "description": "Department ID",
                     "type": "integer"
                 },
-                "departmentName": {
-                    "description": "Department name",
-                    "type": "string"
-                },
                 "email": {
-                    "description": "Instructor's email",
-                    "type": "string"
-                },
-                "facultyName": {
-                    "description": "Faculty name",
                     "type": "string"
                 },
                 "firstName": {
-                    "description": "Instructor's first name",
                     "type": "string"
                 },
                 "id": {
-                    "description": "Unique identifier for the instructor",
                     "type": "integer"
                 },
                 "lastName": {
-                    "description": "Instructor's last name",
+                    "type": "string"
+                },
+                "profilePhotoUrl": {
+                    "type": "string"
+                },
+                "role": {
                     "type": "string"
                 },
                 "title": {
-                    "description": "Instructor's academic title",
                     "type": "string"
-                },
-                "userId": {
-                    "description": "Associated user ID",
-                    "type": "integer"
                 }
             }
         },
@@ -3167,7 +3325,30 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.PaginationInfo": {
+        "github_com_yigit_unisphere_internal_app_models_dto.PastExamFileResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "fileName": {
+                    "type": "string"
+                },
+                "fileSize": {
+                    "type": "integer"
+                },
+                "fileType": {
+                    "type": "string"
+                },
+                "fileUrl": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_yigit_unisphere_internal_app_models_dto.PastExamListResponse": {
             "type": "object",
             "properties": {
                 "currentPage": {
@@ -3180,6 +3361,12 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 10
                 },
+                "pastExams": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse"
+                    }
+                },
                 "totalItems": {
                     "description": "Total number of items matching the query",
                     "type": "integer",
@@ -3189,6 +3376,47 @@ const docTemplate = `{
                     "description": "Total number of pages available",
                     "type": "integer",
                     "example": 5
+                }
+            }
+        },
+        "github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "courseCode": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "departmentId": {
+                    "type": "integer"
+                },
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamFileResponse"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "instructorId": {
+                    "type": "integer"
+                },
+                "term": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "year": {
+                    "type": "integer"
                 }
             }
         },
@@ -3271,6 +3499,38 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_yigit_unisphere_internal_app_models_dto.StudentResponse": {
+            "type": "object",
+            "properties": {
+                "departmentId": {
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "graduationYear": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "profilePhotoUrl": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "studentId": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse": {
             "type": "object",
             "properties": {
@@ -3292,6 +3552,9 @@ const docTemplate = `{
                 "refreshToken": {
                     "type": "string"
                 },
+                "refreshTokenExpiresIn": {
+                    "type": "integer"
+                },
                 "tokenType": {
                     "type": "string",
                     "example": "Bearer"
@@ -3301,11 +3564,15 @@ const docTemplate = `{
         "github_com_yigit_unisphere_internal_app_models_dto.UpdateClassNoteRequest": {
             "type": "object",
             "required": [
+                "content",
                 "courseCode",
                 "description",
                 "title"
             ],
             "properties": {
+                "content": {
+                    "type": "string"
+                },
                 "courseCode": {
                     "type": "string"
                 },
@@ -3320,9 +3587,13 @@ const docTemplate = `{
         "github_com_yigit_unisphere_internal_app_models_dto.UpdateDepartmentRequest": {
             "type": "object",
             "required": [
+                "code",
                 "name"
             ],
             "properties": {
+                "code": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
                 }
@@ -3331,9 +3602,13 @@ const docTemplate = `{
         "github_com_yigit_unisphere_internal_app_models_dto.UpdateFacultyRequest": {
             "type": "object",
             "required": [
+                "code",
                 "name"
             ],
             "properties": {
+                "code": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
                 }
@@ -3365,7 +3640,6 @@ const docTemplate = `{
             ],
             "properties": {
                 "title": {
-                    "description": "New academic title",
                     "type": "string",
                     "example": "Professor"
                 }
@@ -3387,6 +3661,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "lastName": {
+                    "type": "string"
+                },
+                "profilePhotoUrl": {
                     "type": "string"
                 },
                 "role": {

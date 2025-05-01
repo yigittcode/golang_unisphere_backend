@@ -19,9 +19,6 @@ func SetupRouter(
 	classNoteController *controllers.ClassNoteController,
 	authMiddleware *middleware.AuthMiddleware,
 ) {
-	// Setup Swagger documentation
-	SetupSwagger(router)
-
 	// API version group
 	v1 := router.Group("/api/v1")
 
@@ -131,6 +128,9 @@ func SetupRouter(
 			classNotes.PUT("/:noteId", middleware.ValidateRequest(updateNoteReq), classNoteController.UpdateNote)
 
 			classNotes.DELETE("/:noteId", classNoteController.DeleteNote)
+
+			// Add files to existing note
+			classNotes.POST("/:noteId/files", classNoteController.AddFilesToNote)
 		}
 	}
 }

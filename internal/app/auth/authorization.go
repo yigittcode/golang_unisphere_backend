@@ -37,10 +37,10 @@ func (s *AuthorizationService) ValidateClassNoteOwnership(ctx context.Context, n
 	}
 	if note == nil {
 		return apperrors.ErrClassNoteNotFound
-	}
+}
 
 	// Check if the user is the owner
-	if note.InstructorID != userID {
+	if note.UserID != userID {
 		return apperrors.ErrPermissionDenied
 	}
 
@@ -75,7 +75,7 @@ func (s *AuthorizationService) CanAccessDepartmentContent(ctx context.Context, u
 	}
 	if user == nil {
 		return apperrors.ErrUserNotFound
-	}
+}
 
 	// Check if the user belongs to the department
 	if user.DepartmentID == nil || *user.DepartmentID != departmentID {

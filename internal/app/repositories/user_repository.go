@@ -29,6 +29,17 @@ type IUserRepository interface {
 
 	// Department
 	GetDepartmentNameByID(ctx context.Context, departmentID int64) (string, error)
+
+	// Student operations
+	CreateStudent(ctx context.Context, student *models.Student) error
+	GetStudentByUserID(ctx context.Context, userID int64) (*models.Student, error)
+	IdentifierExists(ctx context.Context, identifier string) (bool, error)
+
+	// Instructor operations
+	CreateInstructor(ctx context.Context, instructor *models.Instructor) error
+	GetInstructorByUserID(ctx context.Context, userID int64) (*models.Instructor, error)
+	GetInstructorsByDepartmentID(ctx context.Context, departmentID int64) ([]*models.Instructor, error)
+	UpdateInstructorTitle(ctx context.Context, userID int64, newTitle string) error
 }
 
 // UserRepository combines all user-related repositories

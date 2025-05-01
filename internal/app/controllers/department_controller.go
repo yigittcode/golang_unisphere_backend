@@ -3,7 +3,6 @@ package controllers
 import (
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yigit/unisphere/internal/app/models"
@@ -44,24 +43,36 @@ func NewDepartmentController(departmentService services.DepartmentService) *Depa
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /departments [post]
 func (c *DepartmentController) CreateDepartment(ctx *gin.Context) {
-	var department models.Department
-	if err := ctx.ShouldBindJSON(&department); err != nil {
+	var req dto.CreateDepartmentRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Invalid department data")
 		errorDetail = errorDetail.WithDetails(err.Error())
 		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
 		return
 	}
 
-	err := c.departmentService.CreateDepartment(ctx, &department)
+	// Convert DTO to model
+	department := &models.Department{
+		Name:      req.Name,
+		Code:      req.Code,
+		FacultyID: req.FacultyID,
+	}
+
+	err := c.departmentService.CreateDepartment(ctx, department)
 	if err != nil {
 		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, dto.APIResponse{
-		Data:      department,
-		Timestamp: time.Now(),
-	})
+	// Create response
+	response := dto.DepartmentResponse{
+		ID:        department.ID,
+		Name:      department.Name,
+		Code:      department.Code,
+		FacultyID: department.FacultyID,
+	}
+
+	ctx.JSON(http.StatusCreated, dto.NewSuccessResponse(response))
 }
 
 // GetDepartmentByID retrieves a department by ID
@@ -72,7 +83,7 @@ func (c *DepartmentController) CreateDepartment(ctx *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "Department ID"
-// @Success 200 {object} dto.APIResponse{data=models.Department} "Department retrieved successfully"
+// @Success 200 {object} dto.APIResponse{data=dto.DepartmentResponse} "Department retrieved successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid department ID"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
 // @Failure 404 {object} dto.ErrorResponse "Department not found"
@@ -94,10 +105,15 @@ func (c *DepartmentController) GetDepartmentByID(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Data:      department,
-		Timestamp: time.Now(),
-	})
+	// Create response
+	response := dto.DepartmentResponse{
+		ID:        department.ID,
+		Name:      department.Name,
+		Code:      department.Code,
+		FacultyID: department.FacultyID,
+	}
+
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response))
 }
 
 // GetAllDepartments retrieves all departments
@@ -107,7 +123,7 @@ func (c *DepartmentController) GetDepartmentByID(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param facultyId query int false "Filter by faculty ID"
-// @Success 200 {object} dto.APIResponse{data=[]models.Department} "Departments retrieved successfully"
+// @Success 200 {object} dto.APIResponse{data=dto.DepartmentListResponse} "Departments retrieved successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request parameters"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /departments [get]
@@ -118,10 +134,23 @@ func (c *DepartmentController) GetAllDepartments(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Data:      departments,
-		Timestamp: time.Now(),
-	})
+	// Convert to response DTOs
+	var departmentResponses []dto.DepartmentResponse
+	for _, dept := range departments {
+		departmentResponses = append(departmentResponses, dto.DepartmentResponse{
+			ID:        dept.ID,
+			Name:      dept.Name,
+			Code:      dept.Code,
+			FacultyID: dept.FacultyID,
+		})
+	}
+
+	// Create response
+	response := dto.DepartmentListResponse{
+		Departments: departmentResponses,
+	}
+
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response))
 }
 
 // GetDepartmentsByFacultyID retrieves all departments for a faculty
@@ -132,7 +161,7 @@ func (c *DepartmentController) GetAllDepartments(ctx *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param facultyId path int true "Faculty ID" Format(int64) minimum(1)
-// @Success 200 {object} dto.APIResponse{data=[]dto.DepartmentResponse} "Faculty departments retrieved successfully"
+// @Success 200 {object} dto.APIResponse{data=dto.DepartmentListResponse} "Faculty departments retrieved successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid faculty ID format"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
 // @Failure 404 {object} dto.ErrorResponse "Faculty not found"
@@ -154,10 +183,23 @@ func (c *DepartmentController) GetDepartmentsByFacultyID(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Data:      departments,
-		Timestamp: time.Now(),
-	})
+	// Convert to response DTOs
+	var departmentResponses []dto.DepartmentResponse
+	for _, dept := range departments {
+		departmentResponses = append(departmentResponses, dto.DepartmentResponse{
+			ID:        dept.ID,
+			Name:      dept.Name,
+			Code:      dept.Code,
+			FacultyID: dept.FacultyID,
+		})
+	}
+
+	// Create response
+	response := dto.DepartmentListResponse{
+		Departments: departmentResponses,
+	}
+
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response))
 }
 
 // UpdateDepartment updates an existing department
@@ -169,7 +211,7 @@ func (c *DepartmentController) GetDepartmentsByFacultyID(ctx *gin.Context) {
 // @Security BearerAuth
 // @Param id path int true "Department ID"
 // @Param request body dto.UpdateDepartmentRequest true "Updated department information"
-// @Success 200 {object} dto.APIResponse{data=models.Department} "Department updated successfully"
+// @Success 200 {object} dto.APIResponse{data=dto.DepartmentResponse} "Department updated successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized"
 // @Failure 403 {object} dto.ErrorResponse "Forbidden"
@@ -186,27 +228,44 @@ func (c *DepartmentController) UpdateDepartment(ctx *gin.Context) {
 		return
 	}
 
-	var department models.Department
-	if err := ctx.ShouldBindJSON(&department); err != nil {
+	var req dto.UpdateDepartmentRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Invalid department data")
 		errorDetail = errorDetail.WithDetails(err.Error())
 		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
 		return
 	}
 
-	// Ensure the correct ID is set
-	department.ID = id
-
-	err = c.departmentService.UpdateDepartment(ctx, &department)
+	// Get existing department to preserve faculty ID
+	existingDepartment, err := c.departmentService.GetDepartmentByID(ctx, id)
 	if err != nil {
 		middleware.HandleAPIError(ctx, err)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.APIResponse{
-		Data:      department,
-		Timestamp: time.Now(),
-	})
+	// Create updated department
+	department := &models.Department{
+		ID:        id,
+		Name:      req.Name,
+		Code:      req.Code,
+		FacultyID: existingDepartment.FacultyID, // Preserve faculty ID
+	}
+
+	err = c.departmentService.UpdateDepartment(ctx, department)
+	if err != nil {
+		middleware.HandleAPIError(ctx, err)
+		return
+	}
+
+	// Create response
+	response := dto.DepartmentResponse{
+		ID:        department.ID,
+		Name:      department.Name,
+		Code:      department.Code,
+		FacultyID: department.FacultyID,
+	}
+
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response))
 }
 
 // DeleteDepartment deletes a department
@@ -240,8 +299,6 @@ func (c *DepartmentController) DeleteDepartment(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusNoContent, dto.APIResponse{
-		Data:      nil,
-		Timestamp: time.Now(),
-	})
+	// No content response doesn't need a body
+	ctx.Status(http.StatusNoContent)
 }
