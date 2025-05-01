@@ -95,7 +95,7 @@ func SetupRouter(
 		}
 
 		// Past Exam routes (now under authenticated group)
-		pastExams := authenticated.Group("/pastexams")
+		pastExams := authenticated.Group("/past-exams")
 		{
 			pastExams.GET("", pastExamController.GetAllPastExams)
 			pastExams.GET("/:id", pastExamController.GetPastExamByID)

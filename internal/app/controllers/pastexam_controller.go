@@ -44,27 +44,18 @@ func NewPastExamController(pastExamService services.PastExamService, fileStorage
 // @Param departmentId query int false "Filter by department ID"
 // @Param courseCode query string false "Filter by course code"
 // @Param year query int false "Filter by year"
-// @Param term query string false "Filter by term (FALL, SPRING)"
+// @Param term query string false "Filter by term (FALL, SPRING, SUMMER)"
 // @Param sortBy query string false "Sort field (year, term, courseCode, title, departmentName, facultyName, instructorName, createdAt, updatedAt)"
 // @Param sortOrder query string false "Sort order (ASC, DESC)"
-// @Param page query int false "Page number (default: 1)"
-// @Param pageSize query int false "Page size (default: 10)"
+// @Param page query int false "Page number (1-based)" default(1) minimum(1)
+// @Param pageSize query int false "Page size (default: 10, max: 100)" default(10) minimum(1) maximum(100)
 // @Success 200 {object} dto.APIResponse{data=dto.PastExamListResponse} "Past exams retrieved successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request parameters"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /pastexams [get]
+// @Router /past-exams [get]
 func (c *PastExamController) GetAllPastExams(ctx *gin.Context) {
-	// Parse pagination parameters (0-based)
-	page, err := strconv.Atoi(ctx.DefaultQuery("page", strconv.Itoa(helpers.DefaultPage)))
-	if err != nil || page < 0 {
-		page = helpers.DefaultPage
-	}
-	// page = page + 1 // REMOVED 1-based conversion
-
-	pageSize, err := strconv.Atoi(ctx.DefaultQuery("size", strconv.Itoa(helpers.DefaultPageSize)))
-	if err != nil || pageSize <= 0 || pageSize > helpers.MaxPageSize {
-		pageSize = helpers.DefaultPageSize
-	}
+	// Parse pagination parameters using helper
+	page, pageSize := helpers.ParsePaginationParams(ctx)
 
 	// Parse filters
 	filters := make(map[string]interface{})
@@ -149,7 +140,7 @@ func (c *PastExamController) GetAllPastExams(ctx *gin.Context) {
 // @Failure 400 {object} dto.ErrorResponse "Invalid past exam ID"
 // @Failure 404 {object} dto.ErrorResponse "Past exam not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /api/v1/pastexams/{id} [get]
+// @Router /past-exams/{id} [get]
 func (c *PastExamController) GetPastExamByID(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -247,7 +238,7 @@ func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
 // @Failure 403 {object} dto.ErrorResponse "Forbidden"
 // @Failure 404 {object} dto.ErrorResponse "Past exam not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /api/v1/pastexams/{id} [put]
+// @Router /past-exams/{id} [put]
 func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
 	// Get exam ID from URL
 	idStr := ctx.Param("id")
@@ -300,7 +291,7 @@ func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
 // @Failure 403 {object} dto.ErrorResponse "Forbidden"
 // @Failure 404 {object} dto.ErrorResponse "Past exam not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /api/v1/pastexams/{id} [delete]
+// @Router /past-exams/{id} [delete]
 func (c *PastExamController) DeletePastExam(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)

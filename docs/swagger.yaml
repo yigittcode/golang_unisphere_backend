@@ -32,8 +32,8 @@ definitions:
           $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ClassNoteResponse'
         type: array
       currentPage:
-        description: Current page number (0-based)
-        example: 0
+        description: Current page number (1-based)
+        example: 1
         type: integer
       pageSize:
         description: Number of items per page
@@ -99,8 +99,8 @@ definitions:
   github_com_yigit_unisphere_internal_app_models_dto.DepartmentListResponse:
     properties:
       currentPage:
-        description: Current page number (0-based)
-        example: 0
+        description: Current page number (1-based)
+        example: 1
         type: integer
       departments:
         items:
@@ -215,8 +215,8 @@ definitions:
   github_com_yigit_unisphere_internal_app_models_dto.FacultyListResponse:
     properties:
       currentPage:
-        description: Current page number (0-based)
-        example: 0
+        description: Current page number (1-based)
+        example: 1
         type: integer
       faculties:
         items:
@@ -291,8 +291,8 @@ definitions:
   github_com_yigit_unisphere_internal_app_models_dto.PastExamListResponse:
     properties:
       currentPage:
-        description: Current page number (0-based)
-        example: 0
+        description: Current page number (1-based)
+        example: 1
         type: integer
       pageSize:
         description: Number of items per page
@@ -653,155 +653,6 @@ paths:
       summary: Update instructor title
       tags:
       - instructors
-  /api/v1/pastexams/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Deletes an existing past exam by its ID
-      parameters:
-      - description: Past exam ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: Past exam deleted successfully
-        "400":
-          description: Invalid past exam ID
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-        "404":
-          description: Past exam not found
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-      summary: Delete a past exam
-      tags:
-      - past-exams
-    get:
-      consumes:
-      - application/json
-      description: Retrieves a specific past exam by its ID
-      parameters:
-      - description: Past exam ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Past exam retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse'
-              type: object
-        "400":
-          description: Invalid past exam ID
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-        "404":
-          description: Past exam not found
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-      summary: Get past exam by ID
-      tags:
-      - past-exams
-    put:
-      consumes:
-      - multipart/form-data
-      description: Updates an existing past exam with the provided information
-      parameters:
-      - description: Past exam ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Year of the exam
-        in: formData
-        name: year
-        type: integer
-      - description: Term of the exam (FALL, SPRING)
-        in: formData
-        name: term
-        type: string
-      - description: Department ID
-        in: formData
-        name: departmentId
-        type: integer
-      - description: Course code
-        in: formData
-        name: courseCode
-        type: string
-      - description: Exam title
-        in: formData
-        name: title
-        type: string
-      - description: Instructor ID
-        in: formData
-        name: instructorId
-        type: integer
-      - description: Exam file
-        in: formData
-        name: file
-        type: file
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Past exam updated successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse'
-              type: object
-        "400":
-          description: Invalid request format
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-        "404":
-          description: Past exam not found
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-      summary: Update a past exam
-      tags:
-      - past-exams
   /auth/login:
     post:
       consumes:
@@ -1170,12 +1021,17 @@ paths:
         in: query
         name: courseCode
         type: string
-      - description: 'Page number (default: 1)'
+      - default: 1
+        description: Page number (1-based)
         in: query
+        minimum: 1
         name: page
         type: integer
-      - description: 'Page size (default: 10, max: 100)'
+      - default: 10
+        description: 'Page size (default: 10, max: 100)'
         in: query
+        maximum: 100
+        minimum: 1
         name: pageSize
         type: integer
       produces:
@@ -1570,6 +1426,19 @@ paths:
         in: query
         name: facultyId
         type: integer
+      - default: 1
+        description: Page number (1-based)
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - default: 10
+        description: Page size
+        in: query
+        maximum: 100
+        minimum: 1
+        name: size
+        type: integer
       produces:
       - application/json
       responses:
@@ -1786,6 +1655,20 @@ paths:
     get:
       consumes:
       - application/json
+      parameters:
+      - default: 1
+        description: Page number (1-based)
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - default: 10
+        description: Page size
+        in: query
+        maximum: 100
+        minimum: 1
+        name: size
+        type: integer
       produces:
       - application/json
       responses:
@@ -2011,6 +1894,19 @@ paths:
         name: facultyId
         required: true
         type: integer
+      - default: 1
+        description: Page number (1-based)
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - default: 10
+        description: Page size
+        in: query
+        maximum: 100
+        minimum: 1
+        name: size
+        type: integer
       produces:
       - application/json
       responses:
@@ -2091,6 +1987,76 @@ paths:
       tags:
       - instructors
   /past-exams:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of past exams with optional filtering and pagination
+      parameters:
+      - description: Filter by faculty ID
+        in: query
+        name: facultyId
+        type: integer
+      - description: Filter by department ID
+        in: query
+        name: departmentId
+        type: integer
+      - description: Filter by course code
+        in: query
+        name: courseCode
+        type: string
+      - description: Filter by year
+        in: query
+        name: year
+        type: integer
+      - description: Filter by term (FALL, SPRING, SUMMER)
+        in: query
+        name: term
+        type: string
+      - description: Sort field (year, term, courseCode, title, departmentName, facultyName,
+          instructorName, createdAt, updatedAt)
+        in: query
+        name: sortBy
+        type: string
+      - description: Sort order (ASC, DESC)
+        in: query
+        name: sortOrder
+        type: string
+      - default: 1
+        description: Page number (1-based)
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - default: 10
+        description: 'Page size (default: 10, max: 100)'
+        in: query
+        maximum: 100
+        minimum: 1
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Past exams retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamListResponse'
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      summary: Get all past exams
+      tags:
+      - past-exams
     post:
       consumes:
       - multipart/form-data
@@ -2174,70 +2140,153 @@ paths:
       summary: Create a new past exam
       tags:
       - past-exams
-  /pastexams:
-    get:
+  /past-exams/{id}:
+    delete:
       consumes:
       - application/json
-      description: Retrieves a list of past exams with optional filtering and pagination
+      description: Deletes an existing past exam by its ID
       parameters:
-      - description: Filter by faculty ID
-        in: query
-        name: facultyId
-        type: integer
-      - description: Filter by department ID
-        in: query
-        name: departmentId
-        type: integer
-      - description: Filter by course code
-        in: query
-        name: courseCode
-        type: string
-      - description: Filter by year
-        in: query
-        name: year
-        type: integer
-      - description: Filter by term (FALL, SPRING)
-        in: query
-        name: term
-        type: string
-      - description: Sort field (year, term, courseCode, title, departmentName, facultyName,
-          instructorName, createdAt, updatedAt)
-        in: query
-        name: sortBy
-        type: string
-      - description: Sort order (ASC, DESC)
-        in: query
-        name: sortOrder
-        type: string
-      - description: 'Page number (default: 1)'
-        in: query
-        name: page
-        type: integer
-      - description: 'Page size (default: 10)'
-        in: query
-        name: pageSize
+      - description: Past exam ID
+        in: path
+        name: id
+        required: true
         type: integer
       produces:
       - application/json
       responses:
-        "200":
-          description: Past exams retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamListResponse'
-              type: object
+        "204":
+          description: Past exam deleted successfully
         "400":
-          description: Invalid request parameters
+          description: Invalid past exam ID
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "404":
+          description: Past exam not found
           schema:
             $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-      summary: Get all past exams
+      summary: Delete a past exam
+      tags:
+      - past-exams
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a specific past exam by its ID
+      parameters:
+      - description: Past exam ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Past exam retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse'
+              type: object
+        "400":
+          description: Invalid past exam ID
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "404":
+          description: Past exam not found
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      summary: Get past exam by ID
+      tags:
+      - past-exams
+    put:
+      consumes:
+      - multipart/form-data
+      description: Updates an existing past exam with the provided information
+      parameters:
+      - description: Past exam ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Year of the exam
+        in: formData
+        name: year
+        type: integer
+      - description: Term of the exam (FALL, SPRING)
+        in: formData
+        name: term
+        type: string
+      - description: Department ID
+        in: formData
+        name: departmentId
+        type: integer
+      - description: Course code
+        in: formData
+        name: courseCode
+        type: string
+      - description: Exam title
+        in: formData
+        name: title
+        type: string
+      - description: Instructor ID
+        in: formData
+        name: instructorId
+        type: integer
+      - description: Exam file
+        in: formData
+        name: file
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Past exam updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse'
+              type: object
+        "400":
+          description: Invalid request format
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "404":
+          description: Past exam not found
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      summary: Update a past exam
       tags:
       - past-exams
 schemes:

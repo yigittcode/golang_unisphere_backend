@@ -232,239 +232,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/pastexams/{id}": {
-            "get": {
-                "description": "Retrieves a specific past exam by its ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "past-exams"
-                ],
-                "summary": "Get past exam by ID",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Past exam ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Past exam retrieved successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid past exam ID",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Past exam not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "Updates an existing past exam with the provided information",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "past-exams"
-                ],
-                "summary": "Update a past exam",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Past exam ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Year of the exam",
-                        "name": "year",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Term of the exam (FALL, SPRING)",
-                        "name": "term",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Department ID",
-                        "name": "departmentId",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Course code",
-                        "name": "courseCode",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Exam title",
-                        "name": "title",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Instructor ID",
-                        "name": "instructorId",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "file",
-                        "description": "Exam file",
-                        "name": "file",
-                        "in": "formData"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Past exam updated successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request format",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Past exam not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Deletes an existing past exam by its ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "past-exams"
-                ],
-                "summary": "Delete a past exam",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Past exam ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Past exam deleted successfully"
-                    },
-                    "400": {
-                        "description": "Invalid past exam ID",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Past exam not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/auth/login": {
             "post": {
                 "description": "Authenticates a user and returns access and refresh tokens",
@@ -1118,13 +885,18 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "minimum": 1,
                         "type": "integer",
-                        "description": "Page number (default: 1)",
+                        "default": 1,
+                        "description": "Page number (1-based)",
                         "name": "page",
                         "in": "query"
                     },
                     {
+                        "maximum": 100,
+                        "minimum": 1,
                         "type": "integer",
+                        "default": 10,
                         "description": "Page size (default: 10, max: 100)",
                         "name": "pageSize",
                         "in": "query"
@@ -1849,6 +1621,23 @@ const docTemplate = `{
                         "description": "Filter by faculty ID",
                         "name": "facultyId",
                         "in": "query"
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number (1-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Page size",
+                        "name": "size",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2208,6 +1997,25 @@ const docTemplate = `{
                     "faculties"
                 ],
                 "summary": "Get all faculties",
+                "parameters": [
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number (1-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Page size",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Faculties retrieved successfully",
@@ -2571,6 +2379,23 @@ const docTemplate = `{
                         "name": "facultyId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number (1-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Page size",
+                        "name": "size",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2695,6 +2520,112 @@ const docTemplate = `{
             }
         },
         "/past-exams": {
+            "get": {
+                "description": "Retrieves a list of past exams with optional filtering and pagination",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "past-exams"
+                ],
+                "summary": "Get all past exams",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Filter by faculty ID",
+                        "name": "facultyId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by department ID",
+                        "name": "departmentId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by course code",
+                        "name": "courseCode",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by year",
+                        "name": "year",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by term (FALL, SPRING, SUMMER)",
+                        "name": "term",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort field (year, term, courseCode, title, departmentName, facultyName, instructorName, createdAt, updatedAt)",
+                        "name": "sortBy",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort order (ASC, DESC)",
+                        "name": "sortOrder",
+                        "in": "query"
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number (1-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Page size (default: 10, max: 100)",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Past exams retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -2838,9 +2769,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/pastexams": {
+        "/past-exams/{id}": {
             "get": {
-                "description": "Retrieves a list of past exams with optional filtering and pagination",
+                "description": "Retrieves a specific past exam by its ID",
                 "consumes": [
                     "application/json"
                 ],
@@ -2850,66 +2781,19 @@ const docTemplate = `{
                 "tags": [
                     "past-exams"
                 ],
-                "summary": "Get all past exams",
+                "summary": "Get past exam by ID",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Filter by faculty ID",
-                        "name": "facultyId",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Filter by department ID",
-                        "name": "departmentId",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by course code",
-                        "name": "courseCode",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Filter by year",
-                        "name": "year",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by term (FALL, SPRING)",
-                        "name": "term",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Sort field (year, term, courseCode, title, departmentName, facultyName, instructorName, createdAt, updatedAt)",
-                        "name": "sortBy",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Sort order (ASC, DESC)",
-                        "name": "sortOrder",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page number (default: 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page size (default: 10)",
-                        "name": "pageSize",
-                        "in": "query"
+                        "description": "Past exam ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Past exams retrieved successfully",
+                        "description": "Past exam retrieved successfully",
                         "schema": {
                             "allOf": [
                                 {
@@ -2919,7 +2803,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamListResponse"
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse"
                                         }
                                     }
                                 }
@@ -2927,7 +2811,184 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid request parameters",
+                        "description": "Invalid past exam ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Past exam not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Updates an existing past exam with the provided information",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "past-exams"
+                ],
+                "summary": "Update a past exam",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Past exam ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Year of the exam",
+                        "name": "year",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Term of the exam (FALL, SPRING)",
+                        "name": "term",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Department ID",
+                        "name": "departmentId",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Course code",
+                        "name": "courseCode",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Exam title",
+                        "name": "title",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Instructor ID",
+                        "name": "instructorId",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "Exam file",
+                        "name": "file",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Past exam updated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.PastExamResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Past exam not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes an existing past exam by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "past-exams"
+                ],
+                "summary": "Delete a past exam",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Past exam ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Past exam deleted successfully"
+                    },
+                    "400": {
+                        "description": "Invalid past exam ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Past exam not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
                         }
@@ -2990,9 +3051,9 @@ const docTemplate = `{
                     }
                 },
                 "currentPage": {
-                    "description": "Current page number (0-based)",
+                    "description": "Current page number (1-based)",
                     "type": "integer",
-                    "example": 0
+                    "example": 1
                 },
                 "pageSize": {
                     "description": "Number of items per page",
@@ -3087,9 +3148,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "currentPage": {
-                    "description": "Current page number (0-based)",
+                    "description": "Current page number (1-based)",
                     "type": "integer",
-                    "example": 0
+                    "example": 1
                 },
                 "departments": {
                     "type": "array",
@@ -3240,9 +3301,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "currentPage": {
-                    "description": "Current page number (0-based)",
+                    "description": "Current page number (1-based)",
                     "type": "integer",
-                    "example": 0
+                    "example": 1
                 },
                 "faculties": {
                     "type": "array",
@@ -3352,9 +3413,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "currentPage": {
-                    "description": "Current page number (0-based)",
+                    "description": "Current page number (1-based)",
                     "type": "integer",
-                    "example": 0
+                    "example": 1
                 },
                 "pageSize": {
                     "description": "Number of items per page",

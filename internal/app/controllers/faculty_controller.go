@@ -9,6 +9,7 @@ import (
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/services"
 	"github.com/yigit/unisphere/internal/middleware"
+	"github.com/yigit/unisphere/internal/pkg/helpers"
 )
 
 // FacultyController handles faculty-related operations
@@ -118,11 +119,16 @@ func (c *FacultyController) GetFacultyByID(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param page query int false "Page number (1-based)" default(1) minimum(1)
+// @Param size query int false "Page size" default(10) minimum(1) maximum(100)
 // @Success 200 {object} dto.APIResponse{data=dto.FacultyListResponse} "Faculties retrieved successfully"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /faculties [get]
 func (c *FacultyController) GetAllFaculties(ctx *gin.Context) {
+	// Parse pagination parameters
+	page, size := helpers.ParsePaginationParams(ctx)
+
 	faculties, err := c.facultyService.GetAllFaculties(ctx)
 	if err != nil {
 		middleware.HandleAPIError(ctx, err)
@@ -139,9 +145,25 @@ func (c *FacultyController) GetAllFaculties(ctx *gin.Context) {
 		})
 	}
 
+	// Calculate pagination values
+	totalItems := int64(len(facultyResponses))
+	paginationInfo := helpers.NewPaginationInfo(totalItems, page, size)
+
+	// Apply pagination to results if needed
+	start, end := helpers.CalculateSliceIndices(page, size, len(facultyResponses))
+	if start < len(facultyResponses) {
+		if end > len(facultyResponses) {
+			end = len(facultyResponses)
+		}
+		facultyResponses = facultyResponses[start:end]
+	} else {
+		facultyResponses = []dto.FacultyResponse{}
+	}
+
 	// Create response
 	response := dto.FacultyListResponse{
-		Faculties: facultyResponses,
+		Faculties:      facultyResponses,
+		PaginationInfo: paginationInfo,
 	}
 
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response))

@@ -13,6 +13,7 @@ import (
 	"github.com/yigit/unisphere/internal/app/repositories"
 	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/filestorage"
+	"github.com/yigit/unisphere/internal/pkg/helpers"
 )
 
 // ClassNoteService defines the interface for class note operations
@@ -116,16 +117,12 @@ func (s *classNoteServiceImpl) GetAllNotes(ctx context.Context, filter *dto.Clas
 		})
 	}
 
-	// Create response with pagination
-	totalPages := (total + int64(filter.PageSize) - 1) / int64(filter.PageSize)
+	// Create response with pagination using the helper function
+	paginationInfo := helpers.NewPaginationInfo(total, filter.Page, filter.PageSize)
+	
 	return &dto.ClassNoteListResponse{
-		ClassNotes: noteResponses,
-		PaginationInfo: dto.PaginationInfo{
-			CurrentPage: filter.Page,
-			PageSize:    filter.PageSize,
-			TotalItems:  total,
-			TotalPages:  int(totalPages),
-		},
+		ClassNotes:     noteResponses,
+		PaginationInfo: paginationInfo,
 	}, nil
 }
 

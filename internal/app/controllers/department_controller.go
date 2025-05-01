@@ -9,6 +9,7 @@ import (
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/services"
 	"github.com/yigit/unisphere/internal/middleware"
+	"github.com/yigit/unisphere/internal/pkg/helpers"
 )
 
 // DepartmentController handles department-related operations
@@ -123,11 +124,16 @@ func (c *DepartmentController) GetDepartmentByID(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param facultyId query int false "Filter by faculty ID"
+// @Param page query int false "Page number (1-based)" default(1) minimum(1)
+// @Param size query int false "Page size" default(10) minimum(1) maximum(100)
 // @Success 200 {object} dto.APIResponse{data=dto.DepartmentListResponse} "Departments retrieved successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request parameters"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /departments [get]
 func (c *DepartmentController) GetAllDepartments(ctx *gin.Context) {
+	// Parse pagination parameters
+	page, size := helpers.ParsePaginationParams(ctx)
+
 	departments, err := c.departmentService.GetAllDepartments(ctx)
 	if err != nil {
 		middleware.HandleAPIError(ctx, err)
@@ -145,9 +151,26 @@ func (c *DepartmentController) GetAllDepartments(ctx *gin.Context) {
 		})
 	}
 
+	// Calculate pagination values
+	totalItems := int64(len(departmentResponses))
+	paginationInfo := helpers.NewPaginationInfo(totalItems, page, size)
+
+	// Apply pagination to results if needed
+	// This is a simple in-memory pagination approach since we don't have repository-level pagination yet
+	start, end := helpers.CalculateSliceIndices(page, size, len(departmentResponses))
+	if start < len(departmentResponses) {
+		if end > len(departmentResponses) {
+			end = len(departmentResponses)
+		}
+		departmentResponses = departmentResponses[start:end]
+	} else {
+		departmentResponses = []dto.DepartmentResponse{}
+	}
+
 	// Create response
 	response := dto.DepartmentListResponse{
-		Departments: departmentResponses,
+		Departments:    departmentResponses,
+		PaginationInfo: paginationInfo,
 	}
 
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response))
@@ -161,6 +184,8 @@ func (c *DepartmentController) GetAllDepartments(ctx *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param facultyId path int true "Faculty ID" Format(int64) minimum(1)
+// @Param page query int false "Page number (1-based)" default(1) minimum(1)
+// @Param size query int false "Page size" default(10) minimum(1) maximum(100)
 // @Success 200 {object} dto.APIResponse{data=dto.DepartmentListResponse} "Faculty departments retrieved successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid faculty ID format"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
@@ -168,6 +193,9 @@ func (c *DepartmentController) GetAllDepartments(ctx *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /faculty-departments/{facultyId} [get]
 func (c *DepartmentController) GetDepartmentsByFacultyID(ctx *gin.Context) {
+	// Parse pagination parameters
+	page, size := helpers.ParsePaginationParams(ctx)
+
 	facultyIDStr := ctx.Param("facultyId")
 	facultyID, err := strconv.ParseInt(facultyIDStr, 10, 64)
 	if err != nil {
@@ -194,9 +222,25 @@ func (c *DepartmentController) GetDepartmentsByFacultyID(ctx *gin.Context) {
 		})
 	}
 
+	// Calculate pagination values
+	totalItems := int64(len(departmentResponses))
+	paginationInfo := helpers.NewPaginationInfo(totalItems, page, size)
+
+	// Apply pagination to results
+	start, end := helpers.CalculateSliceIndices(page, size, len(departmentResponses))
+	if start < len(departmentResponses) {
+		if end > len(departmentResponses) {
+			end = len(departmentResponses)
+		}
+		departmentResponses = departmentResponses[start:end]
+	} else {
+		departmentResponses = []dto.DepartmentResponse{}
+	}
+
 	// Create response
 	response := dto.DepartmentListResponse{
-		Departments: departmentResponses,
+		Departments:    departmentResponses,
+		PaginationInfo: paginationInfo,
 	}
 
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response))

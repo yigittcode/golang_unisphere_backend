@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -45,14 +46,15 @@ func NewClassNoteController(classNoteService services.ClassNoteService, fileStor
 // @Security ApiKeyAuth
 // @Param departmentId query int false "Filter by department ID"
 // @Param courseCode query string false "Filter by course code"
-// @Param page query int false "Page number (default: 1)"
-// @Param pageSize query int false "Page size (default: 10, max: 100)"
+// @Param page query int false "Page number (1-based)" default(1) minimum(1)
+// @Param pageSize query int false "Page size (default: 10, max: 100)" default(10) minimum(1) maximum(100)
 // @Success 200 {object} dto.APIResponse{data=dto.ClassNoteListResponse}
 // @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Router /class-notes [get]
 func (c *ClassNoteController) GetAllNotes(ctx *gin.Context) {
+	fmt.Println("********* GetAllNotes *********")
 	// Parse filter parameters
 	var filter dto.ClassNoteFilterRequest
 	if err := ctx.ShouldBindQuery(&filter); err != nil {

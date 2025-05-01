@@ -13,6 +13,7 @@ import (
 	"github.com/yigit/unisphere/internal/app/repositories"
 	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/filestorage"
+	"github.com/yigit/unisphere/internal/pkg/helpers"
 )
 
 // PastExamService defines the interface for past exam operations
@@ -94,16 +95,12 @@ func (s *pastExamServiceImpl) GetAllExams(ctx context.Context, filter *dto.PastE
 		})
 	}
 
-	// Create response with pagination
-	totalPages := (total + int64(filter.PageSize) - 1) / int64(filter.PageSize)
+	// Create response with pagination using the helper function
+	paginationInfo := helpers.NewPaginationInfo(total, filter.Page, filter.PageSize)
+
 	return &dto.PastExamListResponse{
-		PastExams: examResponses,
-		PaginationInfo: dto.PaginationInfo{
-			CurrentPage: filter.Page,
-			PageSize:    filter.PageSize,
-			TotalItems:  total,
-			TotalPages:  int(totalPages),
-		},
+		PastExams:      examResponses,
+		PaginationInfo: paginationInfo,
 	}, nil
 }
 
