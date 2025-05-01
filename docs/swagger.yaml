@@ -1098,6 +1098,11 @@ paths:
         name: description
         required: true
         type: string
+      - description: Content/text of the note
+        in: formData
+        name: content
+        required: true
+        type: string
       - description: Department ID
         in: formData
         name: departmentId

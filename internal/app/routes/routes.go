@@ -120,12 +120,13 @@ func SetupRouter(
 			classNotes.GET("", classNoteController.GetAllNotes)
 			classNotes.GET("/:noteId", classNoteController.GetNoteByID)
 
-			// Create, Update, Delete require auth (already handled by parent group)
+			// Form validasyonu için ValidateFormDataRequest kullanıyoruz (multipart/form-data)
 			createNoteReq := &dto.CreateClassNoteRequest{}
-			classNotes.POST("", middleware.ValidateRequest(createNoteReq), classNoteController.CreateNote)
+			classNotes.POST("", middleware.ValidateFormDataRequest(createNoteReq), classNoteController.CreateNote)
 
+			// JSON validasyonu için ValidateJsonRequest kullanıyoruz (application/json)
 			updateNoteReq := &dto.UpdateClassNoteRequest{}
-			classNotes.PUT("/:noteId", middleware.ValidateRequest(updateNoteReq), classNoteController.UpdateNote)
+			classNotes.PUT("/:noteId", middleware.ValidateJsonRequest(updateNoteReq), classNoteController.UpdateNote)
 
 			classNotes.DELETE("/:noteId", classNoteController.DeleteNote)
 

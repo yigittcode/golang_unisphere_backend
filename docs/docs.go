@@ -1017,6 +1017,13 @@ const docTemplate = `{
                         "required": true
                     },
                     {
+                        "type": "string",
+                        "description": "Content/text of the note",
+                        "name": "content",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
                         "type": "integer",
                         "description": "Department ID",
                         "name": "departmentId",

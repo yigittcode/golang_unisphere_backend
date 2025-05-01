@@ -8,11 +8,11 @@ import (
 
 // CreateClassNoteRequest represents class note creation data
 type CreateClassNoteRequest struct {
-	CourseCode   string `json:"courseCode" binding:"required"`
-	Title        string `json:"title" binding:"required"`
-	Description  string `json:"description" binding:"required"`
-	Content      string `json:"content" binding:"required"`
-	DepartmentID int64  `json:"departmentId" binding:"required,gt=0"`
+	CourseCode   string `json:"courseCode" form:"courseCode" binding:"required"`
+	Title        string `json:"title" form:"title" binding:"required"`
+	Description  string `json:"description" form:"description" binding:"required"`
+	Content      string `json:"content" form:"content" binding:"required"`
+	DepartmentID int64  `json:"departmentId" form:"departmentId" binding:"required,gt=0"`
 }
 
 // UpdateClassNoteRequest represents class note update data

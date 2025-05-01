@@ -119,7 +119,7 @@ func (s *classNoteServiceImpl) GetAllNotes(ctx context.Context, filter *dto.Clas
 
 	// Create response with pagination using the helper function
 	paginationInfo := helpers.NewPaginationInfo(total, filter.Page, filter.PageSize)
-	
+
 	return &dto.ClassNoteListResponse{
 		ClassNotes:     noteResponses,
 		PaginationInfo: paginationInfo,

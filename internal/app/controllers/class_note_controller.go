@@ -118,6 +118,7 @@ func (c *ClassNoteController) GetNoteByID(ctx *gin.Context) {
 // @Param courseCode formData string true "Course code"
 // @Param title formData string true "Title"
 // @Param description formData string true "Description"
+// @Param content formData string true "Content/text of the note"
 // @Param departmentId formData int true "Department ID"
 // @Param files formData file false "Files to upload" collectionFormat multi
 // @Success 201 {object} dto.APIResponse{data=dto.ClassNoteResponse}
@@ -126,13 +127,45 @@ func (c *ClassNoteController) GetNoteByID(ctx *gin.Context) {
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Router /class-notes [post]
 func (c *ClassNoteController) CreateNote(ctx *gin.Context) {
-	// Parse request data
+	fmt.Println("********* CreateNote BAŞLANGIÇ *********")
+	fmt.Printf("Content-Type: %s\n", ctx.GetHeader("Content-Type"))
+
+	// Middleware validasyonu başarıyla geçti mi kontrol et
+	validatedObj, exists := ctx.Get("validatedFormData")
+	if exists {
+		fmt.Println("Middleware validasyonu başarılı!")
+		fmt.Printf("Validated object: %+v\n", validatedObj)
+		req := validatedObj.(*dto.CreateClassNoteRequest)
+		fmt.Printf("courseCode: %s\n", req.CourseCode)
+		fmt.Printf("title: %s\n", req.Title)
+		fmt.Printf("description: %s\n", req.Description)
+		fmt.Printf("content: %s\n", req.Content)
+		fmt.Printf("departmentId: %d\n", req.DepartmentID)
+	} else {
+		// Form değerlerini kontrol et
+		fmt.Println("Validasyon middleware'i çalışmadı, ham verileri kontrol ediyorum:")
+		courseCode := ctx.PostForm("courseCode")
+		title := ctx.PostForm("title")
+		description := ctx.PostForm("description")
+		content := ctx.PostForm("content")
+		departmentId := ctx.PostForm("departmentId")
+		fmt.Printf("courseCode: %s\n", courseCode)
+		fmt.Printf("title: %s\n", title)
+		fmt.Printf("description: %s\n", description)
+		fmt.Printf("content: %s\n", content)
+		fmt.Printf("departmentId: %s\n", departmentId)
+	}
+
+	// Parse request data - middleware bağlamış olsa bile, bu sıfırdan bağlama yapar
 	var req dto.CreateClassNoteRequest
 	if err := ctx.ShouldBind(&req); err != nil {
+		fmt.Printf("BINDING HATASI: %v\n", err)
 		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
-			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid request format")))
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid request format").WithDetails(err.Error())))
 		return
 	}
+
+	fmt.Printf("PARSED REQUEST: %+v\n", req)
 
 	// Get files (if any)
 	form, err := ctx.MultipartForm()
@@ -140,16 +173,21 @@ func (c *ClassNoteController) CreateNote(ctx *gin.Context) {
 
 	if err == nil && form != nil && form.File != nil {
 		files = form.File["files"]
+		fmt.Printf("Dosya sayısı: %d\n", len(files))
+	} else if err != nil {
+		fmt.Printf("MultipartForm hatası: %v\n", err)
 	}
 
 	// Create note (even without files)
 	note, err := c.classNoteService.CreateNote(ctx, &req, files)
 	if err != nil {
+		fmt.Printf("Service hatası: %v\n", err)
 		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to create class note")))
+			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to create class note").WithDetails(err.Error())))
 		return
 	}
 
+	fmt.Println("********* CreateNote BAŞARILI *********")
 	ctx.JSON(http.StatusCreated, dto.NewSuccessResponse(note))
 }
 
