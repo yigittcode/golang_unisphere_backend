@@ -20,3 +20,4 @@ package services
 // - FacultyService: Handles operations related to faculties
 // - DepartmentService: Handles operations related to departments
 // - PastExamService: Handles operations related to past exams
+// - CommunityService: Handles operations related to communities

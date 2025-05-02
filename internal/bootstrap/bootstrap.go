@@ -43,12 +43,14 @@ type Dependencies struct {
 	DepartmentService    appServices.DepartmentService // Interface type
 	PastExamService      appServices.PastExamService   // Interface type
 	ClassNoteService     appServices.ClassNoteService  // Interface type
+	CommunityService     appServices.CommunityService  // Interface type
 	AuthController       *appControllers.AuthController
 	FacultyController    *appControllers.FacultyController
 	DepartmentController *appControllers.DepartmentController
 	UserController       *appControllers.UserController // User Controller
 	PastExamController   *appControllers.PastExamController
 	ClassNoteController  *appControllers.ClassNoteController
+	CommunityController  *appControllers.CommunityController
 	AuthMiddleware       *appMiddleware.AuthMiddleware // Pointer to middleware struct
 	Repos                *appRepos.Repositories        // Include the main repo container
 	JWTService           *pkgAuth.JWTService
@@ -197,6 +199,16 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 		deps.AuthzService,
 		deps.Logger,
 	)
+	
+	deps.CommunityService = appServices.NewCommunityService(
+		deps.Repos.CommunityRepository,
+		deps.Repos.CommunityParticipantRepository,
+		deps.Repos.UserRepository,
+		deps.Repos.FileRepository,
+		deps.FileStorage,
+		deps.AuthzService,
+		deps.Logger,
+	)
 
 	deps.AuthMiddleware = appMiddleware.NewAuthMiddleware(deps.JWTService)
 
@@ -211,6 +223,7 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 	deps.UserController = appControllers.NewUserController(deps.UserService, deps.FileStorage)
 	deps.PastExamController = appControllers.NewPastExamController(deps.PastExamService, deps.FileStorage)
 	deps.ClassNoteController = appControllers.NewClassNoteController(deps.ClassNoteService, deps.FileStorage)
+	deps.CommunityController = appControllers.NewCommunityController(deps.CommunityService, deps.FileStorage)
 
 	return deps, nil
 }
@@ -238,6 +251,7 @@ func SetupRouter(cfg *config.Config, deps *Dependencies, lgr zerolog.Logger) *gi
 		deps.DepartmentController,
 		deps.PastExamController,
 		deps.ClassNoteController,
+		deps.CommunityController,
 		deps.AuthMiddleware, // Pass the middleware struct itself
 	)
 	

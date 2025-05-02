@@ -1,0 +1,93 @@
+package dto
+
+import "time"
+
+// --- Request DTOs ---
+
+// CreateCommunityRequest represents community creation data
+type CreateCommunityRequest struct {
+	Name         string `json:"name" form:"name" binding:"required"`
+	Abbreviation string `json:"abbreviation" form:"abbreviation" binding:"required"`
+	LeadID       int64  `json:"leadId" form:"leadId" binding:"required,gt=0"`
+}
+
+// UpdateCommunityRequest represents community update data
+type UpdateCommunityRequest struct {
+	Name         string `json:"name" form:"name" binding:"required"`
+	Abbreviation string `json:"abbreviation" form:"abbreviation" binding:"required"`
+	LeadID       int64  `json:"leadId" form:"leadId" binding:"required,gt=0"`
+}
+
+// JoinCommunityRequest represents the request to join a community
+type JoinCommunityRequest struct {
+	UserID int64 `json:"userId" form:"userId" binding:"required,gt=0"`
+}
+
+// LeaveCommunityRequest represents the request to leave a community
+type LeaveCommunityRequest struct {
+	UserID int64 `json:"userId" form:"userId" binding:"required,gt=0"`
+}
+
+// --- Response DTOs ---
+
+// ProfilePhotoResponse represents a profile photo for communities
+type ProfilePhotoResponse struct {
+	ID       int64  `json:"id"`
+	FileURL  string `json:"fileUrl"`
+}
+
+// CommunityParticipantResponse represents a participant in a community
+type CommunityParticipantResponse struct {
+	ID       int64     `json:"id"`
+	UserID   int64     `json:"userId"`
+	JoinedAt time.Time `json:"joinedAt"`
+	User     *UserBasicResponse `json:"user,omitempty"`
+}
+
+// CommunityResponse represents basic community information
+type CommunityResponse struct {
+	ID                 int64                       `json:"id"`
+	Name               string                      `json:"name"`
+	Abbreviation       string                      `json:"abbreviation"`
+	LeadID             int64                       `json:"leadId"`
+	Lead               *UserBasicResponse          `json:"lead,omitempty"`
+	ProfilePhotoFileID *int64                      `json:"profilePhotoFileId,omitempty"`
+	ProfilePhotoURL    *string                     `json:"profilePhotoUrl,omitempty"`
+	ParticipantCount   int                         `json:"participantCount,omitempty"`
+	Files              []SimpleCommunityFileResponse `json:"files,omitempty"`
+	CreatedAt          time.Time                   `json:"createdAt"`
+	UpdatedAt          time.Time                   `json:"updatedAt"`
+}
+
+// CommunityDetailResponse extends CommunityResponse with participant details
+type CommunityDetailResponse struct {
+	CommunityResponse
+	Participants []CommunityParticipantResponse `json:"participants,omitempty"`
+}
+
+// SimpleCommunityFileResponse represents a simple file reference for a community
+type SimpleCommunityFileResponse struct {
+	ID int64 `json:"id"`
+}
+
+// CommunityListResponse represents a list of communities
+type CommunityListResponse struct {
+	Communities []CommunityResponse `json:"communities"`
+	PaginationInfo
+}
+
+// CommunityFilterRequest represents community filter parameters
+type CommunityFilterRequest struct {
+	LeadID   *int64  `form:"leadId,omitempty"`
+	Search   *string `form:"search,omitempty"` // For searching by name or abbreviation
+	Page     int     `form:"page,default=1" binding:"min=1"`
+	PageSize int     `form:"pageSize,default=10" binding:"min=1,max=100"`
+}
+
+// UserBasicResponse represents minimal user information for including in community responses
+type UserBasicResponse struct {
+	ID        int64  `json:"id"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	Email     string `json:"email"`
+}

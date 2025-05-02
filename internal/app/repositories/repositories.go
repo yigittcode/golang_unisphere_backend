@@ -20,24 +20,28 @@ import (
 
 // Repositories holds all the repository instances
 type Repositories struct {
-	UserRepository       *UserRepository
-	FacultyRepository    *FacultyRepository
-	DepartmentRepository *DepartmentRepository
-	TokenRepository      *TokenRepository
-	PastExamRepository   *PastExamRepository
-	ClassNoteRepository  *ClassNoteRepository
-	FileRepository       *FileRepository
+	UserRepository                *UserRepository
+	FacultyRepository             *FacultyRepository
+	DepartmentRepository          *DepartmentRepository
+	TokenRepository               *TokenRepository
+	PastExamRepository            *PastExamRepository
+	ClassNoteRepository           *ClassNoteRepository
+	FileRepository                *FileRepository
+	CommunityRepository           *CommunityRepository
+	CommunityParticipantRepository *CommunityParticipantRepository
 }
 
 // NewRepositories initializes all repositories
 func NewRepositories(db *pgxpool.Pool) *Repositories {
 	return &Repositories{
-		UserRepository:       NewUserRepository(db),
-		FacultyRepository:    NewFacultyRepository(db),
-		DepartmentRepository: NewDepartmentRepository(db),
-		TokenRepository:      NewTokenRepository(db),
-		PastExamRepository:   NewPastExamRepository(db),
-		ClassNoteRepository:  NewClassNoteRepository(db),
-		FileRepository:       NewFileRepository(db),
+		UserRepository:                NewUserRepository(db),
+		FacultyRepository:             NewFacultyRepository(db),
+		DepartmentRepository:          NewDepartmentRepository(db),
+		TokenRepository:               NewTokenRepository(db),
+		PastExamRepository:            NewPastExamRepository(db),
+		ClassNoteRepository:           NewClassNoteRepository(db),
+		FileRepository:                NewFileRepository(db),
+		CommunityRepository:           NewCommunityRepository(db),
+		CommunityParticipantRepository: NewCommunityParticipantRepository(db),
 	}
 }

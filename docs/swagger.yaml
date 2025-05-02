@@ -81,6 +81,67 @@ definitions:
       userId:
         type: integer
     type: object
+  github_com_yigit_unisphere_internal_app_models_dto.CommunityListResponse:
+    properties:
+      communities:
+        items:
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.CommunityResponse'
+        type: array
+      currentPage:
+        description: Current page number (1-based)
+        example: 1
+        type: integer
+      pageSize:
+        description: Number of items per page
+        example: 10
+        type: integer
+      totalItems:
+        description: Total number of items matching the query
+        example: 48
+        type: integer
+      totalPages:
+        description: Total number of pages available
+        example: 5
+        type: integer
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.CommunityParticipantResponse:
+    properties:
+      id:
+        type: integer
+      joinedAt:
+        type: string
+      user:
+        $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserBasicResponse'
+      userId:
+        type: integer
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.CommunityResponse:
+    properties:
+      abbreviation:
+        type: string
+      createdAt:
+        type: string
+      files:
+        items:
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SimpleCommunityFileResponse'
+        type: array
+      id:
+        type: integer
+      lead:
+        $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserBasicResponse'
+      leadId:
+        type: integer
+      name:
+        type: string
+      participantCount:
+        type: integer
+      profilePhotoFileId:
+        type: integer
+      profilePhotoUrl:
+        type: string
+      updatedAt:
+        type: string
+    type: object
   github_com_yigit_unisphere_internal_app_models_dto.CreateDepartmentRequest:
     properties:
       code:
@@ -151,6 +212,7 @@ definitions:
     - RES_001
     - RES_002
     - RES_003
+    - RES_004
     - VAL_001
     - SRV_001
     - SRV_002
@@ -171,6 +233,7 @@ definitions:
     - ErrorCodeResourceNotFound
     - ErrorCodeResourceAlreadyExists
     - ErrorCodeResourceInvalid
+    - ErrorCodeConflict
     - ErrorCodeValidationFailed
     - ErrorCodeInternalServer
     - ErrorCodeDatabaseError
@@ -273,6 +336,20 @@ definitions:
       name:
         type: string
     type: object
+  github_com_yigit_unisphere_internal_app_models_dto.JoinCommunityRequest:
+    properties:
+      userId:
+        type: integer
+    required:
+    - userId
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.LeaveCommunityRequest:
+    properties:
+      userId:
+        type: integer
+    required:
+    - userId
+    type: object
   github_com_yigit_unisphere_internal_app_models_dto.LoginRequest:
     properties:
       email:
@@ -369,6 +446,11 @@ definitions:
       id:
         type: integer
     type: object
+  github_com_yigit_unisphere_internal_app_models_dto.SimpleCommunityFileResponse:
+    properties:
+      id:
+        type: integer
+    type: object
   github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse:
     properties:
       message:
@@ -404,6 +486,19 @@ definitions:
     - courseCode
     - description
     - title
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.UpdateCommunityRequest:
+    properties:
+      abbreviation:
+        type: string
+      leadId:
+        type: integer
+      name:
+        type: string
+    required:
+    - abbreviation
+    - leadId
+    - name
     type: object
   github_com_yigit_unisphere_internal_app_models_dto.UpdateDepartmentRequest:
     properties:
@@ -442,6 +537,17 @@ definitions:
     - email
     - firstName
     - lastName
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.UserBasicResponse:
+    properties:
+      email:
+        type: string
+      firstName:
+        type: string
+      id:
+        type: integer
+      lastName:
+        type: string
     type: object
   github_com_yigit_unisphere_internal_app_models_dto.UserListResponse:
     properties:
@@ -1098,6 +1204,819 @@ paths:
       summary: Delete a file from a class note
       tags:
       - class-notes
+  /communities:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of communities with optional filtering and pagination.
+        Available to all authenticated users.
+      parameters:
+      - description: Filter by lead ID
+        in: query
+        name: leadId
+        type: integer
+      - description: Search by name or abbreviation
+        in: query
+        name: search
+        type: string
+      - default: 1
+        description: Page number (1-based)
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - default: 10
+        description: 'Page size (default: 10, max: 100)'
+        in: query
+        maximum: 100
+        minimum: 1
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Communities retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.CommunityListResponse'
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all communities
+      tags:
+      - communities
+    post:
+      consumes:
+      - multipart/form-data
+      description: Creates a new community with optional file upload
+      parameters:
+      - description: Community name
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: Community abbreviation
+        in: formData
+        name: abbreviation
+        required: true
+        type: string
+      - description: Lead user ID
+        in: formData
+        name: leadId
+        required: true
+        type: integer
+      - description: Community files (can upload multiple)
+        in: formData
+        name: files
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Community created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.CommunityResponse'
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "404":
+          description: Lead user not found
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new community
+      tags:
+      - communities
+  /communities/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes an existing community by its ID
+      parameters:
+      - description: Community ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Community deleted successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse'
+              type: object
+        "400":
+          description: Invalid community ID
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "404":
+          description: Community not found
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a community
+      tags:
+      - communities
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a specific community by its ID
+      parameters:
+      - description: Community ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Community retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.CommunityResponse'
+              type: object
+        "400":
+          description: Invalid community ID
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "404":
+          description: Community not found
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get community by ID
+      tags:
+      - communities
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing community with the provided information
+      parameters:
+      - description: Community ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update community request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UpdateCommunityRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Community updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.CommunityResponse'
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "404":
+          description: Community not found
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a community
+      tags:
+      - communities
+  /communities/{id}/files:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Add one or more files to an existing community
+      parameters:
+      - description: Community ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Files to upload (can be multiple)
+        in: formData
+        name: files
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Add files to an existing community
+      tags:
+      - communities
+  /communities/{id}/files/{fileId}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a file from a community
+      parameters:
+      - description: Community ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: File ID
+        in: path
+        name: fileId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a file from a community
+      tags:
+      - communities
+  /communities/{id}/participants:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a user as a participant from a community
+      parameters:
+      - description: Community ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Leave community request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.LeaveCommunityRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User left community successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "409":
+          description: Lead cannot leave community
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Leave a community
+      tags:
+      - communities
+    get:
+      consumes:
+      - application/json
+      description: Get all participants of a community
+      parameters:
+      - description: Community ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Participants retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.CommunityParticipantResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get community participants
+      tags:
+      - communities
+    post:
+      consumes:
+      - application/json
+      description: Add a user as a participant to a community
+      parameters:
+      - description: Community ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Join community request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.JoinCommunityRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User joined community successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "409":
+          description: User is already a participant
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Join a community
+      tags:
+      - communities
+  /communities/{id}/participants/check:
+    get:
+      consumes:
+      - application/json
+      description: Check if a specific user is a participant in the community
+      parameters:
+      - description: Community ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: User ID
+        in: query
+        name: userId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Participation status checked successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: boolean
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Check if user is a participant
+      tags:
+      - communities
+  /communities/{id}/profile-photo:
+    delete:
+      consumes:
+      - application/json
+      description: Remove the profile photo from a community
+      parameters:
+      - description: Community ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Profile photo deleted successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a community's profile photo
+      tags:
+      - communities
+    post:
+      consumes:
+      - multipart/form-data
+      description: Update the profile photo for a community
+      parameters:
+      - description: Community ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Profile photo to upload
+        in: formData
+        name: photo
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Profile photo updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.CommunityResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update a community's profile photo
+      tags:
+      - communities
   /departments:
     get:
       consumes:

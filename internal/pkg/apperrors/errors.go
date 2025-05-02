@@ -7,6 +7,7 @@ var (
 	// Resource errors
 	ErrResourceNotFound      = errors.New("resource not found")
 	ErrResourceAlreadyExists = errors.New("resource already exists")
+	ErrConflict              = errors.New("conflict")
 
 	// Authentication errors
 	ErrInvalidCredentials = errors.New("invalid credentials")
@@ -66,6 +67,14 @@ var (
 func NewResourceNotFoundError(message string) error {
 	return &CustomError{
 		Err:     ErrResourceNotFound,
+		Message: message,
+	}
+}
+
+// NewConflictError creates a new custom error for conflict situations with a message
+func NewConflictError(message string) error {
+	return &CustomError{
+		Err:     ErrConflict,
 		Message: message,
 	}
 }

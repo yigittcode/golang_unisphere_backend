@@ -215,3 +215,35 @@ CREATE INDEX IF NOT EXISTS idx_files_resource ON files(resource_type, resource_i
 CREATE INDEX IF NOT EXISTS idx_past_exam_files_exam_id ON past_exam_files(past_exam_id);
 CREATE INDEX IF NOT EXISTS idx_class_note_files_note_id ON class_note_files(class_note_id);
 CREATE INDEX IF NOT EXISTS idx_users_profile_photo_file_id ON users(profile_photo_file_id);
+
+-- Communities table
+CREATE TABLE IF NOT EXISTS communities (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    abbreviation VARCHAR(50) NOT NULL UNIQUE,
+    lead_id BIGINT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_communities_lead FOREIGN KEY (lead_id) REFERENCES users(id)
+);
+
+-- updated_at trigger for Communities
+DROP TRIGGER IF EXISTS update_communities_updated_at ON communities;
+CREATE TRIGGER update_communities_updated_at
+    BEFORE UPDATE ON communities
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Community files link table
+CREATE TABLE IF NOT EXISTS community_files (
+    id BIGSERIAL PRIMARY KEY,
+    community_id BIGINT NOT NULL,
+    file_id BIGINT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_community_files_community FOREIGN KEY (community_id) REFERENCES communities(id) ON DELETE CASCADE,
+    CONSTRAINT fk_community_files_file FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE,
+    CONSTRAINT unique_community_file UNIQUE(community_id, file_id)
+);
+
+-- Index for community files
+CREATE INDEX IF NOT EXISTS idx_community_files_community_id ON community_files(community_id);

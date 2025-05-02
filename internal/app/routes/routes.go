@@ -16,6 +16,7 @@ func SetupRouter(
 	departmentController *controllers.DepartmentController,
 	pastExamController *controllers.PastExamController,
 	classNoteController *controllers.ClassNoteController,
+	communityController *controllers.CommunityController,
 	authMiddleware *middleware.AuthMiddleware,
 ) {
 	// API version group
@@ -111,6 +112,37 @@ func SetupRouter(
 				classNotesAuthProtected.DELETE("/:noteId", classNoteController.DeleteNote)
 				classNotesAuthProtected.POST("/:noteId/files", classNoteController.AddFilesToNote)
 				classNotesAuthProtected.DELETE("/:noteId/files/:fileId", classNoteController.DeleteFileFromNote)
+			}
+		}
+		
+		// Community routes - Endpoints for accessing and managing communities
+		communities := authenticated.Group("/communities")
+		{
+			// Public routes accessible to all authenticated users
+			communities.GET("", communityController.GetAllCommunities)        // List all communities with optional filtering
+			communities.GET("/:id", communityController.GetCommunityByID)    // Retrieve a specific community by ID
+			
+			// Routes that require authentication
+			communitiesAuthProtected := communities.Group("")
+			{
+				// CRUD operations for communities
+				communitiesAuthProtected.POST("", communityController.CreateCommunity)           // Create a new community
+				communitiesAuthProtected.PUT("/:id", communityController.UpdateCommunity)        // Update an existing community
+				communitiesAuthProtected.DELETE("/:id", communityController.DeleteCommunity)     // Delete a community
+				
+				// File management for communities
+				communitiesAuthProtected.POST("/:id/files", communityController.AddFileToCommunity)          // Upload and attach files
+				communitiesAuthProtected.DELETE("/:id/files/:fileId", communityController.DeleteFileFromCommunity)  // Remove a file
+				
+				// Profile photo management
+				communitiesAuthProtected.POST("/:id/profile-photo", communityController.UpdateProfilePhoto)   // Update profile photo
+				communitiesAuthProtected.DELETE("/:id/profile-photo", communityController.DeleteProfilePhoto) // Delete profile photo
+				
+				// Participant management
+				communitiesAuthProtected.GET("/:id/participants", communityController.GetCommunityParticipants)     // Get all participants
+				communitiesAuthProtected.POST("/:id/participants", communityController.JoinCommunity)               // Join community
+				communitiesAuthProtected.DELETE("/:id/participants", communityController.LeaveCommunity)            // Leave community
+				communitiesAuthProtected.GET("/:id/participants/check", communityController.IsUserParticipant)      // Check if user is participant
 			}
 		}
 	}

@@ -9,6 +9,7 @@ const (
 	FileTypePastExam     FileType = "PAST_EXAM"
 	FileTypeClassNote    FileType = "CLASS_NOTE"
 	FileTypeProfilePhoto FileType = "PROFILE_PHOTO"
+	FileTypeCommunity    FileType = "COMMUNITY"
 )
 
 // File represents a file in the system

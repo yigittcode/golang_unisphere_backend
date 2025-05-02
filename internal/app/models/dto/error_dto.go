@@ -31,6 +31,7 @@ var (
 	ErrorCodeResourceNotFound      = enums.ErrorCodeResourceNotFound
 	ErrorCodeResourceAlreadyExists = enums.ErrorCodeResourceAlreadyExists
 	ErrorCodeResourceInvalid       = enums.ErrorCodeResourceInvalid
+	ErrorCodeConflict              = enums.ErrorCodeConflict
 	ErrorCodeValidationFailed      = enums.ErrorCodeValidationFailed
 	ErrorCodeInternalServer        = enums.ErrorCodeInternalServer
 	ErrorCodeDatabaseError         = enums.ErrorCodeDatabaseError

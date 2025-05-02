@@ -16,6 +16,7 @@ const (
 	ErrorCodeResourceNotFound      ErrorCode = "RES_001"
 	ErrorCodeResourceAlreadyExists ErrorCode = "RES_002"
 	ErrorCodeResourceInvalid       ErrorCode = "RES_003"
+	ErrorCodeConflict              ErrorCode = "RES_004"
 	ErrorCodeValidationFailed      ErrorCode = "VAL_001"
 	ErrorCodeInternalServer        ErrorCode = "SRV_001"
 	ErrorCodeDatabaseError         ErrorCode = "SRV_002"
