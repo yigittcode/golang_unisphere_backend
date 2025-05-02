@@ -1,5 +1,7 @@
 package models
 
+import "github.com/yigit/unisphere/internal/app/models/dto/enums"
+
 // Model tanımlamaları burada olacak
 // Örnek:
 // type User struct {
@@ -8,27 +10,14 @@ package models
 //     Email    string `json:"email"`
 // }
 
-// RoleType defines the user role type
-type RoleType string
+// Type aliases for backward compatibility
+type RoleType = enums.RoleType
+type Term = enums.Term
 
-const (
-	RoleStudent    RoleType = "STUDENT"    // Original name
-	RoleInstructor RoleType = "INSTRUCTOR" // Original name
+// Constants for backward compatibility
+var (
+	RoleStudent    = enums.RoleStudent
+	RoleInstructor = enums.RoleInstructor
+	TermFall       = enums.TermFall
+	TermSpring     = enums.TermSpring
 )
-
-// Term represents a semester term
-type Term string
-
-// Term constants
-const (
-	TermFall   Term = "FALL"   // Original name
-	TermSpring Term = "SPRING" // Original name
-)
-
-// ClassNoteTerm type removed, use Term instead.
-// const (
-// 	ClassNoteTermFall   ClassNoteTerm = "FALL"
-// 	ClassNoteTermSpring ClassNoteTerm = "SPRING"
-// )
-
-// // ClassNoteTerm is defined in class_note.go for now // Removed comment

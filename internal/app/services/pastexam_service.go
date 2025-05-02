@@ -59,7 +59,7 @@ func NewPastExamService(
 // GetAllExams retrieves all past exams with filtering and pagination
 func (s *pastExamServiceImpl) GetAllExams(ctx context.Context, filter *dto.PastExamFilterRequest) (*dto.PastExamListResponse, error) {
 	// Get exams from repository
-	exams, total, err := s.pastExamRepo.GetAll(ctx, filter.DepartmentID, filter.CourseCode, filter.Year, filter.Term, filter.Page, filter.PageSize)
+	exams, total, err := s.pastExamRepo.GetAll(ctx, filter.FacultyID, filter.DepartmentID, filter.CourseCode, filter.Year, filter.Term, filter.Page, filter.PageSize)
 	if err != nil {
 		return nil, fmt.Errorf("error getting past exams: %w", err)
 	}
@@ -67,17 +67,10 @@ func (s *pastExamServiceImpl) GetAllExams(ctx context.Context, filter *dto.PastE
 	// Convert to response DTOs
 	var examResponses []dto.PastExamResponse
 	for _, exam := range exams {
-		// Dosya yanıtlarını oluştur
-		var fileResponses []dto.PastExamFileResponse
+		// Extract file IDs
+		var fileIDs []int64
 		for _, file := range exam.Files {
-			fileResponses = append(fileResponses, dto.PastExamFileResponse{
-				ID:        file.ID,
-				FileName:  file.FileName,
-				FileURL:   file.FileURL,
-				FileSize:  file.FileSize,
-				FileType:  file.FileType,
-				CreatedAt: file.CreatedAt,
-			})
+			fileIDs = append(fileIDs, file.ID)
 		}
 
 		examResponses = append(examResponses, dto.PastExamResponse{
@@ -89,7 +82,7 @@ func (s *pastExamServiceImpl) GetAllExams(ctx context.Context, filter *dto.PastE
 			Content:      exam.Content,
 			DepartmentID: exam.DepartmentID,
 			InstructorID: exam.InstructorID,
-			Files:        fileResponses,
+			FileIDs:      fileIDs,
 			CreatedAt:    exam.CreatedAt,
 			UpdatedAt:    exam.UpdatedAt,
 		})
@@ -115,17 +108,10 @@ func (s *pastExamServiceImpl) GetExamByID(ctx context.Context, id int64) (*dto.P
 		return nil, apperrors.ErrPastExamNotFound
 	}
 
-	// Dosya yanıtlarını oluştur
-	var fileResponses []dto.PastExamFileResponse
+	// Extract file IDs
+	var fileIDs []int64
 	for _, file := range exam.Files {
-		fileResponses = append(fileResponses, dto.PastExamFileResponse{
-			ID:        file.ID,
-			FileName:  file.FileName,
-			FileURL:   file.FileURL,
-			FileSize:  file.FileSize,
-			FileType:  file.FileType,
-			CreatedAt: file.CreatedAt,
-		})
+		fileIDs = append(fileIDs, file.ID)
 	}
 
 	// Convert to response DTO
@@ -138,7 +124,7 @@ func (s *pastExamServiceImpl) GetExamByID(ctx context.Context, id int64) (*dto.P
 		Content:      exam.Content,
 		DepartmentID: exam.DepartmentID,
 		InstructorID: exam.InstructorID,
-		Files:        fileResponses,
+		FileIDs:      fileIDs,
 		CreatedAt:    exam.CreatedAt,
 		UpdatedAt:    exam.UpdatedAt,
 	}, nil
@@ -182,44 +168,45 @@ func (s *pastExamServiceImpl) CreateExam(ctx context.Context, req *dto.CreatePas
 
 	// Process uploaded files
 	var savedFiles []*models.File
-	for _, fileHeader := range files {
-		// Upload file to storage
-		file, err := s.uploadFile(ctx, fileHeader, models.FileTypePastExam, examID, userID)
-		if err != nil {
-			s.logger.Error().Err(err).
-				Str("filename", fileHeader.Filename).
-				Int64("examID", examID).
-				Msg("Failed to upload file for past exam")
-			continue
-		}
+	
+	// Only process files if any were provided
+	if len(files) > 0 {
+		s.logger.Debug().Int("fileCount", len(files)).Msg("Processing files for past exam")
+		
+		for _, fileHeader := range files {
+			// Upload file to storage
+			file, err := s.uploadFile(ctx, fileHeader, models.FileTypePastExam, examID, userID)
+			if err != nil {
+				s.logger.Error().Err(err).
+					Str("filename", fileHeader.Filename).
+					Int64("examID", examID).
+					Msg("Failed to upload file for past exam")
+				continue
+			}
 
-		// Link file to past exam
-		err = s.pastExamRepo.AddFileToPastExam(ctx, examID, file.ID)
-		if err != nil {
-			s.logger.Error().Err(err).
-				Int64("fileID", file.ID).
-				Int64("examID", examID).
-				Msg("Failed to link file to past exam")
-			continue
-		}
+			// Link file to past exam
+			err = s.pastExamRepo.AddFileToPastExam(ctx, examID, file.ID)
+			if err != nil {
+				s.logger.Error().Err(err).
+					Int64("fileID", file.ID).
+					Int64("examID", examID).
+					Msg("Failed to link file to past exam")
+				continue
+			}
 
-		savedFiles = append(savedFiles, file)
+			savedFiles = append(savedFiles, file)
+		}
+	} else {
+		s.logger.Debug().Msg("No files provided for past exam")
 	}
 
 	// Add files to exam model
 	exam.Files = savedFiles
 
-	// Convert to response DTO
-	var fileResponses []dto.PastExamFileResponse
+	// Extract file IDs
+	var fileIDs []int64
 	for _, file := range savedFiles {
-		fileResponses = append(fileResponses, dto.PastExamFileResponse{
-			ID:        file.ID,
-			FileName:  file.FileName,
-			FileURL:   file.FileURL,
-			FileSize:  file.FileSize,
-			FileType:  file.FileType,
-			CreatedAt: file.CreatedAt,
-		})
+		fileIDs = append(fileIDs, file.ID)
 	}
 
 	return &dto.PastExamResponse{
@@ -231,7 +218,7 @@ func (s *pastExamServiceImpl) CreateExam(ctx context.Context, req *dto.CreatePas
 		Content:      exam.Content,
 		DepartmentID: exam.DepartmentID,
 		InstructorID: exam.InstructorID,
-		Files:        fileResponses,
+		FileIDs:      fileIDs,
 		CreatedAt:    exam.CreatedAt,
 		UpdatedAt:    exam.UpdatedAt,
 	}, nil
@@ -249,7 +236,10 @@ func (s *pastExamServiceImpl) uploadFile(ctx context.Context, fileHeader *multip
 	// Generate a storage path based on resource type and ID
 	subPath := fmt.Sprintf("%s_%d", resourceType, resourceID)
 
-	// Upload to storage
+	// We don't need to create a unique filename
+	// The LocalStorage.SaveFileWithPath already handles creating unique filenames
+
+	// Upload to storage with the original FileHeader
 	fileURL, err := s.fileStorage.SaveFileWithPath(fileHeader, subPath)
 	if err != nil {
 		return nil, fmt.Errorf("error uploading file: %w", err)
@@ -261,8 +251,8 @@ func (s *pastExamServiceImpl) uploadFile(ctx context.Context, fileHeader *multip
 
 	// Create file model
 	file := &models.File{
-		FileName:     fileHeader.Filename,
-		FilePath:     relativeFilePath,
+		FileName:     fileHeader.Filename, // Store original filename for display
+		FilePath:     relativeFilePath,    // Store unique path for retrieval
 		FileURL:      fileURL,
 		FileSize:     fileHeader.Size,
 		FileType:     fileHeader.Header.Get("Content-Type"),
@@ -332,17 +322,10 @@ func (s *pastExamServiceImpl) UpdateExam(ctx context.Context, id int64, req *dto
 		return nil, fmt.Errorf("error getting updated past exam: %w", err)
 	}
 
-	// Convert to response DTO
-	var fileResponses []dto.PastExamFileResponse
+	// Extract file IDs
+	var fileIDs []int64
 	for _, file := range updatedExamFull.Files {
-		fileResponses = append(fileResponses, dto.PastExamFileResponse{
-			ID:        file.ID,
-			FileName:  file.FileName,
-			FileURL:   file.FileURL,
-			FileSize:  file.FileSize,
-			FileType:  file.FileType,
-			CreatedAt: file.CreatedAt,
-		})
+		fileIDs = append(fileIDs, file.ID)
 	}
 
 	return &dto.PastExamResponse{
@@ -354,7 +337,7 @@ func (s *pastExamServiceImpl) UpdateExam(ctx context.Context, id int64, req *dto
 		Content:      updatedExamFull.Content,
 		DepartmentID: updatedExamFull.DepartmentID,
 		InstructorID: updatedExamFull.InstructorID,
-		Files:        fileResponses,
+		FileIDs:      fileIDs,
 		CreatedAt:    updatedExamFull.CreatedAt,
 		UpdatedAt:    updatedExamFull.UpdatedAt,
 	}, nil
@@ -497,7 +480,7 @@ func (s *pastExamServiceImpl) RemoveFileFromPastExam(ctx context.Context, examID
 		return fmt.Errorf("error getting file: %w", err)
 	}
 	if file == nil {
-		return fmt.Errorf("file not found")
+		return apperrors.NewResourceNotFoundError("File not found")
 	}
 
 	// Ensure file belongs to this exam
@@ -509,7 +492,7 @@ func (s *pastExamServiceImpl) RemoveFileFromPastExam(ctx context.Context, examID
 		}
 	}
 	if !fileFound {
-		return fmt.Errorf("file does not belong to this exam")
+		return apperrors.NewResourceNotFoundError("File does not belong to this exam")
 	}
 
 	// Remove file from past exam

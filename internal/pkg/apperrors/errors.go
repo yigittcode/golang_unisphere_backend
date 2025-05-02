@@ -62,6 +62,14 @@ var (
 	ErrInvalidFormat = errors.New("invalid token format")
 )
 
+// NewResourceNotFoundError creates a new custom error for resource not found with a message
+func NewResourceNotFoundError(message string) error {
+	return &CustomError{
+		Err:     ErrResourceNotFound,
+		Message: message,
+	}
+}
+
 // Is returns whether target matches any of the errors in errList
 // Bu yardımcı fonksiyon, errors.Is() fonksiyonunun birden fazla hatayla kullanımını kolaylaştırır
 func Is(err, target error, errList ...error) bool {

@@ -38,7 +38,7 @@ import (
 // Dependencies holds all the application dependencies
 type Dependencies struct {
 	AuthService          appServices.AuthService       // Interface type
-	InstructorService    appServices.InstructorService // Interface type
+	UserService          appServices.UserService       // User Service
 	FacultyService       appServices.FacultyService    // Interface type
 	DepartmentService    appServices.DepartmentService // Interface type
 	PastExamService      appServices.PastExamService   // Interface type
@@ -46,7 +46,7 @@ type Dependencies struct {
 	AuthController       *appControllers.AuthController
 	FacultyController    *appControllers.FacultyController
 	DepartmentController *appControllers.DepartmentController
-	InstructorController *appControllers.InstructorController
+	UserController       *appControllers.UserController // User Controller
 	PastExamController   *appControllers.PastExamController
 	ClassNoteController  *appControllers.ClassNoteController
 	AuthMiddleware       *appMiddleware.AuthMiddleware // Pointer to middleware struct
@@ -171,7 +171,16 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 
 	deps.FacultyService = appServices.NewFacultyService(deps.Repos.FacultyRepository)
 	deps.DepartmentService = appServices.NewDepartmentService(deps.Repos.DepartmentRepository, deps.Repos.FacultyRepository)
-	deps.InstructorService = appServices.NewInstructorService(deps.Repos.UserRepository, deps.Repos.DepartmentRepository)
+	
+	// Initialize User Service
+	deps.UserService = appServices.NewUserService(
+		deps.Repos.UserRepository,
+		deps.Repos.DepartmentRepository,
+		deps.Repos.FileRepository,
+		deps.FileStorage,
+		deps.Logger,
+	)
+	
 	deps.PastExamService = appServices.NewPastExamService(
 		deps.Repos.PastExamRepository,
 		deps.Repos.DepartmentRepository,
@@ -199,7 +208,7 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 	)
 	deps.FacultyController = appControllers.NewFacultyController(deps.FacultyService)
 	deps.DepartmentController = appControllers.NewDepartmentController(deps.DepartmentService)
-	deps.InstructorController = appControllers.NewInstructorController(deps.InstructorService)
+	deps.UserController = appControllers.NewUserController(deps.UserService, deps.FileStorage)
 	deps.PastExamController = appControllers.NewPastExamController(deps.PastExamService, deps.FileStorage)
 	deps.ClassNoteController = appControllers.NewClassNoteController(deps.ClassNoteService, deps.FileStorage)
 
@@ -221,16 +230,35 @@ func SetupRouter(cfg *config.Config, deps *Dependencies, lgr zerolog.Logger) *gi
 	// Setup Swagger
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json"), ginSwagger.DefaultModelsExpandDepth(1)))
 
-	// Setup API routes using the dependencies
+	// Setup API routes using the original method for now
+	// Will migrate to V2 in a future update
 	appRoutes.SetupRouter(router,
 		deps.AuthController,
 		deps.FacultyController,
 		deps.DepartmentController,
-		deps.InstructorController,
 		deps.PastExamController,
 		deps.ClassNoteController,
 		deps.AuthMiddleware, // Pass the middleware struct itself
 	)
+	
+	// Manually add user routes to avoid conflicts
+	v1 := router.Group("/api/v1")
+	authenticated := v1.Group("")
+	authenticated.Use(deps.AuthMiddleware.JWTAuth())
+	
+	// Add user endpoints
+	users := authenticated.Group("/users")
+	{
+		users.GET("", deps.UserController.GetUsersByFilter)
+		users.GET("/:id", deps.UserController.GetUserByID)  
+		users.GET("/profile", deps.UserController.GetUserProfile)
+		users.PUT("/profile", deps.UserController.UpdateUserProfile)
+		users.POST("/profile/photo", deps.UserController.UpdateProfilePhoto)
+		users.DELETE("/profile/photo", deps.UserController.DeleteProfilePhoto)
+	}
+	
+	// Use a different URL pattern to avoid conflicts with /departments/:id endpoint
+	authenticated.GET("/department-users/:departmentId", deps.UserController.GetUsersByDepartment)
 
 	// Test endpoint
 	router.GET("/ping", func(c *gin.Context) {

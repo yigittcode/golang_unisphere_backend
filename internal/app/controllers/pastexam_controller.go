@@ -5,17 +5,18 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"mime/multipart"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/services"
 	"github.com/yigit/unisphere/internal/middleware"
 	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/filestorage"
 	"github.com/yigit/unisphere/internal/pkg/helpers"
-	"github.com/yigit/unisphere/internal/pkg/logger"
 )
 
 // PastExamController handles past exam related operations
@@ -36,15 +37,16 @@ func NewPastExamController(pastExamService services.PastExamService, fileStorage
 
 // GetAllPastExams handles retrieving all past exams with optional filtering
 // @Summary Get all past exams
-// @Description Retrieves a list of past exams with optional filtering and pagination
+// @Description Retrieves a list of past exams with optional filtering and pagination. Available to all authenticated users.
 // @Tags past-exams
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param facultyId query int false "Filter by faculty ID"
 // @Param departmentId query int false "Filter by department ID"
 // @Param courseCode query string false "Filter by course code"
 // @Param year query int false "Filter by year"
-// @Param term query string false "Filter by term (FALL, SPRING, SUMMER)"
+// @Param term query string false "Filter by term (FALL, SPRING)"
 // @Param sortBy query string false "Sort field (year, term, courseCode, title, departmentName, facultyName, instructorName, createdAt, updatedAt)"
 // @Param sortOrder query string false "Sort order (ASC, DESC)"
 // @Param page query int false "Page number (1-based)" default(1) minimum(1)
@@ -107,6 +109,9 @@ func (c *PastExamController) GetAllPastExams(ctx *gin.Context) {
 	}
 
 	// Add filters if provided
+	if facultyID, ok := filters["facultyId"].(int64); ok {
+		filter.FacultyID = &facultyID
+	}
 	if deptID, ok := filters["departmentId"].(int64); ok {
 		filter.DepartmentID = &deptID
 	}
@@ -163,79 +168,121 @@ func (c *PastExamController) GetPastExamByID(ctx *gin.Context) {
 
 // CreatePastExam godoc
 // @Summary Create a new past exam
-// @Description Create a new past exam with file upload
+// @Description Create a new past exam with file upload. Only instructors can create past exams. The current authenticated instructor will be set as the instructor of the exam.
 // @Tags past-exams
 // @Accept multipart/form-data
 // @Produce json
-// @Security ApiKeyAuth
+// @Security BearerAuth
 // @Param year formData int true "Year"
 // @Param term formData string true "Term (FALL, SPRING)"
 // @Param departmentId formData int true "Department ID"
 // @Param courseCode formData string true "Course code"
 // @Param title formData string true "Title"
-// @Param instructorId formData int false "Instructor ID"
-// @Param file formData file true "Exam file"
+// @Param files formData file false "Exam files (can upload multiple)"
 // @Success 201 {object} dto.APIResponse{data=dto.PastExamResponse}
 // @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail} "Unauthorized: JWT token missing or invalid"
+// @Failure 403 {object} dto.APIResponse{error=dto.ErrorDetail} "Forbidden: User does not have instructor role"
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Router /past-exams [post]
 func (c *PastExamController) CreatePastExam(ctx *gin.Context) {
+	fmt.Println("********* CreatePastExam BAŞLANGIÇ *********")
+	
 	var req dto.CreatePastExamRequest
 	if err := ctx.ShouldBind(&req); err != nil {
+		fmt.Printf("Error binding request: %v\n", err)
 		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
-			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid request format")))
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid request format").WithDetails(err.Error())))
 		return
 	}
 
 	// Validate term
 	termValue := dto.Term(req.Term)
 	if termValue != dto.TermFall && termValue != dto.TermSpring {
+		fmt.Printf("Invalid term value: %s\n", req.Term)
 		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
 			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid term value. Must be FALL or SPRING")))
 		return
 	}
 
-	// Get file
-	file, err := ctx.FormFile("file")
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
-			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid or missing file")))
-		return
+	// Get files (optional)
+	var files []*multipart.FileHeader
+	
+	// Get files from the multipart form
+	form, err := ctx.MultipartForm()
+	if err == nil && form != nil && form.File != nil {
+		if uploadedFiles, ok := form.File["files"]; ok && len(uploadedFiles) > 0 {
+			files = uploadedFiles
+			fmt.Printf("Files included: %d files\n", len(files))
+		} else {
+			fmt.Println("No files provided in the 'files' field")
+		}
+	} else {
+		fmt.Println("No files provided or error getting files, continuing without files")
 	}
 
-	// Tek dosyayı bir slice'a dönüştür
-	files := []*multipart.FileHeader{file}
+	// Get user ID from context
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		fmt.Println("User ID not found in context")
+		ctx.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "User not authenticated")))
+		return
+	}
+	
+	// Get user role
+	roleType, exists := ctx.Get("roleType") 
+	if !exists {
+		fmt.Println("User role not found in context")
+		ctx.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "User role not found")))
+		return
+	}
+	
+	// Convert to string and check role
+	roleStr, ok := roleType.(string)
+	if !ok || roleStr != string(models.RoleInstructor) {
+		fmt.Printf("User has invalid role for creating past exam: %v\n", roleStr)
+		ctx.JSON(http.StatusForbidden, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeForbidden, "Only instructors can create past exams")))
+		return
+	}
+	
+	fmt.Printf("Creating past exam with instructor ID: %v\n", userID)
+	fmt.Printf("Request data: %+v\n", req)
 
 	// Create exam
 	exam, err := c.pastExamService.CreateExam(ctx, &req, files)
 	if err != nil {
+		fmt.Printf("Error creating past exam: %v\n", err)
 		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to create past exam")))
+			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to create past exam").WithDetails(err.Error())))
 		return
 	}
 
+	fmt.Println("********* CreatePastExam BAŞARILI *********")
 	ctx.JSON(http.StatusCreated, dto.NewSuccessResponse(exam))
 }
 
 // UpdatePastExam handles updating an existing past exam
 // @Summary Update a past exam
-// @Description Updates an existing past exam with the provided information
+// @Description Updates an existing past exam with the provided information. Only instructors can update past exams. The instructor must be the owner of the exam.
 // @Tags past-exams
 // @Accept multipart/form-data
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Past exam ID"
 // @Param year formData int false "Year of the exam"
 // @Param term formData string false "Term of the exam (FALL, SPRING)"
 // @Param departmentId formData int false "Department ID"
 // @Param courseCode formData string false "Course code"
 // @Param title formData string false "Exam title"
-// @Param instructorId formData int false "Instructor ID"
+//
 // @Param file formData file false "Exam file"
 // @Success 200 {object} dto.APIResponse{data=dto.PastExamResponse} "Past exam updated successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 403 {object} dto.ErrorResponse "Forbidden"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized: JWT token missing or invalid"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden: User does not have instructor role or is not the creator"
 // @Failure 404 {object} dto.ErrorResponse "Past exam not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /past-exams/{id} [put]
@@ -285,14 +332,16 @@ func (c *PastExamController) UpdatePastExam(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path int true "Past exam ID"
-// @Success 204 "Past exam deleted successfully"
+// @Success 200 {object} dto.APIResponse{data=dto.SuccessResponse} "Past exam deleted successfully" 
 // @Failure 400 {object} dto.ErrorResponse "Invalid past exam ID"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 403 {object} dto.ErrorResponse "Forbidden"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized: JWT token missing or invalid"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden: User does not have instructor role or is not the creator"
 // @Failure 404 {object} dto.ErrorResponse "Past exam not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /past-exams/{id} [delete]
 func (c *PastExamController) DeletePastExam(ctx *gin.Context) {
+	fmt.Println("********* DeletePastExam BAŞLANGIÇ *********")
+	
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -301,6 +350,8 @@ func (c *PastExamController) DeletePastExam(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
 		return
 	}
+
+	fmt.Printf("Attempting to delete past exam with ID: %d\n", id)
 
 	// Get user ID from context
 	_, exists := ctx.Get("userID")
@@ -313,19 +364,179 @@ func (c *PastExamController) DeletePastExam(ctx *gin.Context) {
 	// Call service to delete past exam
 	err = c.pastExamService.DeleteExam(ctx, id)
 	if err != nil {
-		if errors.Is(err, apperrors.ErrPastExamNotFound) {
-			// If exam doesn't exist, just return the error
-			middleware.HandleAPIError(ctx, err)
+		fmt.Printf("Error deleting past exam: %v\n", err)
+		
+		// Handle specific error cases
+		switch {
+		case errors.Is(err, apperrors.ErrPastExamNotFound):
+			ctx.JSON(http.StatusNotFound, dto.NewErrorResponse(
+				dto.NewErrorDetail(dto.ErrorCodeResourceNotFound, "Past exam not found")))
+			return
+		case errors.Is(err, apperrors.ErrPermissionDenied) || strings.Contains(err.Error(), "unauthorized"):
+			ctx.JSON(http.StatusForbidden, dto.NewErrorResponse(
+				dto.NewErrorDetail(dto.ErrorCodeForbidden, "You don't have permission to delete this past exam")))
+			return
+		default:
+			ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+				dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to delete past exam").WithDetails(err.Error())))
 			return
 		}
-		// For other errors, log and continue with deletion attempt
-		logger.Warn().Err(err).Int64("examID", id).Msg("Error getting exam details before deletion")
 	}
 
-	// Delete associated files
-	if err := c.fileStorage.DeleteFile(fmt.Sprintf("past_exam_%d", id)); err != nil {
-		logger.Error().Err(err).Int64("examId", id).Msg("Failed to delete files from storage")
+	// Delete associated files - now handled by the service
+	fmt.Println("********* DeletePastExam BAŞARILI *********")
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(
+		dto.SuccessResponse{Message: "Past exam deleted successfully"}))
+}
+
+// AddFileToPastExam godoc
+// @Summary Add files to an existing past exam
+// @Description Add one or more files to an existing past exam
+// @Tags past-exams
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Past exam ID"
+// @Param files formData file true "Files to upload (can be multiple)"
+// @Success 200 {object} dto.APIResponse{data=dto.SuccessResponse}
+// @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail} "Unauthorized: JWT token missing or invalid"
+// @Failure 403 {object} dto.APIResponse{error=dto.ErrorDetail} "Forbidden: User does not have instructor role or is not the creator"
+// @Failure 404 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Router /past-exams/{id}/files [post]
+func (c *PastExamController) AddFileToPastExam(ctx *gin.Context) {
+	fmt.Println("********* AddFileToPastExam BAŞLANGIÇ *********")
+	
+	// Parse exam ID from path
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid past exam ID")))
+		return
+	}
+	
+	fmt.Printf("Adding files to past exam with ID: %d\n", id)
+
+	// Get files
+	var files []*multipart.FileHeader
+	
+	// Get files from the multipart form
+	form, err := ctx.MultipartForm()
+	if err == nil && form != nil && form.File != nil {
+		if uploadedFiles, ok := form.File["files"]; ok && len(uploadedFiles) > 0 {
+			files = uploadedFiles
+			fmt.Printf("Files included: %d files\n", len(files))
+		} else {
+			fmt.Println("No files provided in the 'files' field")
+		}
+	} else {
+		fmt.Println("No files provided or error getting files")
+	}
+	
+	if len(files) == 0 {
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "No valid files provided")))
+		return
 	}
 
-	ctx.JSON(http.StatusNoContent, nil)
+	// Process each file
+	successCount := 0
+	var lastError error
+	
+	for _, fileHeader := range files {
+		// Add file to past exam
+		err = c.pastExamService.AddFileToPastExam(ctx, id, fileHeader)
+		if err != nil {
+			fmt.Printf("Error adding file '%s' to past exam: %v\n", fileHeader.Filename, err)
+			lastError = err
+		} else {
+			successCount++
+		}
+	}
+	
+	if successCount == 0 && lastError != nil {
+		// All files failed to upload
+		switch {
+		case errors.Is(lastError, apperrors.ErrPastExamNotFound):
+			ctx.JSON(http.StatusNotFound, dto.NewErrorResponse(
+				dto.NewErrorDetail(dto.ErrorCodeResourceNotFound, "Past exam not found")))
+		case errors.Is(lastError, apperrors.ErrPermissionDenied) || strings.Contains(lastError.Error(), "unauthorized"):
+			ctx.JSON(http.StatusForbidden, dto.NewErrorResponse(
+				dto.NewErrorDetail(dto.ErrorCodeForbidden, "You don't have permission to update this past exam")))
+		default:
+			ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+				dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to add files to past exam").WithDetails(lastError.Error())))
+		}
+		return
+	}
+
+	fmt.Printf("********* AddFileToPastExam BAŞARILI: %d/%d files added *********\n", successCount, len(files))
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(
+		dto.SuccessResponse{Message: fmt.Sprintf("%d files added to past exam successfully", successCount)}))
+}
+
+// DeleteFileFromPastExam godoc
+// @Summary Delete a file from a past exam
+// @Description Remove a file from a past exam
+// @Tags past-exams
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Past exam ID"
+// @Param fileId path int true "File ID"
+// @Success 200 {object} dto.APIResponse{data=dto.SuccessResponse}
+// @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail} "Unauthorized: JWT token missing or invalid"
+// @Failure 403 {object} dto.APIResponse{error=dto.ErrorDetail} "Forbidden: User does not have instructor role or is not the creator"
+// @Failure 404 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Router /past-exams/{id}/files/{fileId} [delete]
+func (c *PastExamController) DeleteFileFromPastExam(ctx *gin.Context) {
+	fmt.Println("********* DeleteFileFromPastExam BAŞLANGIÇ *********")
+	
+	// Parse exam ID from path
+	examIDStr := ctx.Param("id")
+	examID, err := strconv.ParseInt(examIDStr, 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid past exam ID")))
+		return
+	}
+
+	// Parse file ID from path
+	fileIDStr := ctx.Param("fileId")
+	fileID, err := strconv.ParseInt(fileIDStr, 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid file ID")))
+		return
+	}
+	
+	fmt.Printf("Deleting file %d from past exam with ID: %d\n", fileID, examID)
+
+	// Delete file from past exam
+	err = c.pastExamService.RemoveFileFromPastExam(ctx, examID, fileID)
+	if err != nil {
+		fmt.Printf("Error deleting file from past exam: %v\n", err)
+		
+		// Handle specific error cases
+		switch {
+		case errors.Is(err, apperrors.ErrPastExamNotFound):
+			ctx.JSON(http.StatusNotFound, dto.NewErrorResponse(
+				dto.NewErrorDetail(dto.ErrorCodeResourceNotFound, "Past exam not found")))
+		case errors.Is(err, apperrors.ErrPermissionDenied) || strings.Contains(err.Error(), "unauthorized"):
+			ctx.JSON(http.StatusForbidden, dto.NewErrorResponse(
+				dto.NewErrorDetail(dto.ErrorCodeForbidden, "You don't have permission to modify this past exam")))
+		default:
+			ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+				dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to delete file from past exam").WithDetails(err.Error())))
+		}
+		return
+	}
+
+	fmt.Println("********* DeleteFileFromPastExam BAŞARILI *********")
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(
+		dto.SuccessResponse{Message: "File deleted from past exam successfully"}))
 }

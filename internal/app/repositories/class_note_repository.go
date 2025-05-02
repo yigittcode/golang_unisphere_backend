@@ -22,7 +22,7 @@ func NewClassNoteRepository(db *pgxpool.Pool) *ClassNoteRepository {
 }
 
 // GetAll retrieves all class notes with filtering and pagination
-func (r *ClassNoteRepository) GetAll(ctx context.Context, departmentID *int64, courseCode *string, page, pageSize int) ([]models.ClassNote, int64, error) {
+func (r *ClassNoteRepository) GetAll(ctx context.Context, departmentID *int64, courseCode *string, instructorID *int64, page, pageSize int) ([]models.ClassNote, int64, error) {
 	// Build base query
 	query := squirrel.Select(
 		"id", "course_code", "title", "description", "content",
@@ -37,6 +37,9 @@ func (r *ClassNoteRepository) GetAll(ctx context.Context, departmentID *int64, c
 	}
 	if courseCode != nil {
 		query = query.Where("course_code = ?", *courseCode)
+	}
+	if instructorID != nil {
+		query = query.Where("user_id = ?", *instructorID)
 	}
 
 	// Add pagination
@@ -156,6 +159,9 @@ func (r *ClassNoteRepository) Create(ctx context.Context, note *models.ClassNote
 
 // Update updates an existing class note
 func (r *ClassNoteRepository) Update(ctx context.Context, note *models.ClassNote) error {
+	// Log the SQL query for debugging
+	fmt.Printf("Updating class note with ID: %d\n", note.ID)
+	
 	query := squirrel.Update("class_notes").
 		Set("course_code", note.CourseCode).
 		Set("title", note.Title).
@@ -172,13 +178,37 @@ func (r *ClassNoteRepository) Update(ctx context.Context, note *models.ClassNote
 		return fmt.Errorf("error building SQL: %w", err)
 	}
 
+	// Log the SQL query for debugging
+	fmt.Printf("Generated SQL: %s\n", sql)
+	fmt.Printf("SQL args: %v\n", args)
+
 	result, err := r.db.Exec(ctx, sql, args...)
 	if err != nil {
+		fmt.Printf("Database error: %v\n", err)
 		return fmt.Errorf("error executing query: %w", err)
 	}
 
-	if result.RowsAffected() == 0 {
-		return fmt.Errorf("no rows affected")
+	// Log the affected rows
+	rowsAffected := result.RowsAffected()
+	fmt.Printf("Rows affected: %d\n", rowsAffected)
+
+	if rowsAffected == 0 {
+		// Check if the note exists
+		var count int
+		checkSQL := "SELECT COUNT(*) FROM class_notes WHERE id = $1"
+		err := r.db.QueryRow(ctx, checkSQL, note.ID).Scan(&count)
+		if err != nil {
+			fmt.Printf("Error checking note existence: %v\n", err)
+			return fmt.Errorf("error checking note existence: %w", err)
+		}
+		
+		if count == 0 {
+			fmt.Printf("Note with ID %d does not exist\n", note.ID)
+			return fmt.Errorf("class note with id %d does not exist", note.ID)
+		} else {
+			fmt.Printf("Note exists but no rows were affected\n")
+			return fmt.Errorf("note exists but no rows were affected, possibly no changes were made")
+		}
 	}
 
 	return nil

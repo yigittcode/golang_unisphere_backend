@@ -7,46 +7,42 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/yigit/unisphere/internal/app/models/dto/enums"
 )
 
 // ErrorResponse represents a standardized error response format
 // It's an alias of APIResponse to maintain backward compatibility with Swagger documentation
 type ErrorResponse = APIResponse
 
-// ErrorCode represents standardized error codes
-type ErrorCode string
+// Import error code and severity enums from enums package
+type ErrorCode = enums.ErrorCode
+type ErrorSeverity = enums.ErrorSeverity
 
-// Standard error codes for the application
-const (
-	ErrorCodeInvalidCredentials    ErrorCode = "AUTH_001"
-	ErrorCodeInvalidEmail          ErrorCode = "AUTH_002"
-	ErrorCodeInvalidPassword       ErrorCode = "AUTH_003"
-	ErrorCodeInvalidStudentID      ErrorCode = "AUTH_004"
-	ErrorCodeInvalidToken          ErrorCode = "AUTH_005"
-	ErrorCodeExpiredToken          ErrorCode = "AUTH_006"
-	ErrorCodeTokenNotFound         ErrorCode = "AUTH_007"
-	ErrorCodeUnauthorized          ErrorCode = "AUTH_008"
-	ErrorCodeResourceNotFound      ErrorCode = "RES_001"
-	ErrorCodeResourceAlreadyExists ErrorCode = "RES_002"
-	ErrorCodeResourceInvalid       ErrorCode = "RES_003"
-	ErrorCodeValidationFailed      ErrorCode = "VAL_001"
-	ErrorCodeInternalServer        ErrorCode = "SRV_001"
-	ErrorCodeDatabaseError         ErrorCode = "SRV_002"
-	ErrorCodeExternalServiceError  ErrorCode = "SRV_003"
-	ErrorCodeBadRequest            ErrorCode = "BAD_REQUEST"
-	ErrorCodeForbidden             ErrorCode = "FORBIDDEN"
-	ErrorCodeInvalidRequest        ErrorCode = "INVALID_REQUEST"
-)
-
-// ErrorSeverity represents the severity level of an error
-type ErrorSeverity string
-
-// Severity levels
-const (
-	ErrorSeverityInfo     ErrorSeverity = "INFO"
-	ErrorSeverityWarning  ErrorSeverity = "WARNING"
-	ErrorSeverityError    ErrorSeverity = "ERROR"
-	ErrorSeverityCritical ErrorSeverity = "CRITICAL"
+// Use the constants from the enums package directly
+var (
+	ErrorCodeInvalidCredentials    = enums.ErrorCodeInvalidCredentials
+	ErrorCodeInvalidEmail          = enums.ErrorCodeInvalidEmail
+	ErrorCodeInvalidPassword       = enums.ErrorCodeInvalidPassword
+	ErrorCodeInvalidStudentID      = enums.ErrorCodeInvalidStudentID
+	ErrorCodeInvalidToken          = enums.ErrorCodeInvalidToken
+	ErrorCodeExpiredToken          = enums.ErrorCodeExpiredToken
+	ErrorCodeTokenNotFound         = enums.ErrorCodeTokenNotFound
+	ErrorCodeUnauthorized          = enums.ErrorCodeUnauthorized
+	ErrorCodeResourceNotFound      = enums.ErrorCodeResourceNotFound
+	ErrorCodeResourceAlreadyExists = enums.ErrorCodeResourceAlreadyExists
+	ErrorCodeResourceInvalid       = enums.ErrorCodeResourceInvalid
+	ErrorCodeValidationFailed      = enums.ErrorCodeValidationFailed
+	ErrorCodeInternalServer        = enums.ErrorCodeInternalServer
+	ErrorCodeDatabaseError         = enums.ErrorCodeDatabaseError
+	ErrorCodeExternalServiceError  = enums.ErrorCodeExternalServiceError
+	ErrorCodeBadRequest            = enums.ErrorCodeBadRequest
+	ErrorCodeForbidden             = enums.ErrorCodeForbidden
+	ErrorCodeInvalidRequest        = enums.ErrorCodeInvalidRequest
+	
+	ErrorSeverityInfo     = enums.ErrorSeverityInfo
+	ErrorSeverityWarning  = enums.ErrorSeverityWarning
+	ErrorSeverityError    = enums.ErrorSeverityError
+	ErrorSeverityCritical = enums.ErrorSeverityCritical
 )
 
 // ErrorDetail represents detailed error information

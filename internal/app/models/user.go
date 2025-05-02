@@ -18,24 +18,7 @@ type User struct {
 	LastLoginAt        *time.Time `json:"lastLoginAt,omitempty" db:"last_login_at" example:"2024-04-20T18:00:00Z"` // Timestamp of the last login (nullable)
 	DepartmentID       *int64     `json:"departmentId,omitempty" db:"department_id" example:"1"`                   // User's department (nullable)
 	ProfilePhotoFileID *int64     `json:"profilePhotoFileId,omitempty" db:"profile_photo_file_id"`                 // Profile photo file ID (nullable)
-	// last_login_at from DB is missing, add if needed
-}
 
-// Student defines the student model based on the 'students' table
-type Student struct {
-	ID             int64       `json:"id" db:"id"`
-	UserID         int64       `json:"userId" db:"user_id"`
-	Identifier     string      `json:"identifier" db:"identifier"`
-	GraduationYear *int        `json:"graduationYear,omitempty" db:"graduation_year"` // Pointer for potential NULL
-	User           *User       `json:"user,omitempty"`                                // Relation, no db tag
-	Department     *Department `json:"department,omitempty"`                          // Relation, no db tag
-}
-
-// Instructor defines the instructor model based on the 'instructors' table
-type Instructor struct {
-	ID         int64       `json:"id" db:"id"`
-	UserID     int64       `json:"userId" db:"user_id"`
-	Title      string      `json:"title" db:"title"`
-	User       *User       `json:"user,omitempty"`       // Relation, no db tag
+	// Relations (populated when needed)
 	Department *Department `json:"department,omitempty"` // Relation, no db tag
 }

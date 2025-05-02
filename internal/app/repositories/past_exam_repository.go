@@ -22,27 +22,33 @@ func NewPastExamRepository(db *pgxpool.Pool) *PastExamRepository {
 }
 
 // GetAll retrieves all past exams with filtering and pagination
-func (r *PastExamRepository) GetAll(ctx context.Context, departmentID *int64, courseCode *string, year *int, term *string, page, pageSize int) ([]models.PastExam, int64, error) {
-	// Build base query
+func (r *PastExamRepository) GetAll(ctx context.Context, facultyID *int64, departmentID *int64, courseCode *string, year *int, term *string, page, pageSize int) ([]models.PastExam, int64, error) {
+	// Build base query with table aliases
 	query := squirrel.Select(
-		"id", "year", "term", "course_code", "title", "content",
-		"department_id", "instructor_id", "created_at", "updated_at",
+		"pe.id", "pe.year", "pe.term", "pe.course_code", "pe.title", "pe.content",
+		"pe.department_id", "pe.instructor_id", "pe.created_at", "pe.updated_at",
 	).
-		From("past_exams").
+		From("past_exams pe").
 		PlaceholderFormat(squirrel.Dollar)
 
-	// Add filters
+	// Join with departments table if filtering by faculty ID
+	if facultyID != nil {
+		query = query.Join("departments d ON pe.department_id = d.id").
+			Where("d.faculty_id = ?", *facultyID)
+	}
+
+	// Add other filters
 	if departmentID != nil {
-		query = query.Where("department_id = ?", *departmentID)
+		query = query.Where("pe.department_id = ?", *departmentID)
 	}
 	if courseCode != nil {
-		query = query.Where("course_code = ?", *courseCode)
+		query = query.Where("pe.course_code = ?", *courseCode)
 	}
 	if year != nil {
-		query = query.Where("year = ?", *year)
+		query = query.Where("pe.year = ?", *year)
 	}
 	if term != nil {
-		query = query.Where("term = ?", *term)
+		query = query.Where("pe.term = ?", *term)
 	}
 
 	// Add pagination
@@ -86,6 +92,15 @@ func (r *PastExamRepository) GetAll(ctx context.Context, departmentID *int64, co
 		}
 		exam.Term = models.Term(termStr)
 		exams = append(exams, exam)
+	}
+
+	// Load files for each exam
+	for i := range exams {
+		files, err := r.GetPastExamFiles(ctx, exams[i].ID)
+		if err != nil {
+			return nil, 0, fmt.Errorf("error getting files for exam %d: %w", exams[i].ID, err)
+		}
+		exams[i].Files = files
 	}
 
 	return exams, total, nil

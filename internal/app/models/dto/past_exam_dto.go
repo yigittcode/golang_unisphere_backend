@@ -23,36 +23,36 @@ type PastExamFileResponse struct {
 
 // PastExamResponse represents basic past exam information
 type PastExamResponse struct {
-	ID           int64                  `json:"id"`
-	CourseCode   string                 `json:"courseCode"`
-	Year         int                    `json:"year"`
-	Term         string                 `json:"term"`
-	Title        string                 `json:"title"`
-	Content      string                 `json:"content"`
-	DepartmentID int64                  `json:"departmentId"`
-	InstructorID int64                  `json:"instructorId"`
-	Files        []PastExamFileResponse `json:"files,omitempty"`
-	CreatedAt    time.Time              `json:"createdAt"`
-	UpdatedAt    time.Time              `json:"updatedAt"`
+	ID           int64     `json:"id"`
+	CourseCode   string    `json:"courseCode"`
+	Year         int       `json:"year"`
+	Term         string    `json:"term"`
+	Title        string    `json:"title"`
+	Content      string    `json:"content"`
+	DepartmentID int64     `json:"departmentId"`
+	InstructorID int64     `json:"instructorId"`
+	FileIDs      []int64   `json:"fileIds,omitempty"`
+	CreatedAt    time.Time `json:"createdAt"`
+	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
 // CreatePastExamRequest represents past exam creation data
 type CreatePastExamRequest struct {
-	CourseCode   string `json:"courseCode" binding:"required"`
-	Year         int    `json:"year" binding:"required,gt=1900"`
-	Term         string `json:"term" binding:"required,oneof=FALL SPRING"`
-	Title        string `json:"title" binding:"required"`
-	Content      string `json:"content" binding:"required"`
-	DepartmentID int64  `json:"departmentId" binding:"required,gt=0"`
+	CourseCode   string `json:"courseCode" form:"courseCode" binding:"required"`
+	Year         int    `json:"year" form:"year" binding:"required,gt=1900"`
+	Term         string `json:"term" form:"term" binding:"required,oneof=FALL SPRING"`
+	Title        string `json:"title" form:"title" binding:"required"`
+	Content      string `json:"content" form:"content" binding:"omitempty"` // Make Content optional
+	DepartmentID int64  `json:"departmentId" form:"departmentId" binding:"required,gt=0"`
 }
 
 // UpdatePastExamRequest represents past exam update data
 type UpdatePastExamRequest struct {
-	CourseCode string `json:"courseCode" binding:"required"`
-	Year       int    `json:"year" binding:"required,gt=1900"`
-	Term       string `json:"term" binding:"required,oneof=FALL SPRING"`
-	Title      string `json:"title" binding:"required"`
-	Content    string `json:"content" binding:"required"`
+	CourseCode string `json:"courseCode" form:"courseCode" binding:"required"`
+	Year       int    `json:"year" form:"year" binding:"required,gt=1900"`
+	Term       string `json:"term" form:"term" binding:"required,oneof=FALL SPRING"`
+	Title      string `json:"title" form:"title" binding:"required"`
+	Content    string `json:"content" form:"content" binding:"omitempty"` // Make Content optional
 }
 
 // PastExamListResponse represents a list of past exams
@@ -63,6 +63,7 @@ type PastExamListResponse struct {
 
 // PastExamFilterRequest represents past exam filter parameters
 type PastExamFilterRequest struct {
+	FacultyID    *int64  `form:"facultyId,omitempty"`
 	DepartmentID *int64  `form:"departmentId,omitempty"`
 	CourseCode   *string `form:"courseCode,omitempty"`
 	Year         *int    `form:"year,omitempty"`

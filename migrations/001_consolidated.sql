@@ -94,25 +94,6 @@ ALTER TABLE files
     FOREIGN KEY (uploaded_by)
     REFERENCES users(id) ON DELETE CASCADE;
 
--- Students table
-CREATE TABLE IF NOT EXISTS students (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL UNIQUE,
-    identifier VARCHAR(20) NOT NULL UNIQUE,
-    graduation_year INT,
-    CONSTRAINT fk_student_user
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
--- Instructors table
-CREATE TABLE IF NOT EXISTS instructors (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL UNIQUE,
-    title VARCHAR(100) NOT NULL,
-    CONSTRAINT fk_instructor_user
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
 -- Past exams table
 CREATE TABLE IF NOT EXISTS past_exams (
     id BIGSERIAL PRIMARY KEY,
@@ -128,7 +109,7 @@ CREATE TABLE IF NOT EXISTS past_exams (
     CONSTRAINT fk_past_exams_department
         FOREIGN KEY (department_id) REFERENCES departments(id),
     CONSTRAINT fk_past_exams_instructor
-        FOREIGN KEY (instructor_id) REFERENCES instructors(id)
+        FOREIGN KEY (instructor_id) REFERENCES users(id)
 );
 
 -- updated_at trigger for Past exams
@@ -197,7 +178,7 @@ CREATE TABLE IF NOT EXISTS course_offerings (
     CONSTRAINT fk_course_offerings_course
         FOREIGN KEY (course_id) REFERENCES courses(id),
     CONSTRAINT fk_course_offerings_instructor
-        FOREIGN KEY (instructor_id) REFERENCES instructors(id),
+        FOREIGN KEY (instructor_id) REFERENCES users(id),
     CONSTRAINT unique_course_offering UNIQUE (course_id, instructor_id, year, term)
 );
 

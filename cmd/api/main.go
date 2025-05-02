@@ -28,7 +28,7 @@ import (
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-// @description Enter your JWT token (without Bearer prefix)
+// @description Enter 'Bearer' followed by a space and your JWT token. Example: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
 
 func main() {
 	// Initialize the server with all its dependencies

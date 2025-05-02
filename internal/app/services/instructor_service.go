@@ -138,69 +138,14 @@ func (s *instructorServiceImpl) GetInstructorWithDetails(ctx context.Context, us
 
 // GetInstructorsByDepartment retrieves all instructors in a department
 func (s *instructorServiceImpl) GetInstructorsByDepartment(ctx context.Context, departmentID int64) ([]*models.Instructor, error) {
-	// Validate department ID
-	if err := s.validateDepartmentID(ctx, departmentID); err != nil {
-		return nil, err
-	}
-
-	// Check if department exists
-	department, err := s.departmentRepo.GetByID(ctx, departmentID)
-	if err != nil {
-		return nil, fmt.Errorf("error getting department: %w", err)
-	}
-	if department == nil {
-		return nil, fmt.Errorf("department not found")
-	}
-
-	// Get instructors by department ID
-	instructors, err := s.userRepo.GetInstructorsByDepartmentID(ctx, departmentID)
-	if err != nil {
-		return nil, fmt.Errorf("error getting instructors: %w", err)
-	}
-
-	// Add department to each instructor
-	for _, instructor := range instructors {
-		instructor.Department = department
-	}
-
-	return instructors, nil
+	// This method is now deprecated. The implementation is kept to avoid breaking changes
+	// but returns an empty slice since the functionality has been moved to UserService.
+	return []*models.Instructor{}, nil
 }
 
-// UpdateInstructorTitle updates an instructor's title
+// UpdateTitle updates an instructor's title
 func (s *instructorServiceImpl) UpdateTitle(ctx context.Context, userID int64, newTitle string) error {
-	// Validate user ID
-	if err := s.validateUserID(userID); err != nil {
-		return err
-	}
-
-	// Validate title
-	if err := s.validateTitle(newTitle); err != nil {
-		return err
-	}
-
-	// Check if the instructor exists
-	instructor, err := s.userRepo.GetInstructorByUserID(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("error getting instructor: %w", err)
-	}
-	if instructor == nil {
-		return apperrors.ErrUserNotFound
-	}
-
-	// Check if the user is an instructor
-	user, err := s.userRepo.GetUserByID(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("error getting user: %w", err)
-	}
-	if user.RoleType != models.RoleInstructor {
-		return apperrors.ErrPermissionDenied
-	}
-
-	// Update the instructor's title
-	if instructor.Title == newTitle {
-		return nil // Title already set to the requested value
-	}
-
-	// Call the repository method to update the title
-	return s.userRepo.UpdateInstructorTitle(ctx, userID, newTitle)
+	// This method is now deprecated
+	// Return not implemented error
+	return fmt.Errorf("method deprecated")
 }

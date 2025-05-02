@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"mime/multipart"
-	"path/filepath"
 	"strings"
 	"time"
 	"unicode"
@@ -24,8 +23,7 @@ import (
 // AuthService defines the interface for authentication-related operations
 type AuthService interface {
 	// User registration
-	RegisterStudent(ctx context.Context, req *dto.RegisterStudentRequest) (*dto.TokenResponse, error)
-	RegisterInstructor(ctx context.Context, req *dto.RegisterInstructorRequest) (*dto.TokenResponse, error)
+	Register(ctx context.Context, req *dto.RegisterRequest) (*dto.TokenResponse, error)
 
 	// Authentication
 	Login(ctx context.Context, req *dto.LoginRequest) (*dto.TokenResponse, error)
@@ -146,23 +144,6 @@ func (s *authServiceImpl) ValidatePassword(password string) error {
 	return nil
 }
 
-// validateIdentifier validates a student identifier
-func (s *authServiceImpl) validateIdentifier(identifier string) error {
-	if identifier == "" {
-		return fmt.Errorf("%w: student identifier cannot be empty", apperrors.ErrValidationFailed)
-	}
-
-	// Student identifier should match the pattern (8 digits)
-	validator := validation.NewStringValidation(identifier).
-		WithPattern(validation.CompiledPatterns.Identifier)
-
-	if !validator.Validate() {
-		return apperrors.ErrValidationFailed
-	}
-
-	return nil
-}
-
 // validateUserID validates a user ID
 func (s *authServiceImpl) validateUserID(userID int64) error {
 	if userID <= 0 {
@@ -181,84 +162,8 @@ func (s *authServiceImpl) validateToken(token string) error {
 	return nil
 }
 
-// RegisterStudent registers a new student
-func (s *authServiceImpl) RegisterStudent(ctx context.Context, req *dto.RegisterStudentRequest) (*dto.TokenResponse, error) {
-	// Validate email
-	if err := s.validateEmail(req.Email); err != nil {
-		return nil, err
-	}
-
-	// Validate password
-	if err := s.ValidatePassword(req.Password); err != nil {
-		return nil, err
-	}
-
-	// Validate student identifier
-	if err := s.validateIdentifier(req.StudentID); err != nil {
-		return nil, err
-	}
-
-	// Check if student identifier already exists
-	exists, err := s.userRepo.IdentifierExists(ctx, req.StudentID)
-	if err != nil {
-		return nil, fmt.Errorf("error checking if student identifier exists: %w", err)
-	}
-	if exists {
-		return nil, apperrors.ErrIdentifierExists
-	}
-
-	// Check if email already exists
-	exists, err = s.userRepo.EmailExists(ctx, req.Email)
-	if err != nil {
-		return nil, fmt.Errorf("error checking if email exists: %w", err)
-	}
-	if exists {
-		return nil, apperrors.ErrEmailAlreadyExists
-	}
-
-	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, fmt.Errorf("error hashing password: %w", err)
-	}
-
-	// Create user with department_id
-	user := &models.User{
-		Email:        req.Email,
-		Password:     string(hashedPassword),
-		FirstName:    req.FirstName,
-		LastName:     req.LastName,
-		RoleType:     models.RoleStudent,
-		IsActive:     true,
-		DepartmentID: &req.DepartmentID,
-	}
-
-	// Create user in DB
-	userID, err := s.userRepo.CreateUser(ctx, user)
-	if err != nil {
-		return nil, fmt.Errorf("error creating user: %w", err)
-	}
-
-	// Create student
-	student := &models.Student{
-		UserID:         userID,
-		Identifier:     req.StudentID,
-		GraduationYear: req.GraduationYear,
-	}
-
-	// Create student in DB
-	err = s.userRepo.CreateStudent(ctx, student)
-	if err != nil {
-		return nil, fmt.Errorf("error creating student: %w", err)
-	}
-
-	// Generate token
-	user.ID = userID // Set ID for token generation
-	return s.generateTokenResponse(ctx, user)
-}
-
-// RegisterInstructor registers a new instructor
-func (s *authServiceImpl) RegisterInstructor(ctx context.Context, req *dto.RegisterInstructorRequest) (*dto.TokenResponse, error) {
+// Register registers a new user
+func (s *authServiceImpl) Register(ctx context.Context, req *dto.RegisterRequest) (*dto.TokenResponse, error) {
 	// Validate email
 	if err := s.validateEmail(req.Email); err != nil {
 		return nil, err
@@ -290,7 +195,7 @@ func (s *authServiceImpl) RegisterInstructor(ctx context.Context, req *dto.Regis
 		Password:     string(hashedPassword),
 		FirstName:    req.FirstName,
 		LastName:     req.LastName,
-		RoleType:     models.RoleInstructor,
+		RoleType:     req.RoleType,
 		IsActive:     true,
 		DepartmentID: &req.DepartmentID,
 	}
@@ -299,18 +204,6 @@ func (s *authServiceImpl) RegisterInstructor(ctx context.Context, req *dto.Regis
 	userID, err := s.userRepo.CreateUser(ctx, user)
 	if err != nil {
 		return nil, fmt.Errorf("error creating user: %w", err)
-	}
-
-	// Create instructor
-	instructor := &models.Instructor{
-		UserID: userID,
-		Title:  req.Title,
-	}
-
-	// Create instructor in DB
-	err = s.userRepo.CreateInstructor(ctx, instructor)
-	if err != nil {
-		return nil, fmt.Errorf("error creating instructor: %w", err)
 	}
 
 	// Generate token
@@ -422,43 +315,14 @@ func (s *authServiceImpl) GetProfile(ctx context.Context, userID int64) (*dto.Us
 
 	// Create base response
 	response := &dto.UserResponse{
-		ID:              user.ID,
-		Email:           user.Email,
-		FirstName:       user.FirstName,
-		LastName:        user.LastName,
-		Role:            string(user.RoleType),
-		DepartmentID:    user.DepartmentID,
-		ProfilePhotoURL: profilePhotoURL,
-	}
-
-	// Get role-specific information
-	switch user.RoleType {
-	case models.RoleStudent:
-		// Get student details
-		student, err := s.userRepo.GetStudentByUserID(ctx, userID)
-		if err != nil {
-			return nil, fmt.Errorf("error retrieving student details: %w", err)
-		}
-
-		studentResponse := &dto.StudentResponse{
-			UserResponse:   *response,
-			StudentID:      student.Identifier,
-			GraduationYear: student.GraduationYear,
-		}
-		return &studentResponse.UserResponse, nil
-
-	case models.RoleInstructor:
-		// Get instructor details
-		instructor, err := s.userRepo.GetInstructorByUserID(ctx, userID)
-		if err != nil {
-			return nil, fmt.Errorf("error retrieving instructor details: %w", err)
-		}
-
-		instructorResponse := &dto.InstructorResponse{
-			UserResponse: *response,
-			Title:        instructor.Title,
-		}
-		return &instructorResponse.UserResponse, nil
+		ID:                 user.ID,
+		Email:              user.Email,
+		FirstName:          user.FirstName,
+		LastName:           user.LastName,
+		Role:               string(user.RoleType),
+		DepartmentID:       user.DepartmentID,
+		ProfilePhotoFileID: user.ProfilePhotoFileID,
+		ProfilePhotoURL:    profilePhotoURL,
 	}
 
 	return response, nil
@@ -489,222 +353,17 @@ func (s *authServiceImpl) UpdateProfile(ctx context.Context, userID int64, req *
 
 // UpdateProfilePhoto updates a user's profile photo
 func (s *authServiceImpl) UpdateProfilePhoto(ctx context.Context, userID int64, file *multipart.FileHeader) error {
-	// Validate file
-	if file == nil {
-		return fmt.Errorf("%w: no file provided", apperrors.ErrValidationFailed)
-	}
-
-	// Check file size (max 5MB)
-	if file.Size > 5*1024*1024 {
-		return fmt.Errorf("%w: file size exceeds 5MB limit", apperrors.ErrValidationFailed)
-	}
-
-	// Check file type
-	contentType := file.Header.Get("Content-Type")
-	if !strings.HasPrefix(contentType, "image/") {
-		return fmt.Errorf("%w: invalid file type. Only images are allowed", apperrors.ErrValidationFailed)
-	}
-
-	s.logger.Debug().
-		Int64("userID", userID).
-		Str("fileName", file.Filename).
-		Int64("fileSize", file.Size).
-		Str("contentType", contentType).
-		Msg("Starting profile photo upload")
-
-	// Generate unique filename
-	filename := fmt.Sprintf("profile_photo_%d_%d%s", userID, time.Now().Unix(), filepath.Ext(file.Filename))
-
-	// Save file using fileStorage
-	fileURL, err := s.fileStorage.SaveFileWithPath(file, "profile_photos")
-	if err != nil {
-		s.logger.Error().Err(err).
-			Str("filename", filename).
-			Msg("Failed to save file to storage")
-		return fmt.Errorf("failed to save profile photo: %w", err)
-	}
-
-	s.logger.Debug().
-		Str("fileURL", fileURL).
-		Str("filename", filename).
-		Msg("File saved successfully")
-
-	// Extract relative path from URL
-	relativeFilePath := strings.TrimPrefix(fileURL, s.fileStorage.GetBaseURL())
-	relativeFilePath = strings.TrimPrefix(relativeFilePath, "/uploads/")
-
-	// Create file record in database
-	fileRecord := &models.File{
-		FileName:     filename,
-		FilePath:     relativeFilePath,
-		FileURL:      fileURL,
-		FileSize:     file.Size,
-		FileType:     contentType,
-		ResourceType: models.FileTypeProfilePhoto,
-		ResourceID:   userID,
-		UploadedBy:   userID,
-	}
-
-	s.logger.Debug().
-		Interface("fileRecord", fileRecord).
-		Msg("Attempting to create file record in database")
-
-	fileID, err := s.fileRepo.Create(ctx, fileRecord)
-	if err != nil {
-		s.logger.Error().Err(err).
-			Interface("fileRecord", fileRecord).
-			Msg("Failed to create file record in database")
-		// If DB save fails, try to delete the physical file
-		if delErr := s.fileStorage.DeleteFile(fileRecord.FilePath); delErr != nil {
-			s.logger.Error().Err(delErr).
-				Str("filePath", fileRecord.FilePath).
-				Msg("Failed to delete file after database error")
-		}
-		return fmt.Errorf("failed to save file record: %w", err)
-	}
-
-	s.logger.Debug().
-		Int64("fileID", fileID).
-		Msg("File record created successfully")
-
-	// Get old profile photo ID if exists
-	user, err := s.userRepo.GetUserByID(ctx, userID)
-	if err != nil {
-		s.logger.Error().Err(err).
-			Int64("userID", userID).
-			Msg("Failed to get user details")
-		// If we can't get the user, clean up the new file and return error
-		if delErr := s.fileStorage.DeleteFile(fileRecord.FilePath); delErr != nil {
-			s.logger.Error().Err(delErr).
-				Str("filePath", fileRecord.FilePath).
-				Msg("Failed to delete file after user fetch error")
-		}
-		if delErr := s.fileRepo.Delete(ctx, fileID); delErr != nil {
-			s.logger.Error().Err(delErr).
-				Int64("fileID", fileID).
-				Msg("Failed to delete file record after user fetch error")
-		}
-		return fmt.Errorf("failed to get user: %w", err)
-	}
-
-	// Update user's profile photo ID
-	err = s.userRepo.UpdateProfilePhotoFileID(ctx, userID, &fileID)
-	if err != nil {
-		s.logger.Error().Err(err).
-			Int64("userID", userID).
-			Int64("fileID", fileID).
-			Msg("Failed to update user's profile photo ID")
-		// If user update fails, try to delete both the physical file and the file record
-		if delErr := s.fileStorage.DeleteFile(fileRecord.FilePath); delErr != nil {
-			s.logger.Error().Err(delErr).
-				Str("filePath", fileRecord.FilePath).
-				Msg("Failed to delete file after profile update error")
-		}
-		if delErr := s.fileRepo.Delete(ctx, fileID); delErr != nil {
-			s.logger.Error().Err(delErr).
-				Int64("fileID", fileID).
-				Msg("Failed to delete file record after profile update error")
-		}
-		return fmt.Errorf("failed to update user's profile photo: %w", err)
-	}
-
-	s.logger.Debug().
-		Int64("userID", userID).
-		Int64("fileID", fileID).
-		Msg("Profile photo ID updated successfully")
-
-	// If user had an old profile photo, delete it
-	if user.ProfilePhotoFileID != nil {
-		oldFile, err := s.fileRepo.GetByID(ctx, *user.ProfilePhotoFileID)
-		if err != nil {
-			s.logger.Warn().Err(err).
-				Int64("oldFileID", *user.ProfilePhotoFileID).
-				Msg("Failed to get old profile photo details")
-		} else if oldFile != nil {
-			if delErr := s.fileStorage.DeleteFile(oldFile.FilePath); delErr != nil {
-				s.logger.Warn().Err(delErr).
-					Str("oldFilePath", oldFile.FilePath).
-					Msg("Failed to delete old profile photo file")
-			}
-			if delErr := s.fileRepo.Delete(ctx, *user.ProfilePhotoFileID); delErr != nil {
-				s.logger.Warn().Err(delErr).
-					Int64("oldFileID", *user.ProfilePhotoFileID).
-					Msg("Failed to delete old profile photo record")
-			}
-			s.logger.Info().
-				Int64("oldFileID", *user.ProfilePhotoFileID).
-				Msg("Old profile photo deleted successfully")
-		}
-	}
-
-	s.logger.Info().
-		Int64("userID", userID).
-		Int64("fileID", fileID).
-		Str("fileURL", fileURL).
-		Msg("Profile photo updated successfully")
-
-	return nil
+	// Delegate to the user service for a consistent implementation
+	userService := NewUserService(s.userRepo, s.departmentRepo, s.fileRepo, s.fileStorage, s.logger)
+	_, err := userService.UpdateProfilePhoto(ctx, userID, file)
+	return err
 }
 
 // DeleteProfilePhoto deletes a user's profile photo
 func (s *authServiceImpl) DeleteProfilePhoto(ctx context.Context, userID int64) error {
-	// Get user to check if they have a profile photo
-	user, err := s.userRepo.GetUserByID(ctx, userID)
-	if err != nil {
-		s.logger.Error().Err(err).
-			Int64("userID", userID).
-			Msg("Failed to get user details")
-		return fmt.Errorf("failed to get user: %w", err)
-	}
-
-	// If user has no profile photo, return success
-	if user.ProfilePhotoFileID == nil {
-		s.logger.Info().
-			Int64("userID", userID).
-			Msg("User has no profile photo to delete")
-		return nil
-	}
-
-	// Get file details
-	file, err := s.fileRepo.GetByID(ctx, *user.ProfilePhotoFileID)
-	if err != nil {
-		s.logger.Error().Err(err).
-			Int64("fileID", *user.ProfilePhotoFileID).
-			Msg("Failed to get file details")
-		return fmt.Errorf("failed to get file details: %w", err)
-	}
-
-	// Delete physical file
-	if err := s.fileStorage.DeleteFile(file.FilePath); err != nil {
-		s.logger.Error().Err(err).
-			Str("filePath", file.FilePath).
-			Msg("Failed to delete physical file")
-		// Continue with database cleanup even if file deletion fails
-	}
-
-	// Delete file record from database
-	if err := s.fileRepo.Delete(ctx, *user.ProfilePhotoFileID); err != nil {
-		s.logger.Error().Err(err).
-			Int64("fileID", *user.ProfilePhotoFileID).
-			Msg("Failed to delete file record")
-		return fmt.Errorf("failed to delete file record: %w", err)
-	}
-
-	// Update user's profile photo ID to null
-	err = s.userRepo.UpdateProfilePhotoFileID(ctx, userID, nil)
-	if err != nil {
-		s.logger.Error().Err(err).
-			Int64("userID", userID).
-			Msg("Failed to update user's profile photo ID")
-		return fmt.Errorf("failed to update user profile: %w", err)
-	}
-
-	s.logger.Info().
-		Int64("userID", userID).
-		Int64("fileID", *user.ProfilePhotoFileID).
-		Msg("Profile photo deleted successfully")
-
-	return nil
+	// Delegate to the user service for a consistent implementation
+	userService := NewUserService(s.userRepo, s.departmentRepo, s.fileRepo, s.fileStorage, s.logger)
+	return userService.DeleteProfilePhoto(ctx, userID)
 }
 
 // Helper functions

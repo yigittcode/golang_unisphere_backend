@@ -45,14 +45,15 @@ func NewClassNoteController(classNoteService services.ClassNoteService, fileStor
 // @Tags class-notes
 // @Accept json
 // @Produce json
-// @Security ApiKeyAuth
+// @Security BearerAuth
 // @Param departmentId query int false "Filter by department ID"
 // @Param courseCode query string false "Filter by course code"
+// @Param instructorId query int false "Filter by instructor ID"
 // @Param page query int false "Page number (1-based)" default(1) minimum(1)
 // @Param pageSize query int false "Page size (default: 10, max: 100)" default(10) minimum(1) maximum(100)
 // @Success 200 {object} dto.APIResponse{data=dto.ClassNoteListResponse}
 // @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail} "Unauthorized: JWT token missing or invalid"
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Router /class-notes [get]
 func (c *ClassNoteController) GetAllNotes(ctx *gin.Context) {
@@ -82,11 +83,11 @@ func (c *ClassNoteController) GetAllNotes(ctx *gin.Context) {
 // @Tags class-notes
 // @Accept json
 // @Produce json
-// @Security ApiKeyAuth
+// @Security BearerAuth
 // @Param id path int true "Class note ID"
 // @Success 200 {object} dto.APIResponse{data=dto.ClassNoteResponse}
 // @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail} "Unauthorized: JWT token missing or invalid"
 // @Failure 404 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Router /class-notes/{noteId} [get]
@@ -116,7 +117,7 @@ func (c *ClassNoteController) GetNoteByID(ctx *gin.Context) {
 // @Tags class-notes
 // @Accept multipart/form-data
 // @Produce json
-// @Security ApiKeyAuth
+// @Security BearerAuth
 // @Param courseCode formData string true "Course code"
 // @Param title formData string true "Title"
 // @Param description formData string true "Description"
@@ -125,7 +126,7 @@ func (c *ClassNoteController) GetNoteByID(ctx *gin.Context) {
 // @Param files formData file false "Files to upload" collectionFormat multi
 // @Success 201 {object} dto.APIResponse{data=dto.ClassNoteResponse}
 // @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail} "Unauthorized: JWT token missing or invalid"
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Router /class-notes [post]
 func (c *ClassNoteController) CreateNote(ctx *gin.Context) {
@@ -199,40 +200,60 @@ func (c *ClassNoteController) CreateNote(ctx *gin.Context) {
 // @Tags class-notes
 // @Accept json
 // @Produce json
-// @Security ApiKeyAuth
+// @Security BearerAuth
 // @Param id path int true "Class note ID"
 // @Param request body dto.UpdateClassNoteRequest true "Update data"
 // @Success 200 {object} dto.APIResponse{data=dto.ClassNoteResponse}
 // @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail} "Unauthorized: JWT token missing or invalid"
 // @Failure 404 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Router /class-notes/{noteId} [put]
 func (c *ClassNoteController) UpdateNote(ctx *gin.Context) {
+	fmt.Println("********* UpdateNote BAŞLANGIÇ *********")
+	fmt.Printf("HTTP Method: %s\n", ctx.Request.Method)
+	fmt.Printf("Request URL: %s\n", ctx.Request.URL.String())
+	
 	// Parse ID from path
 	id, err := parseIDParam(ctx, "noteId")
 	if err != nil {
+		fmt.Printf("Invalid class note ID: %v\n", err)
 		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
 			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid class note ID")))
 		return
 	}
+	
+	fmt.Printf("Note ID to update: %d\n", id)
 
 	// Parse request data
 	var req dto.UpdateClassNoteRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
+		fmt.Printf("Error binding JSON: %v\n", err)
 		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
-			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid request format")))
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid request format").WithDetails(err.Error())))
 		return
 	}
+	
+	fmt.Printf("Update request parsed successfully: %+v\n", req)
 
 	// Update note
 	note, err := c.classNoteService.UpdateNote(ctx, id, &req)
 	if err != nil {
+		fmt.Printf("Error updating note: %v\n", err)
+		
+		// Check if it's a not found error
+		if errors.Is(err, apperrors.ErrClassNoteNotFound) {
+			ctx.JSON(http.StatusNotFound, dto.NewErrorResponse(
+				dto.NewErrorDetail(dto.ErrorCodeResourceNotFound, "Class note not found")))
+			return
+		}
+		
 		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to update class note")))
+			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to update class note").WithDetails(err.Error())))
 		return
 	}
 
+	fmt.Println("********* UpdateNote BAŞARILI *********")
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(note))
 }
 
@@ -242,15 +263,18 @@ func (c *ClassNoteController) UpdateNote(ctx *gin.Context) {
 // @Tags class-notes
 // @Accept json
 // @Produce json
-// @Security ApiKeyAuth
+// @Security BearerAuth
 // @Param id path int true "Class note ID"
 // @Success 200 {object} dto.APIResponse{data=dto.SuccessResponse}
 // @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail} "Unauthorized: JWT token missing or invalid"
+// @Failure 403 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 404 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Router /class-notes/{noteId} [delete]
 func (c *ClassNoteController) DeleteNote(ctx *gin.Context) {
+	fmt.Println("********* DeleteNote BAŞLANGIÇ *********")
+	
 	// Parse ID from path
 	id, err := parseIDParam(ctx, "noteId")
 	if err != nil {
@@ -259,14 +283,29 @@ func (c *ClassNoteController) DeleteNote(ctx *gin.Context) {
 		return
 	}
 
+	fmt.Printf("Attempting to delete class note with ID: %d\n", id)
+
 	// Delete note
 	err = c.classNoteService.DeleteNote(ctx, id)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to delete class note")))
+		fmt.Printf("Error deleting class note: %v\n", err)
+		
+		// Handle specific error cases
+		switch {
+		case errors.Is(err, apperrors.ErrClassNoteNotFound):
+			ctx.JSON(http.StatusNotFound, dto.NewErrorResponse(
+				dto.NewErrorDetail(dto.ErrorCodeResourceNotFound, "Class note not found")))
+		case errors.Is(err, apperrors.ErrPermissionDenied):
+			ctx.JSON(http.StatusForbidden, dto.NewErrorResponse(
+				dto.NewErrorDetail(dto.ErrorCodeForbidden, "You don't have permission to delete this class note")))
+		default:
+			ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+				dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to delete class note").WithDetails(err.Error())))
+		}
 		return
 	}
 
+	fmt.Println("********* DeleteNote BAŞARILI *********")
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(
 		dto.SuccessResponse{Message: "Class note deleted successfully"}))
 }
@@ -277,12 +316,12 @@ func (c *ClassNoteController) DeleteNote(ctx *gin.Context) {
 // @Tags class-notes
 // @Accept multipart/form-data
 // @Produce json
-// @Security ApiKeyAuth
+// @Security BearerAuth
 // @Param id path int true "Class note ID"
 // @Param files formData file true "Files to upload" collectionFormat multi
 // @Success 200 {object} dto.APIResponse{data=dto.ClassNoteResponse}
 // @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail} "Unauthorized: JWT token missing or invalid"
 // @Failure 404 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Router /class-notes/{noteId}/files [post]
@@ -321,17 +360,61 @@ func (c *ClassNoteController) AddFilesToNote(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(updatedNote))
 }
 
+// DeleteFileFromNote godoc
+// @Summary Delete a file from a class note
+// @Description Remove a file from a class note
+// @Tags class-notes
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param noteId path int true "Class note ID"
+// @Param fileId path int true "File ID"
+// @Success 200 {object} dto.APIResponse{data=dto.SuccessResponse}
+// @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail} "Unauthorized: JWT token missing or invalid"
+// @Failure 404 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Router /class-notes/{noteId}/files/{fileId} [delete]
+func (c *ClassNoteController) DeleteFileFromNote(ctx *gin.Context) {
+	// Parse note ID from path
+	noteID, err := parseIDParam(ctx, "noteId")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid class note ID")))
+		return
+	}
+
+	// Parse file ID from path
+	fileID, err := parseIDParam(ctx, "fileId")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid file ID")))
+		return
+	}
+
+	// Delete file from note
+	err = c.classNoteService.DeleteFileFromNote(ctx, noteID, fileID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to delete file from class note")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(
+		dto.SuccessResponse{Message: "File deleted from class note successfully"}))
+}
+
 // GetFileDetails godoc
 // @Summary Get file details
 // @Description Get detailed information about a specific file (works for any file type)
 // @Tags files
 // @Accept json
 // @Produce json
-// @Security ApiKeyAuth
+// @Security BearerAuth
 // @Param fileId path int true "File ID"
 // @Success 200 {object} dto.APIResponse{data=dto.ClassNoteFileResponse}
 // @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail}
+// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail} "Unauthorized: JWT token missing or invalid"
 // @Failure 404 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Router /files/{fileId} [get]

@@ -9,6 +9,6 @@ type CourseOffering struct {
 	Term         Term  `json:"term" db:"term"` // Uses Term from models.go
 
 	// Relations (populated when needed)
-	Course     *Course     `json:"course,omitempty"`
-	Instructor *Instructor `json:"instructor,omitempty"`
+	Course *Course `json:"course,omitempty"`
+	User   *User   `json:"user,omitempty"` // Replaced Instructor with User
 }

@@ -26,6 +26,7 @@ type ClassNoteService interface {
 	AddFileToNote(ctx context.Context, noteID int64, file *multipart.FileHeader) error
 	AddFilesToNote(ctx context.Context, noteID int64, files []*multipart.FileHeader) (*dto.ClassNoteResponse, error)
 	RemoveFileFromNote(ctx context.Context, noteID int64, fileID int64) error
+	DeleteFileFromNote(ctx context.Context, noteID int64, fileID int64) error
 	GetFileDetails(ctx context.Context, fileID int64) (*dto.ClassNoteFileResponse, error)
 }
 
@@ -65,7 +66,7 @@ func (s *classNoteServiceImpl) GetAllNotes(ctx context.Context, filter *dto.Clas
 		Msg("Getting all class notes")
 
 	// Get notes from repository
-	notes, total, err := s.classNoteRepo.GetAll(ctx, filter.DepartmentID, filter.CourseCode, filter.Page, filter.PageSize)
+	notes, total, err := s.classNoteRepo.GetAll(ctx, filter.DepartmentID, filter.CourseCode, filter.InstructorID, filter.Page, filter.PageSize)
 	if err != nil {
 		s.logger.Error().Err(err).
 			Interface("filter", filter).
@@ -303,23 +304,39 @@ func (s *classNoteServiceImpl) CreateNote(ctx context.Context, req *dto.CreateCl
 
 // UpdateNote updates an existing class note
 func (s *classNoteServiceImpl) UpdateNote(ctx context.Context, id int64, req *dto.UpdateClassNoteRequest) (*dto.ClassNoteResponse, error) {
+	s.logger.Debug().
+		Int64("id", id).
+		Interface("request", req).
+		Msg("Updating class note")
+
 	// Get note from repository
 	existingNote, err := s.classNoteRepo.GetByID(ctx, id)
 	if err != nil {
+		s.logger.Error().Err(err).
+			Int64("id", id).
+			Msg("Error getting class note for update")
 		return nil, fmt.Errorf("error getting class note: %w", err)
 	}
 	if existingNote == nil {
+		s.logger.Error().
+			Int64("id", id).
+			Msg("Class note not found for update")
 		return nil, apperrors.ErrClassNoteNotFound
 	}
 
 	// Get user ID from context
 	userID, ok := ctx.Value("userID").(int64)
 	if !ok {
+		s.logger.Error().Msg("User ID not found in context")
 		return nil, fmt.Errorf("user ID not found in context")
 	}
 
 	// Check if user is authorized to update note
 	if err := s.authzService.ValidateClassNoteOwnership(ctx, existingNote.ID, userID); err != nil {
+		s.logger.Error().Err(err).
+			Int64("userID", userID).
+			Int64("noteID", existingNote.ID).
+			Msg("User not authorized to update note")
 		return nil, err
 	}
 
@@ -334,14 +351,28 @@ func (s *classNoteServiceImpl) UpdateNote(ctx context.Context, id int64, req *dt
 		UserID:       existingNote.UserID,       // Keep the same user
 	}
 
+	s.logger.Debug().
+		Interface("noteToUpdate", note).
+		Msg("Calling repository Update method")
+
 	// Update note in database
 	if err := s.classNoteRepo.Update(ctx, note); err != nil {
+		s.logger.Error().Err(err).
+			Int64("id", id).
+			Msg("Error updating class note in database")
 		return nil, fmt.Errorf("error updating class note: %w", err)
 	}
+
+	s.logger.Debug().
+		Int64("id", id).
+		Msg("Class note updated successfully, fetching updated note")
 
 	// Get updated note
 	updatedNote, err := s.classNoteRepo.GetByID(ctx, id)
 	if err != nil {
+		s.logger.Error().Err(err).
+			Int64("id", id).
+			Msg("Error getting updated class note")
 		return nil, fmt.Errorf("error getting updated class note: %w", err)
 	}
 
@@ -352,6 +383,13 @@ func (s *classNoteServiceImpl) UpdateNote(ctx context.Context, id int64, req *dt
 			ID: file.ID,
 		})
 	}
+
+	s.logger.Debug().
+		Int64("id", updatedNote.ID).
+		Str("courseCode", updatedNote.CourseCode).
+		Str("title", updatedNote.Title).
+		Int("fileCount", len(fileResponses)).
+		Msg("Returning updated class note")
 
 	// Convert to response DTO
 	return &dto.ClassNoteResponse{
@@ -646,4 +684,10 @@ func (s *classNoteServiceImpl) RemoveFileFromNote(ctx context.Context, noteID in
 	}
 
 	return nil
+}
+
+// DeleteFileFromNote deletes a file from a class note (alias for RemoveFileFromNote)
+func (s *classNoteServiceImpl) DeleteFileFromNote(ctx context.Context, noteID int64, fileID int64) error {
+	// This method is an alias for RemoveFileFromNote to maintain backward compatibility
+	return s.RemoveFileFromNote(ctx, noteID, fileID)
 }

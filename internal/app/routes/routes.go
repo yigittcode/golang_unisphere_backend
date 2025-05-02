@@ -14,7 +14,6 @@ func SetupRouter(
 	authController *controllers.AuthController,
 	facultyController *controllers.FacultyController,
 	departmentController *controllers.DepartmentController,
-	instructorController *controllers.InstructorController,
 	pastExamController *controllers.PastExamController,
 	classNoteController *controllers.ClassNoteController,
 	authMiddleware *middleware.AuthMiddleware,
@@ -25,8 +24,7 @@ func SetupRouter(
 	// --- Public Auth routes ---
 	auth := v1.Group("/auth")
 	{
-		auth.POST("/register-student", authController.RegisterStudent)
-		auth.POST("/register-instructor", authController.RegisterInstructor)
+		auth.POST("/register", authController.Register)
 		auth.POST("/login", authController.Login)
 		auth.POST("/refresh", authController.RefreshToken)
 		// Profile route moved to authenticated group
@@ -36,11 +34,7 @@ func SetupRouter(
 	authenticated := v1.Group("")               // Create a new group for all authenticated routes
 	authenticated.Use(authMiddleware.JWTAuth()) // Apply JWT Auth middleware to this group
 	{
-		// Auth Profile route (moved here)
-		authenticated.GET("/auth/profile", authController.GetCurrentUser)
-		authenticated.PUT("/auth/profile", authController.UpdateProfile)
-		authenticated.POST("/auth/profile/photo", authController.UpdateProfilePhoto)
-		authenticated.DELETE("/auth/profile/photo", authController.DeleteProfilePhoto)
+		// Profile routes are handled by the UserController in bootstrap.go
 
 		// Files endpoint (global access to file details)
 		authenticated.GET("/files/:fileId", classNoteController.GetFileDetails)
@@ -63,15 +57,14 @@ func SetupRouter(
 			}
 		}
 
-		// Faculty-departments route (now under authenticated group)
-		authenticated.GET("/faculty-departments/:facultyId", departmentController.GetDepartmentsByFacultyID)
-
-		// Department routes (now under authenticated group)
+		// Department routes
 		departments := authenticated.Group("/departments")
 		{
 			departments.GET("", departmentController.GetAllDepartments)
 			departments.GET("/:id", departmentController.GetDepartmentByID)
+			// departments.GET("/:id/instructors", departmentController.GetInstructorsByDepartment)
 
+			// Role-protected routes within departments
 			departmentsInstructorProtected := departments.Group("")
 			departmentsInstructorProtected.Use(authMiddleware.RoleRequired(string(models.RoleInstructor)))
 			{
@@ -81,60 +74,53 @@ func SetupRouter(
 			}
 		}
 
-		// Department-instructors route (now under authenticated group)
-		authenticated.GET("/department-instructors/:departmentId", instructorController.GetInstructorsByDepartment)
-
-		// Instructor routes (now under authenticated group)
-		instructors := authenticated.Group("/instructors")
-		{
-			instructors.GET("/:id", instructorController.GetInstructorByID)
-
-			instructorsProtected := instructors.Group("")
-			instructorsProtected.Use(authMiddleware.RoleRequired(string(models.RoleInstructor)))
-			{
-				instructorsProtected.GET("/profile", instructorController.GetInstructorProfile)
-				instructorsProtected.PUT("/title", instructorController.UpdateTitle)
-			}
-		}
-
-		// Past Exam routes (now under authenticated group)
+		// Past Exam routes - Endpoints for accessing and managing past examination materials
 		pastExams := authenticated.Group("/past-exams")
 		{
-			pastExams.GET("", pastExamController.GetAllPastExams)
-			pastExams.GET("/:id", pastExamController.GetPastExamByID)
+			// Public routes accessible to all authenticated users (students and instructors)
+			pastExams.GET("", pastExamController.GetAllPastExams)        // List all past exams with optional filtering
+			pastExams.GET("/:id", pastExamController.GetPastExamByID)    // Retrieve a specific past exam by ID
 
-			// Role-protected routes within pastExams
+			// Instructor-only routes - Protected by role-based middleware
+			// These routes are restricted to users with the Instructor role
 			pastExamsInstructorProtected := pastExams.Group("")
 			pastExamsInstructorProtected.Use(authMiddleware.RoleRequired(string(models.RoleInstructor)))
 			{
-				createExamReq := &dto.CreatePastExamRequest{}
-				pastExamsInstructorProtected.POST("", middleware.ValidateRequest(createExamReq), pastExamController.CreatePastExam)
-
-				updateExamReq := &dto.UpdatePastExamRequest{}
-				pastExamsInstructorProtected.PUT("/:id", middleware.ValidateRequest(updateExamReq), pastExamController.UpdatePastExam)
-
-				pastExamsInstructorProtected.DELETE("/:id", pastExamController.DeletePastExam)
+				// CRUD operations for past exam resources
+				pastExamsInstructorProtected.POST("", pastExamController.CreatePastExam)                       // Create a new past exam
+				pastExamsInstructorProtected.PUT("/:id", pastExamController.UpdatePastExam)                    // Update an existing past exam
+				pastExamsInstructorProtected.DELETE("/:id", pastExamController.DeletePastExam)                 // Delete a past exam
+				
+				// File management for past exams
+				pastExamsInstructorProtected.POST("/:id/files", pastExamController.AddFileToPastExam)          // Upload and attach files to a past exam
+				pastExamsInstructorProtected.DELETE("/:id/files/:fileId", pastExamController.DeleteFileFromPastExam) // Remove a file from a past exam
 			}
 		}
 
-		// Class Note routes (now under authenticated group)
+		// Class Notes routes
 		classNotes := authenticated.Group("/class-notes")
 		{
 			classNotes.GET("", classNoteController.GetAllNotes)
 			classNotes.GET("/:noteId", classNoteController.GetNoteByID)
 
-			// Form validasyonu için ValidateFormDataRequest kullanıyoruz (multipart/form-data)
-			createNoteReq := &dto.CreateClassNoteRequest{}
-			classNotes.POST("", middleware.ValidateFormDataRequest(createNoteReq), classNoteController.CreateNote)
-
-			// JSON validasyonu için ValidateJsonRequest kullanıyoruz (application/json)
-			updateNoteReq := &dto.UpdateClassNoteRequest{}
-			classNotes.PUT("/:noteId", middleware.ValidateJsonRequest(updateNoteReq), classNoteController.UpdateNote)
-
-			classNotes.DELETE("/:noteId", classNoteController.DeleteNote)
-
-			// Add files to existing note
-			classNotes.POST("/:noteId/files", classNoteController.AddFilesToNote)
+			// Both students and instructors can create class notes
+			classNotesAuthProtected := classNotes.Group("")
+			{
+				classNotesAuthProtected.POST("", classNoteController.CreateNote)
+				classNotesAuthProtected.PUT("/:noteId", classNoteController.UpdateNote)
+				classNotesAuthProtected.DELETE("/:noteId", classNoteController.DeleteNote)
+				classNotesAuthProtected.POST("/:noteId/files", classNoteController.AddFilesToNote)
+				classNotesAuthProtected.DELETE("/:noteId/files/:fileId", classNoteController.DeleteFileFromNote)
+			}
 		}
 	}
+
+	// Health check endpoint (public)
+	v1.GET("/health", func(c *gin.Context) {
+		c.JSON(200, dto.APIResponse{
+			Data: gin.H{"status": "ok"},
+		})
+	})
+
+	// Swagger routes are set up in bootstrap.go already
 }
