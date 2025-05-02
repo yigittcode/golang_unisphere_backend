@@ -15,6 +15,7 @@ type User struct {
 	UpdatedAt          time.Time  `json:"updatedAt" db:"updated_at" example:"2024-01-02T15:30:00Z"`                // Timestamp when the user was last updated
 	RoleType           RoleType   `json:"roleType" db:"role_type" example:"STUDENT"`                               // User's role (STUDENT or INSTRUCTOR)
 	IsActive           bool       `json:"isActive" db:"is_active" example:"true"`                                  // Whether the user account is active
+	EmailVerified      bool       `json:"emailVerified" db:"email_verified" example:"false"`                       // Whether the email has been verified
 	LastLoginAt        *time.Time `json:"lastLoginAt,omitempty" db:"last_login_at" example:"2024-04-20T18:00:00Z"` // Timestamp of the last login (nullable)
 	DepartmentID       *int64     `json:"departmentId,omitempty" db:"department_id" example:"1"`                   // User's department (nullable)
 	ProfilePhotoFileID *int64     `json:"profilePhotoFileId,omitempty" db:"profile_photo_file_id"`                 // Profile photo file ID (nullable)

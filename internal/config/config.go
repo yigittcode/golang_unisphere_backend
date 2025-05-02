@@ -42,6 +42,16 @@ type Config struct {
 		Level  string `yaml:"level" env:"LOG_LEVEL"`
 		Format string `yaml:"format" env:"LOG_FORMAT"`
 	} `yaml:"logging"`
+
+	SMTP struct {
+		Host      string `yaml:"host" env:"SMTP_HOST"`
+		Port      int    `yaml:"port" env:"SMTP_PORT"`
+		Username  string `yaml:"username" env:"SMTP_USERNAME"`
+		Password  string `yaml:"password" env:"SMTP_PASSWORD"`
+		FromName  string `yaml:"from_name" env:"SMTP_FROM_NAME"`
+		FromEmail string `yaml:"from_email" env:"SMTP_FROM_EMAIL"`
+		UseTLS    bool   `yaml:"use_tls" env:"SMTP_USE_TLS"`
+	} `yaml:"smtp"`
 }
 
 // LoadConfig loads configuration from a file and environment variables
@@ -94,6 +104,13 @@ func setDefaults(config *Config) {
 
 	config.Logging.Level = "info"
 	config.Logging.Format = "text"
+	
+	// Default SMTP settings
+	config.SMTP.Host = "smtp.gmail.com"
+	config.SMTP.Port = 587
+	config.SMTP.FromName = "UniSphere"
+	config.SMTP.FromEmail = "noreply@unisphere.app"
+	config.SMTP.UseTLS = false  // Changed to false for testing
 }
 
 // loadFromEnv overrides configuration with environment variables
@@ -159,6 +176,20 @@ func validateConfig(config *Config) error {
 	format := strings.ToLower(config.Logging.Format)
 	if format != "text" && format != "json" {
 		return fmt.Errorf("invalid log format '%s' (LOG_FORMAT): must be 'text' or 'json'", config.Logging.Format)
+	}
+	
+	// Validate SMTP settings for email verification
+	if config.SMTP.Host == "" {
+		return fmt.Errorf("SMTP host (SMTP_HOST) is required for email verification")
+	}
+	if config.SMTP.Port <= 0 || config.SMTP.Port > 65535 {
+		return fmt.Errorf("invalid SMTP port (SMTP_PORT): %d", config.SMTP.Port)
+	}
+	if config.SMTP.FromName == "" {
+		return fmt.Errorf("SMTP from name (SMTP_FROM_NAME) is required for email verification")
+	}
+	if config.SMTP.FromEmail == "" {
+		return fmt.Errorf("SMTP from email (SMTP_FROM_EMAIL) is required for email verification")
 	}
 
 	return nil

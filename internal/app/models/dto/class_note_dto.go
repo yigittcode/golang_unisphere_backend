@@ -70,6 +70,8 @@ type ClassNoteFilterRequest struct {
 	InstructorID *int64  `form:"instructorId,omitempty"`
 	Page         int     `form:"page,default=1" binding:"min=1"`
 	PageSize     int     `form:"pageSize,default=10" binding:"min=1,max=100"`
+	SortBy       string  `form:"sortBy,default=created_at" binding:"omitempty,oneof=created_at updated_at title course_code"`
+	SortOrder    string  `form:"sortOrder,default=desc" binding:"omitempty,oneof=asc desc"`
 }
 
 // --- Helper Functions ---

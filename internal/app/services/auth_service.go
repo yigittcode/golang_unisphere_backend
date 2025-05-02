@@ -15,6 +15,7 @@ import (
 	"github.com/yigit/unisphere/internal/app/repositories"
 	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/auth"
+	"github.com/yigit/unisphere/internal/pkg/email"
 	"github.com/yigit/unisphere/internal/pkg/filestorage"
 	"github.com/yigit/unisphere/internal/pkg/validation"
 	"golang.org/x/crypto/bcrypt"
@@ -23,7 +24,11 @@ import (
 // AuthService defines the interface for authentication-related operations
 type AuthService interface {
 	// User registration
-	Register(ctx context.Context, req *dto.RegisterRequest) (*dto.TokenResponse, error)
+	Register(ctx context.Context, req *dto.RegisterRequest) (*dto.RegisterResponse, error)
+
+	// Email verification
+	VerifyEmail(ctx context.Context, token string) error
+	ResendVerificationEmail(ctx context.Context, email string) error
 
 	// Authentication
 	Login(ctx context.Context, req *dto.LoginRequest) (*dto.TokenResponse, error)
@@ -42,14 +47,16 @@ type AuthService interface {
 
 // authServiceImpl implements the AuthService interface
 type authServiceImpl struct {
-	userRepo       *repositories.UserRepository
-	tokenRepo      *repositories.TokenRepository
-	departmentRepo *repositories.DepartmentRepository
-	facultyRepo    *repositories.FacultyRepository
-	fileRepo       *repositories.FileRepository
-	fileStorage    *filestorage.LocalStorage
-	jwtService     *auth.JWTService
-	logger         zerolog.Logger
+	userRepo              *repositories.UserRepository
+	tokenRepo             *repositories.TokenRepository
+	departmentRepo        *repositories.DepartmentRepository
+	facultyRepo           *repositories.FacultyRepository
+	fileRepo              *repositories.FileRepository
+	fileStorage           *filestorage.LocalStorage
+	verificationTokenRepo *repositories.VerificationTokenRepository
+	emailService          email.EmailService
+	jwtService            *auth.JWTService
+	logger                zerolog.Logger
 }
 
 // NewAuthService creates a new AuthService
@@ -60,18 +67,22 @@ func NewAuthService(
 	facultyRepo *repositories.FacultyRepository,
 	fileRepo *repositories.FileRepository,
 	fileStorage *filestorage.LocalStorage,
+	verificationTokenRepo *repositories.VerificationTokenRepository,
+	emailService email.EmailService,
 	jwtService *auth.JWTService,
 	logger zerolog.Logger,
 ) AuthService {
 	return &authServiceImpl{
-		userRepo:       userRepo,
-		tokenRepo:      tokenRepo,
-		departmentRepo: departmentRepo,
-		facultyRepo:    facultyRepo,
-		fileRepo:       fileRepo,
-		fileStorage:    fileStorage,
-		jwtService:     jwtService,
-		logger:         logger,
+		userRepo:              userRepo,
+		tokenRepo:             tokenRepo,
+		departmentRepo:        departmentRepo,
+		facultyRepo:           facultyRepo,
+		fileRepo:              fileRepo,
+		fileStorage:           fileStorage,
+		verificationTokenRepo: verificationTokenRepo,
+		emailService:          emailService,
+		jwtService:            jwtService,
+		logger:                logger,
 	}
 }
 
@@ -163,7 +174,7 @@ func (s *authServiceImpl) validateToken(token string) error {
 }
 
 // Register registers a new user
-func (s *authServiceImpl) Register(ctx context.Context, req *dto.RegisterRequest) (*dto.TokenResponse, error) {
+func (s *authServiceImpl) Register(ctx context.Context, req *dto.RegisterRequest) (*dto.RegisterResponse, error) {
 	// Validate email
 	if err := s.validateEmail(req.Email); err != nil {
 		return nil, err
@@ -189,15 +200,16 @@ func (s *authServiceImpl) Register(ctx context.Context, req *dto.RegisterRequest
 		return nil, fmt.Errorf("error hashing password: %w", err)
 	}
 
-	// Create user with department_id
+	// Create user with department_id and email_verified=false
 	user := &models.User{
-		Email:        req.Email,
-		Password:     string(hashedPassword),
-		FirstName:    req.FirstName,
-		LastName:     req.LastName,
-		RoleType:     req.RoleType,
-		IsActive:     true,
-		DepartmentID: &req.DepartmentID,
+		Email:         req.Email,
+		Password:      string(hashedPassword),
+		FirstName:     req.FirstName,
+		LastName:      req.LastName,
+		RoleType:      req.RoleType,
+		IsActive:      false,  // Set to inactive until email is verified
+		EmailVerified: false,  // Email not verified yet
+		DepartmentID:  &req.DepartmentID,
 	}
 
 	// Create user in DB
@@ -205,10 +217,35 @@ func (s *authServiceImpl) Register(ctx context.Context, req *dto.RegisterRequest
 	if err != nil {
 		return nil, fmt.Errorf("error creating user: %w", err)
 	}
+	user.ID = userID
 
-	// Generate token
-	user.ID = userID // Set ID for token generation
-	return s.generateTokenResponse(ctx, user)
+	// Generate verification token
+	verificationToken, err := GenerateTokenForVerification()
+	if err != nil {
+		s.logger.Error().Err(err).Int64("userID", userID).Msg("Failed to generate verification token")
+		return nil, fmt.Errorf("error generating verification token: %w", err)
+	}
+
+	// Store verification token
+	expiryTime := time.Now().Add(24 * time.Hour) // 24 hours expiry
+	err = s.verificationTokenRepo.CreateToken(ctx, userID, verificationToken, expiryTime)
+	if err != nil {
+		s.logger.Error().Err(err).Int64("userID", userID).Msg("Failed to store verification token")
+		return nil, fmt.Errorf("error storing verification token: %w", err)
+	}
+
+	// Send verification email
+	err = s.emailService.SendVerificationEmail(user.Email, user.FirstName, verificationToken)
+	if err != nil {
+		s.logger.Error().Err(err).Int64("userID", userID).Msg("Failed to send verification email")
+		return nil, fmt.Errorf("error sending verification email: %w", err)
+	}
+
+	// Return successful response
+	return &dto.RegisterResponse{
+		Message: "Registration successful. Please check your email to verify your account.",
+		UserID:  userID,
+	}, nil
 }
 
 // Login handles user login
@@ -223,6 +260,11 @@ func (s *authServiceImpl) Login(ctx context.Context, req *dto.LoginRequest) (*dt
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
 	if err != nil {
 		return nil, apperrors.ErrInvalidCredentials
+	}
+
+	// Check if email is verified
+	if !user.EmailVerified {
+		return nil, apperrors.ErrEmailNotVerified
 	}
 
 	// Check if user is active
@@ -366,7 +408,133 @@ func (s *authServiceImpl) DeleteProfilePhoto(ctx context.Context, userID int64) 
 	return userService.DeleteProfilePhoto(ctx, userID)
 }
 
+// VerifyEmail verifies a user's email using the verification token
+func (s *authServiceImpl) VerifyEmail(ctx context.Context, token string) error {
+	// Validate token
+	if strings.TrimSpace(token) == "" {
+		return apperrors.ErrInvalidEmailToken
+	}
+
+	// Get token info
+	userID, expiryDate, err := s.verificationTokenRepo.GetTokenInfo(ctx, token)
+	if err != nil {
+		s.logger.Error().Err(err).Str("token", token).Msg("Failed to get verification token info")
+		return apperrors.ErrInvalidEmailToken
+	}
+
+	// Check if token is expired
+	if expiryDate.Before(time.Now()) {
+		s.logger.Warn().Str("token", token).Time("expiryDate", expiryDate).Msg("Verification token expired")
+		// Delete expired token
+		_ = s.verificationTokenRepo.DeleteToken(ctx, token)
+		return apperrors.ErrInvalidEmailToken
+	}
+
+	// Get user
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		s.logger.Error().Err(err).Int64("userID", userID).Msg("Failed to get user for email verification")
+		return fmt.Errorf("user not found: %w", err)
+	}
+
+	// Check if email is already verified
+	if user.EmailVerified {
+		s.logger.Info().Int64("userID", userID).Msg("Email already verified")
+		// Delete token as it's no longer needed
+		_ = s.verificationTokenRepo.DeleteToken(ctx, token)
+		return apperrors.ErrEmailAlreadyVerified
+	}
+
+	// Mark email as verified and activate the account
+	err = s.userRepo.SetEmailVerified(ctx, userID, true)
+	if err != nil {
+		s.logger.Error().Err(err).Int64("userID", userID).Msg("Failed to set email verified")
+		return fmt.Errorf("error updating email verification status: %w", err)
+	}
+
+	// Activate user account
+	user.IsActive = true
+	err = s.userRepo.Update(ctx, user)
+	if err != nil {
+		s.logger.Error().Err(err).Int64("userID", userID).Msg("Failed to activate user account")
+		return fmt.Errorf("error activating user account: %w", err)
+	}
+
+	// Delete verification token after successful verification
+	err = s.verificationTokenRepo.DeleteToken(ctx, token)
+	if err != nil {
+		s.logger.Warn().Err(err).Str("token", token).Msg("Failed to delete verification token")
+		// Don't return error, as verification was successful
+	}
+
+	// Send welcome email
+	err = s.emailService.SendWelcomeEmail(user.Email, user.FirstName)
+	if err != nil {
+		s.logger.Warn().Err(err).Int64("userID", userID).Msg("Failed to send welcome email")
+		// Don't return error, as verification was successful
+	}
+
+	return nil
+}
+
+// ResendVerificationEmail sends a new verification email to the user
+func (s *authServiceImpl) ResendVerificationEmail(ctx context.Context, email string) error {
+	// Validate email
+	if err := s.validateEmail(email); err != nil {
+		return err
+	}
+
+	// Get user by email
+	user, err := s.userRepo.GetByEmail(ctx, email)
+	if err != nil {
+		s.logger.Error().Err(err).Str("email", email).Msg("Failed to find user for resending verification email")
+		return apperrors.ErrUserNotFound
+	}
+
+	// Check if email is already verified
+	if user.EmailVerified {
+		s.logger.Info().Int64("userID", user.ID).Msg("Email already verified")
+		return apperrors.ErrEmailAlreadyVerified
+	}
+
+	// Delete any existing verification tokens for the user
+	err = s.verificationTokenRepo.DeleteTokensByUserID(ctx, user.ID)
+	if err != nil {
+		s.logger.Warn().Err(err).Int64("userID", user.ID).Msg("Failed to delete existing verification tokens")
+		// Continue anyway
+	}
+
+	// Generate new verification token
+	verificationToken, err := GenerateTokenForVerification()
+	if err != nil {
+		s.logger.Error().Err(err).Int64("userID", user.ID).Msg("Failed to generate verification token")
+		return fmt.Errorf("error generating verification token: %w", err)
+	}
+
+	// Store verification token
+	expiryTime := time.Now().Add(24 * time.Hour) // 24 hours expiry
+	err = s.verificationTokenRepo.CreateToken(ctx, user.ID, verificationToken, expiryTime)
+	if err != nil {
+		s.logger.Error().Err(err).Int64("userID", user.ID).Msg("Failed to store verification token")
+		return fmt.Errorf("error storing verification token: %w", err)
+	}
+
+	// Send verification email
+	err = s.emailService.SendVerificationEmail(user.Email, user.FirstName, verificationToken)
+	if err != nil {
+		s.logger.Error().Err(err).Int64("userID", user.ID).Msg("Failed to send verification email")
+		return fmt.Errorf("error sending verification email: %w", err)
+	}
+
+	return nil
+}
+
 // Helper functions
+
+// GenerateTokenForVerification generates a random token for email verification
+func GenerateTokenForVerification() (string, error) {
+	return email.GenerateVerificationToken()
+}
 
 // generateTokenResponse creates token response
 func (s *authServiceImpl) generateTokenResponse(ctx context.Context, user *models.User) (*dto.TokenResponse, error) {

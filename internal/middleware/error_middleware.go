@@ -99,6 +99,20 @@ func HandleAPIError(c *gin.Context, err error) {
 		c.JSON(http.StatusForbidden, dto.NewErrorResponse(
 			dto.NewErrorDetail(dto.ErrorCodeForbidden, "Account is disabled")))
 		return
+			
+	// Email verification errors
+	case errors.Is(err, apperrors.ErrEmailNotVerified):
+		c.JSON(http.StatusForbidden, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeForbidden, "Email not verified. Please verify your email before logging in.")))
+		return
+	case errors.Is(err, apperrors.ErrInvalidEmailToken):
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInvalidToken, "Invalid or expired verification token.")))
+		return
+	case errors.Is(err, apperrors.ErrEmailAlreadyVerified):
+		c.JSON(http.StatusConflict, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeResourceInvalid, "Email already verified.")))
+		return
 	
 	// Validation errors
 	case errors.Is(err, apperrors.ErrValidationFailed) || errors.Is(err, apperrors.ErrInvalidPassword):

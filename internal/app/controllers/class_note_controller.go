@@ -41,7 +41,7 @@ func NewClassNoteController(classNoteService services.ClassNoteService, fileStor
 
 // GetAllNotes godoc
 // @Summary Get all class notes
-// @Description Get a list of all class notes with optional filtering
+// @Description Get a list of all class notes with optional filtering and sorting
 // @Tags class-notes
 // @Accept json
 // @Produce json
@@ -51,6 +51,8 @@ func NewClassNoteController(classNoteService services.ClassNoteService, fileStor
 // @Param instructorId query int false "Filter by instructor ID"
 // @Param page query int false "Page number (1-based)" default(1) minimum(1)
 // @Param pageSize query int false "Page size (default: 10, max: 100)" default(10) minimum(1) maximum(100)
+// @Param sortBy query string false "Sort by field (created_at, updated_at, title, course_code)" Enums(created_at, updated_at, title, course_code) default(created_at)
+// @Param sortOrder query string false "Sort direction (asc, desc)" Enums(asc, desc) default(desc)
 // @Success 200 {object} dto.APIResponse{data=dto.ClassNoteListResponse}
 // @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail} "Unauthorized: JWT token missing or invalid"

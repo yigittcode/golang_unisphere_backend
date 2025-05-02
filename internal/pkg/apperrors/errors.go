@@ -63,6 +63,13 @@ var (
 	ErrInvalidFormat = errors.New("invalid token format")
 )
 
+// Email verification errors
+var (
+	ErrEmailNotVerified = errors.New("email not verified")
+	ErrInvalidEmailToken = errors.New("invalid or expired email verification token")
+	ErrEmailAlreadyVerified = errors.New("email already verified")
+)
+
 // NewResourceNotFoundError creates a new custom error for resource not found with a message
 func NewResourceNotFoundError(message string) error {
 	return &CustomError{

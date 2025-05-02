@@ -26,3 +26,13 @@ jwt:
 logging:
   level: debug # debug, info, warn, error
   format: text # text, json 
+
+# SMTP Email yapılandırması (Email doğrulama için)
+smtp:
+  host: "{SMTP_HOST}" # smtp.gmail.com, smtp.office365.com, etc.
+  port: 587 # 587 (TLS), 465 (SSL), 25 (non-secure)
+  username: "{SMTP_USERNAME}" # email address
+  password: "{SMTP_PASSWORD}" # email password or app password
+  from_name: "UniSphere" # Sender name
+  from_email: "{FROM_EMAIL}" # noreply@unisphere.app
+  use_tls: true # true for TLS, false for non-TLS

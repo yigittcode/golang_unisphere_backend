@@ -35,12 +35,12 @@ func NewAuthController(authService services.AuthService, userRepo repositories.I
 
 // Register handles user registration
 // @Summary Register a new user
-// @Description Creates a new user account (student or instructor) with the provided information
+// @Description Creates a new user account (student or instructor) with the provided information. Registration requires email verification.
 // @Tags auth
 // @Accept json
 // @Produce json
 // @Param request body dto.RegisterRequest true "User registration information"
-// @Success 201 {object} dto.APIResponse{data=dto.TokenResponse} "User registered successfully"
+// @Success 201 {object} dto.APIResponse{data=dto.RegisterResponse} "User registration initiated. Check email for verification link."
 // @Failure 400 {object} dto.ErrorResponse "Invalid request format or invalid role type"
 // @Failure 409 {object} dto.ErrorResponse "Email already exists"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
@@ -103,7 +103,7 @@ func (c *AuthController) Register(ctx *gin.Context) {
 		Msg("User registration request received")
 
 	// Register user
-	tokenResponse, err := c.authService.Register(ctx.Request.Context(), &req)
+	registerResponse, err := c.authService.Register(ctx.Request.Context(), &req)
 	if err != nil {
 		c.logger.Error().Err(err).Msg("Failed to register user")
 		middleware.HandleAPIError(ctx, err)
@@ -113,11 +113,12 @@ func (c *AuthController) Register(ctx *gin.Context) {
 	// Log successful registration
 	c.logger.Info().
 		Str("email", req.Email).
-		Msg("User registered successfully")
+		Int64("userID", registerResponse.UserID).
+		Msg("User registration initiated, verification email sent")
 
-	// Return token response
+	// Return registration response
 	ctx.JSON(http.StatusCreated, dto.APIResponse{
-		Data: tokenResponse,
+		Data: registerResponse,
 	})
 }
 
@@ -197,6 +198,81 @@ func (c *AuthController) RefreshToken(ctx *gin.Context) {
 	// Return token response
 	ctx.JSON(http.StatusOK, dto.APIResponse{
 		Data: tokenResponse,
+	})
+}
+
+// VerifyEmail handles email verification
+// @Summary Verify email address
+// @Description Verifies a user's email address using the verification token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param token query string true "Verification token sent to user's email"
+// @Success 200 {object} dto.APIResponse{data=dto.VerifyEmailResponse} "Email verified successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid or missing token"
+// @Failure 404 {object} dto.ErrorResponse "Token not found"
+// @Failure 410 {object} dto.ErrorResponse "Token expired"
+// @Failure 409 {object} dto.ErrorResponse "Email already verified"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Router /auth/verify-email [get]
+func (c *AuthController) VerifyEmail(ctx *gin.Context) {
+	token := ctx.Query("token")
+	if token == "" {
+		c.logger.Warn().Msg("Missing verification token")
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Missing verification token")
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
+		return
+	}
+
+	err := c.authService.VerifyEmail(ctx.Request.Context(), token)
+	if err != nil {
+		c.logger.Warn().Err(err).Str("token", token).Msg("Email verification failed")
+		middleware.HandleAPIError(ctx, err)
+		return
+	}
+
+	c.logger.Info().Str("token", token).Msg("Email verified successfully")
+	ctx.JSON(http.StatusOK, dto.APIResponse{
+		Data: dto.VerifyEmailResponse{
+			Message: "Email verified successfully. You can now log in to your account.",
+		},
+	})
+}
+
+// ResendVerificationEmail handles resending verification email
+// @Summary Resend verification email
+// @Description Resends the verification email to a previously registered email address
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param email query string true "Email address to resend verification to"
+// @Success 200 {object} dto.APIResponse{data=map[string]string} "Verification email resent successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid or missing email"
+// @Failure 404 {object} dto.ErrorResponse "User not found"
+// @Failure 409 {object} dto.ErrorResponse "Email already verified"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Router /auth/resend-verification [post]
+func (c *AuthController) ResendVerificationEmail(ctx *gin.Context) {
+	email := ctx.Query("email")
+	if email == "" {
+		c.logger.Warn().Msg("Missing email address")
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Missing email address")
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
+		return
+	}
+
+	err := c.authService.ResendVerificationEmail(ctx.Request.Context(), email)
+	if err != nil {
+		c.logger.Warn().Err(err).Str("email", email).Msg("Failed to resend verification email")
+		middleware.HandleAPIError(ctx, err)
+		return
+	}
+
+	c.logger.Info().Str("email", email).Msg("Verification email resent successfully")
+	ctx.JSON(http.StatusOK, dto.APIResponse{
+		Data: map[string]string{
+			"message": "Verification email has been resent. Please check your inbox.",
+		},
 	})
 }
 

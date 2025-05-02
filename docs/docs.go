@@ -160,7 +160,7 @@ const docTemplate = `{
         },
         "/auth/register": {
             "post": {
-                "description": "Creates a new user account (student or instructor) with the provided information",
+                "description": "Creates a new user account (student or instructor) with the provided information. Registration requires email verification.",
                 "consumes": [
                     "application/json"
                 ],
@@ -184,7 +184,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "User registered successfully",
+                        "description": "User registration initiated. Check email for verification link.",
                         "schema": {
                             "allOf": [
                                 {
@@ -194,7 +194,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.TokenResponse"
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.RegisterResponse"
                                         }
                                     }
                                 }
@@ -222,6 +222,151 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/resend-verification": {
+            "post": {
+                "description": "Resends the verification email to a previously registered email address",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Resend verification email",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Email address to resend verification to",
+                        "name": "email",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Verification email resent successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid or missing email",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Email already verified",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/verify-email": {
+            "get": {
+                "description": "Verifies a user's email address using the verification token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Verify email address",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Verification token sent to user's email",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Email verified successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.VerifyEmailResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid or missing token",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Token not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Email already verified",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "410": {
+                        "description": "Token expired",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/class-notes": {
             "get": {
                 "security": [
@@ -229,7 +374,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get a list of all class notes with optional filtering",
+                "description": "Get a list of all class notes with optional filtering and sorting",
                 "consumes": [
                     "application/json"
                 ],
@@ -274,6 +419,30 @@ const docTemplate = `{
                         "default": 10,
                         "description": "Page size (default: 10, max: 100)",
                         "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "created_at",
+                            "updated_at",
+                            "title",
+                            "course_code"
+                        ],
+                        "type": "string",
+                        "default": "created_at",
+                        "description": "Sort by field (created_at, updated_at, title, course_code)",
+                        "name": "sortBy",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "default": "desc",
+                        "description": "Sort direction (asc, desc)",
+                        "name": "sortOrder",
                         "in": "query"
                     }
                 ],
@@ -5493,6 +5662,19 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_yigit_unisphere_internal_app_models_dto.RegisterResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Verification email sent. Please check your inbox to complete registration."
+                },
+                "userId": {
+                    "type": "integer",
+                    "example": 123
+                }
+            }
+        },
         "github_com_yigit_unisphere_internal_app_models_dto.SimpleClassNoteFileResponse": {
             "type": "object",
             "properties": {
@@ -5683,6 +5865,15 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ExtendedUserResponse"
                     }
+                }
+            }
+        },
+        "github_com_yigit_unisphere_internal_app_models_dto.VerifyEmailResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Email verified successfully"
                 }
             }
         }

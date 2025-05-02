@@ -21,8 +21,8 @@ func NewClassNoteRepository(db *pgxpool.Pool) *ClassNoteRepository {
 	return &ClassNoteRepository{db: db}
 }
 
-// GetAll retrieves all class notes with filtering and pagination
-func (r *ClassNoteRepository) GetAll(ctx context.Context, departmentID *int64, courseCode *string, instructorID *int64, page, pageSize int) ([]models.ClassNote, int64, error) {
+// GetAll retrieves all class notes with filtering, sorting and pagination
+func (r *ClassNoteRepository) GetAll(ctx context.Context, departmentID *int64, courseCode *string, instructorID *int64, page, pageSize int, sortBy, sortOrder string) ([]models.ClassNote, int64, error) {
 	// Build base query
 	query := squirrel.Select(
 		"id", "course_code", "title", "description", "content",
@@ -41,6 +41,32 @@ func (r *ClassNoteRepository) GetAll(ctx context.Context, departmentID *int64, c
 	if instructorID != nil {
 		query = query.Where("user_id = ?", *instructorID)
 	}
+
+	// Add sorting with validation
+	// Default to created_at if empty or invalid sort column
+	if sortBy == "" {
+		sortBy = "created_at"
+	}
+	
+	// Validate sortBy field (whitelist approach for security)
+	validSortColumns := map[string]bool{
+		"created_at":  true,
+		"updated_at":  true,
+		"title":       true,
+		"course_code": true,
+	}
+	
+	if !validSortColumns[sortBy] {
+		sortBy = "created_at" // Default to created_at if invalid
+	}
+	
+	// Validate sortOrder
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "desc" // Default to descending if invalid
+	}
+	
+	// Apply sorting
+	query = query.OrderBy(fmt.Sprintf("%s %s", sortBy, sortOrder))
 
 	// Add pagination
 	offset := (page - 1) * pageSize

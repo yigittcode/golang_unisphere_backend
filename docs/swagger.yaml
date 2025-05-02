@@ -441,6 +441,15 @@ definitions:
     - password
     - roleType
     type: object
+  github_com_yigit_unisphere_internal_app_models_dto.RegisterResponse:
+    properties:
+      message:
+        example: Verification email sent. Please check your inbox to complete registration.
+        type: string
+      userId:
+        example: 123
+        type: integer
+    type: object
   github_com_yigit_unisphere_internal_app_models_dto.SimpleClassNoteFileResponse:
     properties:
       id:
@@ -572,6 +581,12 @@ definitions:
           $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ExtendedUserResponse'
         type: array
     type: object
+  github_com_yigit_unisphere_internal_app_models_dto.VerifyEmailResponse:
+    properties:
+      message:
+        example: Email verified successfully
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -673,7 +688,7 @@ paths:
       consumes:
       - application/json
       description: Creates a new user account (student or instructor) with the provided
-        information
+        information. Registration requires email verification.
       parameters:
       - description: User registration information
         in: body
@@ -685,13 +700,13 @@ paths:
       - application/json
       responses:
         "201":
-          description: User registered successfully
+          description: User registration initiated. Check email for verification link.
           schema:
             allOf:
             - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.TokenResponse'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.RegisterResponse'
               type: object
         "400":
           description: Invalid request format or invalid role type
@@ -708,11 +723,102 @@ paths:
       summary: Register a new user
       tags:
       - auth
+  /auth/resend-verification:
+    post:
+      consumes:
+      - application/json
+      description: Resends the verification email to a previously registered email
+        address
+      parameters:
+      - description: Email address to resend verification to
+        in: query
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Verification email resent successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+        "400":
+          description: Invalid or missing email
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "409":
+          description: Email already verified
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      summary: Resend verification email
+      tags:
+      - auth
+  /auth/verify-email:
+    get:
+      consumes:
+      - application/json
+      description: Verifies a user's email address using the verification token
+      parameters:
+      - description: Verification token sent to user's email
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Email verified successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.VerifyEmailResponse'
+              type: object
+        "400":
+          description: Invalid or missing token
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "404":
+          description: Token not found
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "409":
+          description: Email already verified
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "410":
+          description: Token expired
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      summary: Verify email address
+      tags:
+      - auth
   /class-notes:
     get:
       consumes:
       - application/json
-      description: Get a list of all class notes with optional filtering
+      description: Get a list of all class notes with optional filtering and sorting
       parameters:
       - description: Filter by department ID
         in: query
@@ -739,6 +845,24 @@ paths:
         minimum: 1
         name: pageSize
         type: integer
+      - default: created_at
+        description: Sort by field (created_at, updated_at, title, course_code)
+        enum:
+        - created_at
+        - updated_at
+        - title
+        - course_code
+        in: query
+        name: sortBy
+        type: string
+      - default: desc
+        description: Sort direction (asc, desc)
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sortOrder
+        type: string
       produces:
       - application/json
       responses:

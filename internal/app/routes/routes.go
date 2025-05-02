@@ -28,6 +28,8 @@ func SetupRouter(
 		auth.POST("/register", authController.Register)
 		auth.POST("/login", authController.Login)
 		auth.POST("/refresh", authController.RefreshToken)
+		auth.GET("/verify-email", authController.VerifyEmail)
+		auth.POST("/resend-verification", authController.ResendVerificationEmail)
 		// Profile route moved to authenticated group
 	}
 

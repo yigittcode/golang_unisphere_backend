@@ -35,6 +35,10 @@ type IUserRepository interface {
 	// Department
 	GetDepartmentNameByID(ctx context.Context, departmentID int64) (string, error)
 	
+	// Email verification
+	SetEmailVerified(ctx context.Context, userID int64, verified bool) error
+	IsEmailVerified(ctx context.Context, userID int64) (bool, error)
+	
 	// For backward compatibility - to be deprecated
 	CreateInstructor(ctx context.Context, instructor *models.Instructor) error
 	GetInstructorByUserID(ctx context.Context, userID int64) (*models.Instructor, error)
@@ -61,15 +65,15 @@ func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) (int64, error) {
 	query := `
 		INSERT INTO users 
-		(email, password, first_name, last_name, role_type, is_active, department_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		(email, password, first_name, last_name, role_type, is_active, email_verified, department_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id
 	`
 	
 	var id int64
 	err := r.db.QueryRow(ctx, query, 
 		user.Email, user.Password, user.FirstName, user.LastName, 
-		user.RoleType, user.IsActive, user.DepartmentID).Scan(&id)
+		user.RoleType, user.IsActive, user.EmailVerified, user.DepartmentID).Scan(&id)
 		
 	if err != nil {
 		// Check for duplicate email error
@@ -624,4 +628,40 @@ func (r *UserRepository) FindByFilter(ctx context.Context, departmentID *int64, 
 	}
 	
 	return users, total, nil
+}
+
+// SetEmailVerified updates the email_verified field for a user
+func (r *UserRepository) SetEmailVerified(ctx context.Context, userID int64, verified bool) error {
+	query := `
+		UPDATE users 
+		SET email_verified = $1 
+		WHERE id = $2
+	`
+	
+	_, err := r.db.Exec(ctx, query, verified, userID)
+	if err != nil {
+		return fmt.Errorf("error updating email verification status: %w", err)
+	}
+	
+	return nil
+}
+
+// IsEmailVerified checks if a user's email is verified
+func (r *UserRepository) IsEmailVerified(ctx context.Context, userID int64) (bool, error) {
+	query := `
+		SELECT email_verified 
+		FROM users 
+		WHERE id = $1
+	`
+	
+	var verified bool
+	err := r.db.QueryRow(ctx, query, userID).Scan(&verified)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return false, apperrors.ErrUserNotFound
+		}
+		return false, fmt.Errorf("error checking email verification status: %w", err)
+	}
+	
+	return verified, nil
 }

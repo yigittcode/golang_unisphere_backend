@@ -32,6 +32,7 @@ import (
 	// Import the new helpers package
 	"github.com/yigit/unisphere/internal/pkg/helpers"
 	"github.com/yigit/unisphere/internal/pkg/logger"
+	"github.com/yigit/unisphere/internal/pkg/email" // Import email package
 	"github.com/yigit/unisphere/internal/seed" // Import the new seed package
 )
 
@@ -55,6 +56,7 @@ type Dependencies struct {
 	Repos                *appRepos.Repositories        // Include the main repo container
 	JWTService           *pkgAuth.JWTService
 	AuthzService         *appAuth.AuthorizationService
+	EmailService         email.EmailService
 	Logger               zerolog.Logger
 	FileStorage          *filestorage.LocalStorage // Add FileStorage
 }
@@ -159,6 +161,18 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 		RefreshTokenExp: helpers.ParseDuration(cfg.JWT.RefreshTokenExpiration, 720*time.Hour),
 		TokenIssuer:     cfg.JWT.Issuer,
 	})
+	
+	// Initialize Email Service
+	deps.EmailService = email.NewEmailService(email.SMTPConfig{
+		Host:      cfg.SMTP.Host,
+		Port:      cfg.SMTP.Port,
+		Username:  cfg.SMTP.Username,
+		Password:  cfg.SMTP.Password,
+		FromName:  cfg.SMTP.FromName,
+		FromEmail: cfg.SMTP.FromEmail,
+		UseTLS:    cfg.SMTP.UseTLS,
+		BaseURL:   baseUrl, // Use the same base URL as file storage
+	}, lgr)
 
 	deps.AuthService = appServices.NewAuthService(
 		deps.Repos.UserRepository,
@@ -167,6 +181,8 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 		deps.Repos.FacultyRepository,
 		deps.Repos.FileRepository,
 		deps.FileStorage,
+		deps.Repos.VerificationTokenRepository,
+		deps.EmailService,
 		deps.JWTService,
 		lgr,
 	)

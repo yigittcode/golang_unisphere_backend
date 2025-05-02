@@ -56,3 +56,19 @@ type AuthResponse struct {
 	Token TokenResponse `json:"token"`
 	User  interface{}   `json:"user"`
 }
+
+// RegisterResponse defines the response model for user registration
+type RegisterResponse struct {
+	Message string `json:"message" example:"Verification email sent. Please check your inbox to complete registration."`
+	UserID  int64  `json:"userId" example:"123"`
+}
+
+// VerifyEmailRequest defines the request model for email verification
+type VerifyEmailRequest struct {
+	Token string `json:"token" binding:"required" example:"abc123"`
+}
+
+// VerifyEmailResponse defines the response model for email verification
+type VerifyEmailResponse struct {
+	Message string `json:"message" example:"Email verified successfully"`
+}

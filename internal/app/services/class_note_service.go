@@ -59,14 +59,15 @@ func NewClassNoteService(
 	}
 }
 
-// GetAllNotes retrieves all class notes with filtering and pagination
+// GetAllNotes retrieves all class notes with filtering, sorting and pagination
 func (s *classNoteServiceImpl) GetAllNotes(ctx context.Context, filter *dto.ClassNoteFilterRequest) (*dto.ClassNoteListResponse, error) {
 	s.logger.Debug().
 		Interface("filter", filter).
 		Msg("Getting all class notes")
 
-	// Get notes from repository
-	notes, total, err := s.classNoteRepo.GetAll(ctx, filter.DepartmentID, filter.CourseCode, filter.InstructorID, filter.Page, filter.PageSize)
+	// Get notes from repository with sorting parameters
+	notes, total, err := s.classNoteRepo.GetAll(ctx, filter.DepartmentID, filter.CourseCode, filter.InstructorID, 
+		filter.Page, filter.PageSize, filter.SortBy, filter.SortOrder)
 	if err != nil {
 		s.logger.Error().Err(err).
 			Interface("filter", filter).
@@ -77,6 +78,8 @@ func (s *classNoteServiceImpl) GetAllNotes(ctx context.Context, filter *dto.Clas
 	s.logger.Debug().
 		Int("count", len(notes)).
 		Int64("total", total).
+		Str("sortBy", filter.SortBy).
+		Str("sortOrder", filter.SortOrder).
 		Msg("Retrieved class notes successfully")
 
 	// Convert to response DTOs
