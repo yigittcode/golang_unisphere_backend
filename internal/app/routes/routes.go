@@ -22,6 +22,21 @@ func SetupRouter(
 	// API version group
 	v1 := router.Group("/api/v1")
 
+	// --- Public Faculty and Department routes ---
+	// Faculty routes (public access)
+	faculties := v1.Group("/faculties")
+	{
+		faculties.GET("", facultyController.GetAllFaculties)
+		faculties.GET("/:id", facultyController.GetFacultyByID)
+	}
+
+	// Department routes (public access)
+	departments := v1.Group("/departments")
+	{
+		departments.GET("", departmentController.GetAllDepartments)
+		departments.GET("/:id", departmentController.GetDepartmentByID)
+	}
+
 	// --- Public Auth routes ---
 	auth := v1.Group("/auth")
 	{
@@ -36,7 +51,7 @@ func SetupRouter(
 	// --- Authenticated Routes Group ---
 	authenticated := v1.Group("")               // Create a new group for all authenticated routes
 	authenticated.Use(authMiddleware.JWTAuth()) // Apply JWT Auth middleware to this group
-	
+
 	// Apply email verification middleware to all routes except user profile
 	// This ensures users can at least access their profile even if email is not verified
 	authenticatedWithEmailVerified := authenticated.Group("")
@@ -47,16 +62,11 @@ func SetupRouter(
 		// Files endpoint (global access to file details)
 		authenticated.GET("/files/:fileId", classNoteController.GetFileDetails)
 
-		// Faculty routes (now under authenticated group)
-		faculties := authenticatedWithEmailVerified.Group("/faculties")
+		// Faculty protected routes (now under authenticated group)
+		facultiesProtected := authenticatedWithEmailVerified.Group("/faculties")
 		{
-			// All faculty routes now require authentication
-			faculties.GET("", facultyController.GetAllFaculties)
-			faculties.GET("/:id", facultyController.GetFacultyByID)
-
 			// Role-protected routes within faculties
-			facultiesInstructorProtected := faculties.Group("")
-			// No need for JWTAuth() again, inherited from parent 'authenticated' group
+			facultiesInstructorProtected := facultiesProtected.Group("")
 			facultiesInstructorProtected.Use(authMiddleware.RoleRequired(string(models.RoleInstructor)))
 			{
 				facultiesInstructorProtected.POST("", facultyController.CreateFaculty)
@@ -65,15 +75,11 @@ func SetupRouter(
 			}
 		}
 
-		// Department routes
-		departments := authenticatedWithEmailVerified.Group("/departments")
+		// Department protected routes
+		departmentsProtected := authenticatedWithEmailVerified.Group("/departments")
 		{
-			departments.GET("", departmentController.GetAllDepartments)
-			departments.GET("/:id", departmentController.GetDepartmentByID)
-			// departments.GET("/:id/instructors", departmentController.GetInstructorsByDepartment)
-
 			// Role-protected routes within departments
-			departmentsInstructorProtected := departments.Group("")
+			departmentsInstructorProtected := departmentsProtected.Group("")
 			departmentsInstructorProtected.Use(authMiddleware.RoleRequired(string(models.RoleInstructor)))
 			{
 				departmentsInstructorProtected.POST("", departmentController.CreateDepartment)
@@ -86,8 +92,8 @@ func SetupRouter(
 		pastExams := authenticatedWithEmailVerified.Group("/past-exams")
 		{
 			// Public routes accessible to all authenticated users (students and instructors)
-			pastExams.GET("", pastExamController.GetAllPastExams)        // List all past exams with optional filtering
-			pastExams.GET("/:id", pastExamController.GetPastExamByID)    // Retrieve a specific past exam by ID
+			pastExams.GET("", pastExamController.GetAllPastExams)     // List all past exams with optional filtering
+			pastExams.GET("/:id", pastExamController.GetPastExamByID) // Retrieve a specific past exam by ID
 
 			// Instructor-only routes - Protected by role-based middleware
 			// These routes are restricted to users with the Instructor role
@@ -95,12 +101,12 @@ func SetupRouter(
 			pastExamsInstructorProtected.Use(authMiddleware.RoleRequired(string(models.RoleInstructor)))
 			{
 				// CRUD operations for past exam resources
-				pastExamsInstructorProtected.POST("", pastExamController.CreatePastExam)                       // Create a new past exam
-				pastExamsInstructorProtected.PUT("/:id", pastExamController.UpdatePastExam)                    // Update an existing past exam
-				pastExamsInstructorProtected.DELETE("/:id", pastExamController.DeletePastExam)                 // Delete a past exam
-				
+				pastExamsInstructorProtected.POST("", pastExamController.CreatePastExam)       // Create a new past exam
+				pastExamsInstructorProtected.PUT("/:id", pastExamController.UpdatePastExam)    // Update an existing past exam
+				pastExamsInstructorProtected.DELETE("/:id", pastExamController.DeletePastExam) // Delete a past exam
+
 				// File management for past exams
-				pastExamsInstructorProtected.POST("/:id/files", pastExamController.AddFileToPastExam)          // Upload and attach files to a past exam
+				pastExamsInstructorProtected.POST("/:id/files", pastExamController.AddFileToPastExam)                // Upload and attach files to a past exam
 				pastExamsInstructorProtected.DELETE("/:id/files/:fileId", pastExamController.DeleteFileFromPastExam) // Remove a file from a past exam
 			}
 		}
@@ -121,35 +127,35 @@ func SetupRouter(
 				classNotesAuthProtected.DELETE("/:noteId/files/:fileId", classNoteController.DeleteFileFromNote)
 			}
 		}
-		
+
 		// Community routes - Endpoints for accessing and managing communities
 		communities := authenticatedWithEmailVerified.Group("/communities")
 		{
 			// Public routes accessible to all authenticated users
-			communities.GET("", communityController.GetAllCommunities)        // List all communities with optional filtering
-			communities.GET("/:id", communityController.GetCommunityByID)    // Retrieve a specific community by ID
-			
+			communities.GET("", communityController.GetAllCommunities)    // List all communities with optional filtering
+			communities.GET("/:id", communityController.GetCommunityByID) // Retrieve a specific community by ID
+
 			// Routes that require authentication
 			communitiesAuthProtected := communities.Group("")
 			{
 				// CRUD operations for communities
-				communitiesAuthProtected.POST("", communityController.CreateCommunity)           // Create a new community
-				communitiesAuthProtected.PUT("/:id", communityController.UpdateCommunity)        // Update an existing community
-				communitiesAuthProtected.DELETE("/:id", communityController.DeleteCommunity)     // Delete a community
-				
+				communitiesAuthProtected.POST("", communityController.CreateCommunity)       // Create a new community
+				communitiesAuthProtected.PUT("/:id", communityController.UpdateCommunity)    // Update an existing community
+				communitiesAuthProtected.DELETE("/:id", communityController.DeleteCommunity) // Delete a community
+
 				// File management for communities
-				communitiesAuthProtected.POST("/:id/files", communityController.AddFileToCommunity)          // Upload and attach files
-				communitiesAuthProtected.DELETE("/:id/files/:fileId", communityController.DeleteFileFromCommunity)  // Remove a file
-				
+				communitiesAuthProtected.POST("/:id/files", communityController.AddFileToCommunity)                // Upload and attach files
+				communitiesAuthProtected.DELETE("/:id/files/:fileId", communityController.DeleteFileFromCommunity) // Remove a file
+
 				// Profile photo management
 				communitiesAuthProtected.POST("/:id/profile-photo", communityController.UpdateProfilePhoto)   // Update profile photo
 				communitiesAuthProtected.DELETE("/:id/profile-photo", communityController.DeleteProfilePhoto) // Delete profile photo
-				
+
 				// Participant management
-				communitiesAuthProtected.GET("/:id/participants", communityController.GetCommunityParticipants)     // Get all participants
-				communitiesAuthProtected.POST("/:id/participants", communityController.JoinCommunity)               // Join community
-				communitiesAuthProtected.DELETE("/:id/participants", communityController.LeaveCommunity)            // Leave community
-				communitiesAuthProtected.GET("/:id/participants/check", communityController.IsUserParticipant)      // Check if user is participant
+				communitiesAuthProtected.GET("/:id/participants", communityController.GetCommunityParticipants) // Get all participants
+				communitiesAuthProtected.POST("/:id/participants", communityController.JoinCommunity)           // Join community
+				communitiesAuthProtected.DELETE("/:id/participants", communityController.LeaveCommunity)        // Leave community
+				communitiesAuthProtected.GET("/:id/participants/check", communityController.IsUserParticipant)  // Check if user is participant
 			}
 		}
 	}

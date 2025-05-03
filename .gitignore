@@ -12,6 +12,8 @@ unisphere-api
 # Test binary, built with `go test -c`
 *.test
 
+docker-compose.yml
+
 configs/config.yaml
 uploads/
 

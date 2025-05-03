@@ -30,9 +30,9 @@ import (
 	"github.com/yigit/unisphere/internal/pkg/filestorage" // Import filestorage
 
 	// Import the new helpers package
+	"github.com/yigit/unisphere/internal/pkg/email" // Import email package
 	"github.com/yigit/unisphere/internal/pkg/helpers"
 	"github.com/yigit/unisphere/internal/pkg/logger"
-	"github.com/yigit/unisphere/internal/pkg/email" // Import email package
 	"github.com/yigit/unisphere/internal/seed" // Import the new seed package
 )
 
@@ -161,7 +161,7 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 		RefreshTokenExp: helpers.ParseDuration(cfg.JWT.RefreshTokenExpiration, 720*time.Hour),
 		TokenIssuer:     cfg.JWT.Issuer,
 	})
-	
+
 	// Initialize Email Service
 	deps.EmailService = email.NewEmailService(email.SMTPConfig{
 		Host:      cfg.SMTP.Host,
@@ -189,7 +189,7 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 
 	deps.FacultyService = appServices.NewFacultyService(deps.Repos.FacultyRepository)
 	deps.DepartmentService = appServices.NewDepartmentService(deps.Repos.DepartmentRepository, deps.Repos.FacultyRepository)
-	
+
 	// Initialize User Service
 	deps.UserService = appServices.NewUserService(
 		deps.Repos.UserRepository,
@@ -198,7 +198,7 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 		deps.FileStorage,
 		deps.Logger,
 	)
-	
+
 	deps.PastExamService = appServices.NewPastExamService(
 		deps.Repos.PastExamRepository,
 		deps.Repos.DepartmentRepository,
@@ -215,7 +215,7 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 		deps.AuthzService,
 		deps.Logger,
 	)
-	
+
 	deps.CommunityService = appServices.NewCommunityService(
 		deps.Repos.CommunityRepository,
 		deps.Repos.CommunityParticipantRepository,
@@ -256,6 +256,10 @@ func SetupRouter(cfg *config.Config, deps *Dependencies, lgr zerolog.Logger) *gi
 
 	router := gin.Default()
 
+	// Apply CORS middleware to all routes
+	router.Use(appMiddleware.CORSMiddleware())
+	lgr.Info().Msg("CORS middleware enabled: Allowing all origins")
+
 	// Setup Swagger
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json"), ginSwagger.DefaultModelsExpandDepth(1)))
 
@@ -270,35 +274,34 @@ func SetupRouter(cfg *config.Config, deps *Dependencies, lgr zerolog.Logger) *gi
 		deps.CommunityController,
 		deps.AuthMiddleware, // Pass the middleware struct itself
 	)
-	
+
 	// Manually add user routes to avoid conflicts
 	v1 := router.Group("/api/v1")
 	authenticated := v1.Group("")
 	authenticated.Use(deps.AuthMiddleware.JWTAuth())
-	
 
-		// Routes available to authenticated users, even without email verification
-		// Add basic user profile endpoints (so users can verify their emails)
-		users := authenticated.Group("/users")
-		{
-			// Profile routes available without email verification
-			users.GET("/profile", deps.UserController.GetUserProfile)
-			users.PUT("/profile", deps.UserController.UpdateUserProfile)
-			users.POST("/profile/photo", deps.UserController.UpdateProfilePhoto)
-			users.DELETE("/profile/photo", deps.UserController.DeleteProfilePhoto)
-		}
-		
-		// Routes that require email verification
-		authenticatedWithEmailVerified := authenticated.Group("")
-		authenticatedWithEmailVerified.Use(deps.AuthMiddleware.EmailVerificationRequired())
-		
-		// User endpoints that require email verification
-		usersVerified := authenticatedWithEmailVerified.Group("/users")
-		{
-			usersVerified.GET("", deps.UserController.GetUsersByFilter)
-			usersVerified.GET("/:id", deps.UserController.GetUserByID)
-		}
-	
+	// Routes available to authenticated users, even without email verification
+	// Add basic user profile endpoints (so users can verify their emails)
+	users := authenticated.Group("/users")
+	{
+		// Profile routes available without email verification
+		users.GET("/profile", deps.UserController.GetUserProfile)
+		users.PUT("/profile", deps.UserController.UpdateUserProfile)
+		users.POST("/profile/photo", deps.UserController.UpdateProfilePhoto)
+		users.DELETE("/profile/photo", deps.UserController.DeleteProfilePhoto)
+	}
+
+	// Routes that require email verification
+	authenticatedWithEmailVerified := authenticated.Group("")
+	authenticatedWithEmailVerified.Use(deps.AuthMiddleware.EmailVerificationRequired())
+
+	// User endpoints that require email verification
+	usersVerified := authenticatedWithEmailVerified.Group("/users")
+	{
+		usersVerified.GET("", deps.UserController.GetUsersByFilter)
+		usersVerified.GET("/:id", deps.UserController.GetUserByID)
+	}
+
 	// Use a different URL pattern to avoid conflicts with /departments/:id endpoint
 	authenticated.GET("/department-users/:departmentId", deps.UserController.GetUsersByDepartment)
 
