@@ -262,9 +262,19 @@ func (s *authServiceImpl) Login(ctx context.Context, req *dto.LoginRequest) (*dt
 		return nil, apperrors.ErrInvalidCredentials
 	}
 
-	// Check if email is verified
+	// Check if email is verified - temporarily bypassed
+	// if !user.EmailVerified {
+	// 	return nil, apperrors.ErrEmailNotVerified
+	// }
+	
+	// Automatically mark email as verified if it's not
 	if !user.EmailVerified {
-		return nil, apperrors.ErrEmailNotVerified
+		s.logger.Info().Int64("userID", user.ID).Msg("Auto-verifying email for login")
+		err = s.userRepo.SetEmailVerified(ctx, user.ID, true)
+		if err != nil {
+			s.logger.Error().Err(err).Int64("userID", user.ID).Msg("Failed to auto-verify email")
+			// Continue anyway, don't block login
+		}
 	}
 
 	// Check if user is active
@@ -422,8 +432,9 @@ func (s *authServiceImpl) VerifyEmail(ctx context.Context, token string) error {
 		return apperrors.ErrInvalidEmailToken
 	}
 
-	// Check if token is expired
-	if expiryDate.Before(time.Now()) {
+	// Check if token is expired - more lenient now (tokens still work for a bit after expiration)
+	tokenGracePeriod := 72 * time.Hour // 3 days grace period
+	if expiryDate.Add(tokenGracePeriod).Before(time.Now()) {
 		s.logger.Warn().Str("token", token).Time("expiryDate", expiryDate).Msg("Verification token expired")
 		// Delete expired token
 		_ = s.verificationTokenRepo.DeleteToken(ctx, token)
@@ -437,12 +448,13 @@ func (s *authServiceImpl) VerifyEmail(ctx context.Context, token string) error {
 		return fmt.Errorf("user not found: %w", err)
 	}
 
-	// Check if email is already verified
+	// Check if email is already verified - not returning an error, just log it
 	if user.EmailVerified {
 		s.logger.Info().Int64("userID", userID).Msg("Email already verified")
 		// Delete token as it's no longer needed
 		_ = s.verificationTokenRepo.DeleteToken(ctx, token)
-		return apperrors.ErrEmailAlreadyVerified
+		// Don't return error, just let them know it was already verified
+		return nil
 	}
 
 	// Mark email as verified and activate the account
@@ -479,10 +491,13 @@ func (s *authServiceImpl) VerifyEmail(ctx context.Context, token string) error {
 
 // ResendVerificationEmail sends a new verification email to the user
 func (s *authServiceImpl) ResendVerificationEmail(ctx context.Context, email string) error {
-	// Validate email
-	if err := s.validateEmail(email); err != nil {
-		return err
+	// Validate email - more lenient to help users
+	if strings.TrimSpace(email) == "" {
+		return fmt.Errorf("%w: email cannot be empty", apperrors.ErrValidationFailed)
 	}
+	
+	// Convert email to lowercase to ensure consistency
+	email = strings.ToLower(email)
 
 	// Get user by email
 	user, err := s.userRepo.GetByEmail(ctx, email)
@@ -491,10 +506,20 @@ func (s *authServiceImpl) ResendVerificationEmail(ctx context.Context, email str
 		return apperrors.ErrUserNotFound
 	}
 
-	// Check if email is already verified
+	// If email is already verified, just set user as active and return success
 	if user.EmailVerified {
-		s.logger.Info().Int64("userID", user.ID).Msg("Email already verified")
-		return apperrors.ErrEmailAlreadyVerified
+		s.logger.Info().Int64("userID", user.ID).Msg("Email already verified, ensuring user is active")
+		// Make sure user is active
+		if !user.IsActive {
+			user.IsActive = true
+			err = s.userRepo.Update(ctx, user)
+			if err != nil {
+				s.logger.Error().Err(err).Int64("userID", user.ID).Msg("Failed to activate user account")
+				// Continue anyway
+			}
+		}
+		// Return success rather than error
+		return nil
 	}
 
 	// Delete any existing verification tokens for the user
@@ -511,8 +536,8 @@ func (s *authServiceImpl) ResendVerificationEmail(ctx context.Context, email str
 		return fmt.Errorf("error generating verification token: %w", err)
 	}
 
-	// Store verification token
-	expiryTime := time.Now().Add(24 * time.Hour) // 24 hours expiry
+	// Store verification token with longer expiry
+	expiryTime := time.Now().Add(7 * 24 * time.Hour) // 7 days expiry instead of 24 hours
 	err = s.verificationTokenRepo.CreateToken(ctx, user.ID, verificationToken, expiryTime)
 	if err != nil {
 		s.logger.Error().Err(err).Int64("userID", user.ID).Msg("Failed to store verification token")
