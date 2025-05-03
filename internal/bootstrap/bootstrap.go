@@ -226,7 +226,7 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 		deps.Logger,
 	)
 
-	deps.AuthMiddleware = appMiddleware.NewAuthMiddleware(deps.JWTService)
+	deps.AuthMiddleware = appMiddleware.NewAuthMiddleware(deps.JWTService, deps.Repos.UserRepository)
 
 	deps.AuthController = appControllers.NewAuthController(
 		deps.AuthService,
@@ -276,16 +276,28 @@ func SetupRouter(cfg *config.Config, deps *Dependencies, lgr zerolog.Logger) *gi
 	authenticated := v1.Group("")
 	authenticated.Use(deps.AuthMiddleware.JWTAuth())
 	
-	// Add user endpoints
-	users := authenticated.Group("/users")
-	{
-		users.GET("", deps.UserController.GetUsersByFilter)
-		users.GET("/:id", deps.UserController.GetUserByID)  
-		users.GET("/profile", deps.UserController.GetUserProfile)
-		users.PUT("/profile", deps.UserController.UpdateUserProfile)
-		users.POST("/profile/photo", deps.UserController.UpdateProfilePhoto)
-		users.DELETE("/profile/photo", deps.UserController.DeleteProfilePhoto)
-	}
+
+		// Routes available to authenticated users, even without email verification
+		// Add basic user profile endpoints (so users can verify their emails)
+		users := authenticated.Group("/users")
+		{
+			// Profile routes available without email verification
+			users.GET("/profile", deps.UserController.GetUserProfile)
+			users.PUT("/profile", deps.UserController.UpdateUserProfile)
+			users.POST("/profile/photo", deps.UserController.UpdateProfilePhoto)
+			users.DELETE("/profile/photo", deps.UserController.DeleteProfilePhoto)
+		}
+		
+		// Routes that require email verification
+		authenticatedWithEmailVerified := authenticated.Group("")
+		authenticatedWithEmailVerified.Use(deps.AuthMiddleware.EmailVerificationRequired())
+		
+		// User endpoints that require email verification
+		usersVerified := authenticatedWithEmailVerified.Group("/users")
+		{
+			usersVerified.GET("", deps.UserController.GetUsersByFilter)
+			usersVerified.GET("/:id", deps.UserController.GetUserByID)
+		}
 	
 	// Use a different URL pattern to avoid conflicts with /departments/:id endpoint
 	authenticated.GET("/department-users/:departmentId", deps.UserController.GetUsersByDepartment)

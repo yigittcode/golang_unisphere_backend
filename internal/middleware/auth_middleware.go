@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/yigit/unisphere/internal/app/models/dto"
+	"github.com/yigit/unisphere/internal/app/repositories"
 	"github.com/yigit/unisphere/internal/pkg/apperrors"
 	"github.com/yigit/unisphere/internal/pkg/auth"
 )
@@ -14,12 +15,14 @@ import (
 // AuthMiddleware for authentication and authorization
 type AuthMiddleware struct {
 	jwtService *auth.JWTService
+	userRepo   *repositories.UserRepository
 }
 
 // NewAuthMiddleware creates a new AuthMiddleware
-func NewAuthMiddleware(jwtService *auth.JWTService) *AuthMiddleware {
+func NewAuthMiddleware(jwtService *auth.JWTService, userRepo *repositories.UserRepository) *AuthMiddleware {
 	return &AuthMiddleware{
 		jwtService: jwtService,
+		userRepo:   userRepo,
 	}
 }
 
@@ -108,6 +111,48 @@ func (m *AuthMiddleware) JWTAuth() gin.HandlerFunc {
 		c.Set("userID", claims.UserID)
 		c.Set("email", claims.Email)
 		c.Set("roleType", claims.RoleType)
+
+		c.Next()
+	}
+}
+
+// EmailVerificationRequired middleware to check if user's email is verified
+func (m *AuthMiddleware) EmailVerificationRequired() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Get user ID from context (set by JWTAuth middleware)
+		userID, exists := c.Get("userID")
+		if !exists {
+			errorDetail := dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "Authentication required")
+			errorDetail = errorDetail.WithDetails("User information not found")
+			c.AbortWithStatusJSON(http.StatusUnauthorized, dto.NewErrorResponse(errorDetail))
+			return
+		}
+
+		// Convert to int64
+		userIDInt, ok := userID.(int64)
+		if !ok {
+			errorDetail := dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Internal server error")
+			errorDetail = errorDetail.WithDetails("Invalid user ID format")
+			c.AbortWithStatusJSON(http.StatusInternalServerError, dto.NewErrorResponse(errorDetail))
+			return
+		}
+
+		// Check if email is verified
+		verified, err := m.userRepo.IsEmailVerified(c.Request.Context(), userIDInt)
+		if err != nil {
+			errorDetail := dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Internal server error")
+			errorDetail = errorDetail.WithDetails("Failed to check email verification status")
+			c.AbortWithStatusJSON(http.StatusInternalServerError, dto.NewErrorResponse(errorDetail))
+			return
+		}
+
+		// If not verified, return forbidden
+		if !verified {
+			errorDetail := dto.NewErrorDetail(dto.ErrorCodeForbidden, "Email not verified")
+			errorDetail = errorDetail.WithDetails("Please verify your email address before accessing this resource")
+			c.AbortWithStatusJSON(http.StatusForbidden, dto.NewErrorResponse(errorDetail))
+			return
+		}
 
 		c.Next()
 	}

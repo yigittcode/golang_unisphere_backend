@@ -36,6 +36,11 @@ func SetupRouter(
 	// --- Authenticated Routes Group ---
 	authenticated := v1.Group("")               // Create a new group for all authenticated routes
 	authenticated.Use(authMiddleware.JWTAuth()) // Apply JWT Auth middleware to this group
+	
+	// Apply email verification middleware to all routes except user profile
+	// This ensures users can at least access their profile even if email is not verified
+	authenticatedWithEmailVerified := authenticated.Group("")
+	authenticatedWithEmailVerified.Use(authMiddleware.EmailVerificationRequired())
 	{
 		// Profile routes are handled by the UserController in bootstrap.go
 
@@ -43,7 +48,7 @@ func SetupRouter(
 		authenticated.GET("/files/:fileId", classNoteController.GetFileDetails)
 
 		// Faculty routes (now under authenticated group)
-		faculties := authenticated.Group("/faculties")
+		faculties := authenticatedWithEmailVerified.Group("/faculties")
 		{
 			// All faculty routes now require authentication
 			faculties.GET("", facultyController.GetAllFaculties)
@@ -61,7 +66,7 @@ func SetupRouter(
 		}
 
 		// Department routes
-		departments := authenticated.Group("/departments")
+		departments := authenticatedWithEmailVerified.Group("/departments")
 		{
 			departments.GET("", departmentController.GetAllDepartments)
 			departments.GET("/:id", departmentController.GetDepartmentByID)
@@ -78,7 +83,7 @@ func SetupRouter(
 		}
 
 		// Past Exam routes - Endpoints for accessing and managing past examination materials
-		pastExams := authenticated.Group("/past-exams")
+		pastExams := authenticatedWithEmailVerified.Group("/past-exams")
 		{
 			// Public routes accessible to all authenticated users (students and instructors)
 			pastExams.GET("", pastExamController.GetAllPastExams)        // List all past exams with optional filtering
@@ -101,7 +106,7 @@ func SetupRouter(
 		}
 
 		// Class Notes routes
-		classNotes := authenticated.Group("/class-notes")
+		classNotes := authenticatedWithEmailVerified.Group("/class-notes")
 		{
 			classNotes.GET("", classNoteController.GetAllNotes)
 			classNotes.GET("/:noteId", classNoteController.GetNoteByID)
@@ -118,7 +123,7 @@ func SetupRouter(
 		}
 		
 		// Community routes - Endpoints for accessing and managing communities
-		communities := authenticated.Group("/communities")
+		communities := authenticatedWithEmailVerified.Group("/communities")
 		{
 			// Public routes accessible to all authenticated users
 			communities.GET("", communityController.GetAllCommunities)        // List all communities with optional filtering
