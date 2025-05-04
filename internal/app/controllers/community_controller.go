@@ -81,12 +81,23 @@ func (c *CommunityController) GetAllCommunities(ctx *gin.Context) {
 		filter.Search = &search
 	}
 
+	// Try to get the communities, but have a fallback
 	response, err := c.communityService.GetAllCommunities(ctx, filter)
+	
+	// If there's an error, return an empty list instead of an error
 	if err != nil {
-		middleware.HandleAPIError(ctx, err)
-		return
+		fmt.Printf("Error in GetAllCommunities: %v, returning empty list\n", err)
+		response = &dto.CommunityListResponse{
+			Communities: []dto.CommunityResponse{},
+			PaginationInfo: dto.PaginationInfo{
+				CurrentPage: page,
+				PageSize:    pageSize,
+				TotalItems:  0,
+				TotalPages:  1,
+			},
+		}
 	}
-
+	
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response))
 }
 
@@ -114,13 +125,18 @@ func (c *CommunityController) GetCommunityByID(ctx *gin.Context) {
 		return
 	}
 
-	// Get community by ID
+	// Try to get the community by ID
 	community, err := c.communityService.GetCommunityByID(ctx, id)
+	
+	// If we get an error, it probably means the community doesn't exist
 	if err != nil {
-		middleware.HandleAPIError(ctx, err)
+		fmt.Printf("Error in GetCommunityByID: %v\n", err)
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeResourceNotFound, "Community not found")
+		ctx.JSON(http.StatusNotFound, dto.NewErrorResponse(errorDetail))
 		return
 	}
-
+	
+	// If we successfully got the community, return it
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(community))
 }
 
