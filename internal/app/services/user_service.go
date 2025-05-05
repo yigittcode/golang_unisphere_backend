@@ -13,6 +13,7 @@ import (
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/repositories"
 	"github.com/yigit/unisphere/internal/pkg/apperrors"
+	"github.com/yigit/unisphere/internal/pkg/auth"
 	"github.com/yigit/unisphere/internal/pkg/filestorage"
 )
 
@@ -35,6 +36,7 @@ type userServiceImpl struct {
 	departmentRepo *repositories.DepartmentRepository
 	fileRepo       *repositories.FileRepository
 	fileStorage    *filestorage.LocalStorage
+	authService    AuthService
 	logger         zerolog.Logger
 }
 
@@ -44,6 +46,7 @@ func NewUserService(
 	departmentRepo *repositories.DepartmentRepository,
 	fileRepo *repositories.FileRepository,
 	fileStorage *filestorage.LocalStorage,
+	authService AuthService,
 	logger zerolog.Logger,
 ) UserService {
 	return &userServiceImpl{
@@ -51,6 +54,7 @@ func NewUserService(
 		departmentRepo: departmentRepo,
 		fileRepo:       fileRepo,
 		fileStorage:    fileStorage,
+		authService:    authService,
 		logger:         logger,
 	}
 }
@@ -142,38 +146,36 @@ func (s *userServiceImpl) UpdateUserProfile(ctx context.Context, userID int64, r
 		return nil, apperrors.ErrUserNotFound
 	}
 
-	// Check if email is changing and if it's already in use
-	if currentUser.Email != req.Email {
-		// Check if email is already in use by another user
-		existingUser, err := s.userRepo.FindByEmail(ctx, req.Email)
-		if err != nil {
-			// If it's "user not found", that's good (email not taken)
-			if errors.Is(err, apperrors.ErrUserNotFound) {
-				// Email is available - continue with the update
-				s.logger.Debug().Str("email", req.Email).Msg("Email is available for use")
-			} else {
-				// Any other error is a real problem
-				s.logger.Error().Err(err).Str("email", req.Email).Msg("Error checking email availability")
-				return nil, fmt.Errorf("error checking email availability: %w", err)
-			}
-		} else if existingUser != nil && existingUser.ID != userID {
-			// Email exists and belongs to someone else
-			return nil, apperrors.ErrEmailAlreadyExists
-		}
+	// Update user's name information
+	err = s.userRepo.UpdateProfile(ctx, userID, req.FirstName, req.LastName)
+	if err != nil {
+		return nil, fmt.Errorf("error updating user profile: %w", err)
 	}
 
 	// Update user information
 	currentUser.FirstName = req.FirstName
 	currentUser.LastName = req.LastName
-	currentUser.Email = req.Email
+	// Email değiştirilmeyecek, mevcut email korunacak
 
-	// Department ID is no longer part of the update request
-	// Users can't change their department through the profile update
+	// If password is provided, update it
+	if req.Password != nil && *req.Password != "" {
+		// Validate password using the same validation as in auth service
+		if err := s.authService.ValidatePassword(*req.Password); err != nil {
+			return nil, err
+		}
 
-	// Save updated user
-	err = s.userRepo.Update(ctx, currentUser)
-	if err != nil {
-		return nil, fmt.Errorf("error updating user: %w", err)
+		// Hash the new password
+		hashedPassword, err := auth.HashPassword(*req.Password)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("Error hashing password")
+			return nil, fmt.Errorf("error processing password: %w", err)
+		}
+
+		// Update the password
+		err = s.userRepo.UpdatePassword(ctx, userID, hashedPassword)
+		if err != nil {
+			return nil, fmt.Errorf("error updating user password: %w", err)
+		}
 	}
 
 	// Return updated user

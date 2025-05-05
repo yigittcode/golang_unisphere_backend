@@ -432,15 +432,14 @@ func (s *authServiceImpl) UpdateProfile(ctx context.Context, userID int64, req *
 
 	user.FirstName = req.FirstName
 	user.LastName = req.LastName
-	user.Email = req.Email
 
-	return s.userRepo.UpdateProfile(ctx, userID, req.FirstName, req.LastName, req.Email)
+	return s.userRepo.UpdateProfile(ctx, userID, req.FirstName, req.LastName)
 }
 
 // UpdateProfilePhoto updates a user's profile photo
 func (s *authServiceImpl) UpdateProfilePhoto(ctx context.Context, userID int64, file *multipart.FileHeader) error {
 	// Delegate to the user service for a consistent implementation
-	userService := NewUserService(s.userRepo, s.departmentRepo, s.fileRepo, s.fileStorage, s.logger)
+	userService := NewUserService(s.userRepo, s.departmentRepo, s.fileRepo, s.fileStorage, s, s.logger)
 	_, err := userService.UpdateProfilePhoto(ctx, userID, file)
 	return err
 }
@@ -448,7 +447,7 @@ func (s *authServiceImpl) UpdateProfilePhoto(ctx context.Context, userID int64, 
 // DeleteProfilePhoto deletes a user's profile photo
 func (s *authServiceImpl) DeleteProfilePhoto(ctx context.Context, userID int64) error {
 	// Delegate to the user service for a consistent implementation
-	userService := NewUserService(s.userRepo, s.departmentRepo, s.fileRepo, s.fileStorage, s.logger)
+	userService := NewUserService(s.userRepo, s.departmentRepo, s.fileRepo, s.fileStorage, s, s.logger)
 	return userService.DeleteProfilePhoto(ctx, userID)
 }
 

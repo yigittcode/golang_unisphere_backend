@@ -197,6 +197,7 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 		deps.Repos.DepartmentRepository,
 		deps.Repos.FileRepository,
 		deps.FileStorage,
+		deps.AuthService,
 		deps.Logger,
 	)
 

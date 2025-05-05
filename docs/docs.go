@@ -106,6 +106,87 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/users/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a user by ID. Only accessible by Admin users.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Delete user",
+                "parameters": [
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User deleted successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.MessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid user ID format",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or missing token",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - User does not have admin privileges",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/forgot-password": {
             "post": {
                 "description": "Sends a password reset code to the user's email",
@@ -1603,7 +1684,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates a new community with optional file upload",
+                "description": "Creates a new community with optional file upload. The current authenticated user will automatically be set as the community lead.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -1626,13 +1707,6 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Community abbreviation",
                         "name": "abbreviation",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Lead user ID",
-                        "name": "leadId",
                         "in": "formData",
                         "required": true
                     },
@@ -1670,12 +1744,6 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized: JWT token missing or invalid",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Lead user not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
                         }
@@ -2298,7 +2366,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Add a user as a participant to a community",
+                "description": "The authenticated user joins the specified community",
                 "consumes": [
                     "application/json"
                 ],
@@ -2316,15 +2384,6 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "description": "Join community request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.JoinCommunityRequest"
-                        }
                     }
                 ],
                 "responses": {
@@ -2444,7 +2503,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Remove a user as a participant from a community",
+                "description": "The authenticated user leaves the specified community",
                 "consumes": [
                     "application/json"
                 ],
@@ -2462,15 +2521,6 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "description": "Leave community request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.LeaveCommunityRequest"
-                        }
                     }
                 ],
                 "responses": {
@@ -5142,85 +5192,6 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Deletes a user by ID. Only accessible by Admin users.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "Delete user",
-                "parameters": [
-                    {
-                        "minimum": 1,
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "User ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "User deleted successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.MessageResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid user ID format",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized - Invalid or missing token",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden - User does not have admin privileges",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "User not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    }
-                }
             }
         }
     },
@@ -5365,14 +5336,8 @@ const docTemplate = `{
         "github_com_yigit_unisphere_internal_app_models_dto.CommunityParticipantResponse": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "integer"
-                },
                 "joinedAt": {
                     "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserBasicResponse"
                 },
                 "userId": {
                     "type": "integer"
@@ -5396,9 +5361,6 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
-                },
-                "lead": {
-                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserBasicResponse"
                 },
                 "leadId": {
                     "type": "integer"
@@ -5697,28 +5659,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.JoinCommunityRequest": {
-            "type": "object",
-            "required": [
-                "userId"
-            ],
-            "properties": {
-                "userId": {
-                    "type": "integer"
-                }
-            }
-        },
-        "github_com_yigit_unisphere_internal_app_models_dto.LeaveCommunityRequest": {
-            "type": "object",
-            "required": [
-                "userId"
-            ],
-            "properties": {
-                "userId": {
-                    "type": "integer"
-                }
-            }
-        },
         "github_com_yigit_unisphere_internal_app_models_dto.LoginRequest": {
             "type": "object",
             "required": [
@@ -6012,35 +5952,18 @@ const docTemplate = `{
         "github_com_yigit_unisphere_internal_app_models_dto.UpdateUserRequest": {
             "type": "object",
             "required": [
-                "email",
                 "firstName",
                 "lastName"
             ],
             "properties": {
-                "email": {
-                    "type": "string"
-                },
                 "firstName": {
                     "type": "string"
                 },
                 "lastName": {
                     "type": "string"
-                }
-            }
-        },
-        "github_com_yigit_unisphere_internal_app_models_dto.UserBasicResponse": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
                 },
-                "firstName": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "lastName": {
+                "password": {
+                    "description": "Email değişimi engellendi - kullanıcılar email'lerini değiştiremezler",
                     "type": "string"
                 }
             }

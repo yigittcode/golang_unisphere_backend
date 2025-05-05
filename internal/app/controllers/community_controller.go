@@ -83,7 +83,7 @@ func (c *CommunityController) GetAllCommunities(ctx *gin.Context) {
 
 	// Try to get the communities, but have a fallback
 	response, err := c.communityService.GetAllCommunities(ctx, filter)
-	
+
 	// If there's an error, return an empty list instead of an error
 	if err != nil {
 		fmt.Printf("Error in GetAllCommunities: %v, returning empty list\n", err)
@@ -97,7 +97,7 @@ func (c *CommunityController) GetAllCommunities(ctx *gin.Context) {
 			},
 		}
 	}
-	
+
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response))
 }
 
@@ -127,7 +127,7 @@ func (c *CommunityController) GetCommunityByID(ctx *gin.Context) {
 
 	// Try to get the community by ID
 	community, err := c.communityService.GetCommunityByID(ctx, id)
-	
+
 	// If we get an error, it probably means the community doesn't exist
 	if err != nil {
 		fmt.Printf("Error in GetCommunityByID: %v\n", err)
@@ -135,31 +135,29 @@ func (c *CommunityController) GetCommunityByID(ctx *gin.Context) {
 		ctx.JSON(http.StatusNotFound, dto.NewErrorResponse(errorDetail))
 		return
 	}
-	
+
 	// If we successfully got the community, return it
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(community))
 }
 
 // CreateCommunity handles creating a new community
 // @Summary Create a new community
-// @Description Creates a new community with optional file upload
+// @Description Creates a new community with optional file upload. The current authenticated user will automatically be set as the community lead.
 // @Tags communities
 // @Accept multipart/form-data
 // @Produce json
 // @Security BearerAuth
 // @Param name formData string true "Community name"
 // @Param abbreviation formData string true "Community abbreviation"
-// @Param leadId formData int true "Lead user ID"
 // @Param files formData file false "Community files (can upload multiple)"
 // @Success 201 {object} dto.APIResponse{data=dto.CommunityResponse} "Community created successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request parameters"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized: JWT token missing or invalid"
-// @Failure 404 {object} dto.ErrorResponse "Lead user not found"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /communities [post]
 func (c *CommunityController) CreateCommunity(ctx *gin.Context) {
 	fmt.Println("********* CreateCommunity BAŞLANGIÇ *********")
-	
+
 	var req dto.CreateCommunityRequest
 	if err := ctx.ShouldBind(&req); err != nil {
 		fmt.Printf("Error binding request: %v\n", err)
@@ -170,7 +168,7 @@ func (c *CommunityController) CreateCommunity(ctx *gin.Context) {
 
 	// Get files (optional)
 	var files []*multipart.FileHeader
-	
+
 	// Get files from the multipart form
 	form, err := ctx.MultipartForm()
 	if err == nil && form != nil && form.File != nil {
@@ -251,7 +249,7 @@ func (c *CommunityController) UpdateCommunity(ctx *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "Community ID"
-// @Success 200 {object} dto.APIResponse{data=dto.SuccessResponse} "Community deleted successfully" 
+// @Success 200 {object} dto.APIResponse{data=dto.SuccessResponse} "Community deleted successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid community ID"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized: JWT token missing or invalid"
 // @Failure 404 {object} dto.ErrorResponse "Community not found"
@@ -259,7 +257,7 @@ func (c *CommunityController) UpdateCommunity(ctx *gin.Context) {
 // @Router /communities/{id} [delete]
 func (c *CommunityController) DeleteCommunity(ctx *gin.Context) {
 	fmt.Println("********* DeleteCommunity BAŞLANGIÇ *********")
-	
+
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -308,7 +306,7 @@ func (c *CommunityController) DeleteCommunity(ctx *gin.Context) {
 // @Router /communities/{id}/files [post]
 func (c *CommunityController) AddFileToCommunity(ctx *gin.Context) {
 	fmt.Println("********* AddFileToCommunity BAŞLANGIÇ *********")
-	
+
 	// Parse community ID from path
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -317,12 +315,12 @@ func (c *CommunityController) AddFileToCommunity(ctx *gin.Context) {
 			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid community ID")))
 		return
 	}
-	
+
 	fmt.Printf("Adding files to community with ID: %d\n", id)
 
 	// Get files
 	var files []*multipart.FileHeader
-	
+
 	// Get files from the multipart form
 	form, err := ctx.MultipartForm()
 	if err == nil && form != nil && form.File != nil {
@@ -331,7 +329,7 @@ func (c *CommunityController) AddFileToCommunity(ctx *gin.Context) {
 			fmt.Printf("Found %d files in the request\n", len(files))
 		}
 	}
-	
+
 	if len(files) == 0 {
 		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
 			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "No files provided")))
@@ -387,7 +385,7 @@ func (c *CommunityController) AddFileToCommunity(ctx *gin.Context) {
 // @Router /communities/{id}/files/{fileId} [delete]
 func (c *CommunityController) DeleteFileFromCommunity(ctx *gin.Context) {
 	fmt.Println("********* DeleteFileFromCommunity BAŞLANGIÇ *********")
-	
+
 	// Parse community ID from path
 	idStr := ctx.Param("id")
 	communityID, err := strconv.ParseInt(idStr, 10, 64)
@@ -405,14 +403,14 @@ func (c *CommunityController) DeleteFileFromCommunity(ctx *gin.Context) {
 			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid file ID")))
 		return
 	}
-	
+
 	fmt.Printf("Deleting file %d from community with ID: %d\n", fileID, communityID)
 
 	// Delete file from community
 	err = c.communityService.RemoveFileFromCommunity(ctx, communityID, fileID)
 	if err != nil {
 		fmt.Printf("Error deleting file from community: %v\n", err)
-		
+
 		// Handle specific error cases
 		switch {
 		case errors.Is(err, apperrors.ErrResourceNotFound) || strings.Contains(err.Error(), "not found"):
@@ -447,7 +445,7 @@ func (c *CommunityController) DeleteFileFromCommunity(ctx *gin.Context) {
 // @Router /communities/{id}/profile-photo [post]
 func (c *CommunityController) UpdateProfilePhoto(ctx *gin.Context) {
 	fmt.Println("********* UpdateProfilePhoto BAŞLANGIÇ *********")
-	
+
 	// Parse community ID from path
 	idStr := ctx.Param("id")
 	communityID, err := strconv.ParseInt(idStr, 10, 64)
@@ -456,7 +454,7 @@ func (c *CommunityController) UpdateProfilePhoto(ctx *gin.Context) {
 			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid community ID")))
 		return
 	}
-	
+
 	fmt.Printf("Updating profile photo for community with ID: %d\n", communityID)
 
 	// Get profile photo from form
@@ -471,7 +469,7 @@ func (c *CommunityController) UpdateProfilePhoto(ctx *gin.Context) {
 	response, err := c.communityService.UpdateProfilePhoto(ctx, communityID, file)
 	if err != nil {
 		fmt.Printf("Error updating profile photo: %v\n", err)
-		
+
 		// Handle specific error cases
 		switch {
 		case errors.Is(err, apperrors.ErrResourceNotFound) || strings.Contains(err.Error(), "not found"):
@@ -504,7 +502,7 @@ func (c *CommunityController) UpdateProfilePhoto(ctx *gin.Context) {
 // @Router /communities/{id}/profile-photo [delete]
 func (c *CommunityController) DeleteProfilePhoto(ctx *gin.Context) {
 	fmt.Println("********* DeleteProfilePhoto BAŞLANGIÇ *********")
-	
+
 	// Parse community ID from path
 	idStr := ctx.Param("id")
 	communityID, err := strconv.ParseInt(idStr, 10, 64)
@@ -513,14 +511,14 @@ func (c *CommunityController) DeleteProfilePhoto(ctx *gin.Context) {
 			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid community ID")))
 		return
 	}
-	
+
 	fmt.Printf("Deleting profile photo for community with ID: %d\n", communityID)
 
 	// Delete profile photo
 	err = c.communityService.DeleteProfilePhoto(ctx, communityID)
 	if err != nil {
 		fmt.Printf("Error deleting profile photo: %v\n", err)
-		
+
 		// Handle specific error cases
 		switch {
 		case errors.Is(err, apperrors.ErrResourceNotFound) || strings.Contains(err.Error(), "not found"):
@@ -540,13 +538,12 @@ func (c *CommunityController) DeleteProfilePhoto(ctx *gin.Context) {
 
 // JoinCommunity godoc
 // @Summary Join a community
-// @Description Add a user as a participant to a community
+// @Description The authenticated user joins the specified community
 // @Tags communities
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "Community ID"
-// @Param request body dto.JoinCommunityRequest true "Join community request"
 // @Success 200 {object} dto.APIResponse{data=dto.SuccessResponse} "User joined community successfully"
 // @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail} "Unauthorized: JWT token missing or invalid"
@@ -556,7 +553,7 @@ func (c *CommunityController) DeleteProfilePhoto(ctx *gin.Context) {
 // @Router /communities/{id}/participants [post]
 func (c *CommunityController) JoinCommunity(ctx *gin.Context) {
 	fmt.Println("********* JoinCommunity BAŞLANGIÇ *********")
-	
+
 	// Parse community ID from path
 	idStr := ctx.Param("id")
 	communityID, err := strconv.ParseInt(idStr, 10, 64)
@@ -565,22 +562,30 @@ func (c *CommunityController) JoinCommunity(ctx *gin.Context) {
 			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid community ID")))
 		return
 	}
-	
-	// Parse request body
-	var req dto.JoinCommunityRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
-			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid request data").WithDetails(err.Error())))
+
+	// Get current user ID from context (set by auth middleware)
+	userIDInterface, exists := ctx.Get("userID")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "User ID not found in context")))
 		return
 	}
-	
-	fmt.Printf("User %d joining community with ID: %d\n", req.UserID, communityID)
+
+	// Convert to int64
+	userID, ok := userIDInterface.(int64)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Invalid user ID format")))
+		return
+	}
+
+	fmt.Printf("User %d joining community with ID: %d\n", userID, communityID)
 
 	// Join community
-	err = c.communityService.JoinCommunity(ctx, communityID, req.UserID)
+	err = c.communityService.JoinCommunity(ctx, communityID, userID)
 	if err != nil {
 		fmt.Printf("Error joining community: %v\n", err)
-		
+
 		// Handle specific error cases
 		switch {
 		case errors.Is(err, apperrors.ErrResourceNotFound) || strings.Contains(err.Error(), "not found"):
@@ -603,13 +608,12 @@ func (c *CommunityController) JoinCommunity(ctx *gin.Context) {
 
 // LeaveCommunity godoc
 // @Summary Leave a community
-// @Description Remove a user as a participant from a community
+// @Description The authenticated user leaves the specified community
 // @Tags communities
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "Community ID"
-// @Param request body dto.LeaveCommunityRequest true "Leave community request"
 // @Success 200 {object} dto.APIResponse{data=dto.SuccessResponse} "User left community successfully"
 // @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
 // @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail} "Unauthorized: JWT token missing or invalid"
@@ -619,7 +623,7 @@ func (c *CommunityController) JoinCommunity(ctx *gin.Context) {
 // @Router /communities/{id}/participants [delete]
 func (c *CommunityController) LeaveCommunity(ctx *gin.Context) {
 	fmt.Println("********* LeaveCommunity BAŞLANGIÇ *********")
-	
+
 	// Parse community ID from path
 	idStr := ctx.Param("id")
 	communityID, err := strconv.ParseInt(idStr, 10, 64)
@@ -628,22 +632,30 @@ func (c *CommunityController) LeaveCommunity(ctx *gin.Context) {
 			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid community ID")))
 		return
 	}
-	
-	// Parse request body
-	var req dto.LeaveCommunityRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
-			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid request data").WithDetails(err.Error())))
+
+	// Get current user ID from context (set by auth middleware)
+	userIDInterface, exists := ctx.Get("userID")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "User ID not found in context")))
 		return
 	}
-	
-	fmt.Printf("User %d leaving community with ID: %d\n", req.UserID, communityID)
+
+	// Convert to int64
+	userID, ok := userIDInterface.(int64)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
+			dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Invalid user ID format")))
+		return
+	}
+
+	fmt.Printf("User %d leaving community with ID: %d\n", userID, communityID)
 
 	// Leave community
-	err = c.communityService.LeaveCommunity(ctx, communityID, req.UserID)
+	err = c.communityService.LeaveCommunity(ctx, communityID, userID)
 	if err != nil {
 		fmt.Printf("Error leaving community: %v\n", err)
-		
+
 		// Handle specific error cases
 		switch {
 		case errors.Is(err, apperrors.ErrResourceNotFound) || strings.Contains(err.Error(), "not found"):
@@ -680,7 +692,7 @@ func (c *CommunityController) LeaveCommunity(ctx *gin.Context) {
 // @Router /communities/{id}/participants [get]
 func (c *CommunityController) GetCommunityParticipants(ctx *gin.Context) {
 	fmt.Println("********* GetCommunityParticipants BAŞLANGIÇ *********")
-	
+
 	// Parse community ID from path
 	idStr := ctx.Param("id")
 	communityID, err := strconv.ParseInt(idStr, 10, 64)
@@ -689,14 +701,14 @@ func (c *CommunityController) GetCommunityParticipants(ctx *gin.Context) {
 			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid community ID")))
 		return
 	}
-	
+
 	fmt.Printf("Getting participants for community with ID: %d\n", communityID)
 
 	// Get participants
 	participants, err := c.communityService.GetCommunityParticipants(ctx, communityID)
 	if err != nil {
 		fmt.Printf("Error getting community participants: %v\n", err)
-		
+
 		// Handle specific error cases
 		switch {
 		case errors.Is(err, apperrors.ErrResourceNotFound) || strings.Contains(err.Error(), "not found"):
@@ -730,7 +742,7 @@ func (c *CommunityController) GetCommunityParticipants(ctx *gin.Context) {
 // @Router /communities/{id}/participants/check [get]
 func (c *CommunityController) IsUserParticipant(ctx *gin.Context) {
 	fmt.Println("********* IsUserParticipant BAŞLANGIÇ *********")
-	
+
 	// Parse community ID from path
 	idStr := ctx.Param("id")
 	communityID, err := strconv.ParseInt(idStr, 10, 64)
@@ -739,7 +751,7 @@ func (c *CommunityController) IsUserParticipant(ctx *gin.Context) {
 			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid community ID")))
 		return
 	}
-	
+
 	// Parse user ID from query
 	userIDStr := ctx.Query("userId")
 	userID, err := strconv.ParseInt(userIDStr, 10, 64)
@@ -748,14 +760,14 @@ func (c *CommunityController) IsUserParticipant(ctx *gin.Context) {
 			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid user ID")))
 		return
 	}
-	
+
 	fmt.Printf("Checking if user %d is a participant in community with ID: %d\n", userID, communityID)
 
 	// Check if user is a participant
 	isParticipant, err := c.communityService.IsUserParticipant(ctx, communityID, userID)
 	if err != nil {
 		fmt.Printf("Error checking participant status: %v\n", err)
-		
+
 		// Handle specific error cases
 		switch {
 		case errors.Is(err, apperrors.ErrResourceNotFound) || strings.Contains(err.Error(), "not found"):

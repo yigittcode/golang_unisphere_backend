@@ -222,9 +222,11 @@ CREATE TABLE IF NOT EXISTS communities (
     name VARCHAR(255) NOT NULL,
     abbreviation VARCHAR(50) NOT NULL UNIQUE,
     lead_id BIGINT NOT NULL,
+    profile_photo_file_id BIGINT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_communities_lead FOREIGN KEY (lead_id) REFERENCES users(id)
+    CONSTRAINT fk_communities_lead FOREIGN KEY (lead_id) REFERENCES users(id),
+    CONSTRAINT fk_communities_profile_photo FOREIGN KEY (profile_photo_file_id) REFERENCES files(id) ON DELETE SET NULL
 );
 
 -- updated_at trigger for Communities

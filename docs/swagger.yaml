@@ -98,12 +98,8 @@ definitions:
     type: object
   github_com_yigit_unisphere_internal_app_models_dto.CommunityParticipantResponse:
     properties:
-      id:
-        type: integer
       joinedAt:
         type: string
-      user:
-        $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserBasicResponse'
       userId:
         type: integer
     type: object
@@ -119,8 +115,6 @@ definitions:
         type: array
       id:
         type: integer
-      lead:
-        $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserBasicResponse'
       leadId:
         type: integer
       name:
@@ -335,20 +329,6 @@ definitions:
     required:
     - email
     type: object
-  github_com_yigit_unisphere_internal_app_models_dto.JoinCommunityRequest:
-    properties:
-      userId:
-        type: integer
-    required:
-    - userId
-    type: object
-  github_com_yigit_unisphere_internal_app_models_dto.LeaveCommunityRequest:
-    properties:
-      userId:
-        type: integer
-    required:
-    - userId
-    type: object
   github_com_yigit_unisphere_internal_app_models_dto.LoginRequest:
     properties:
       email:
@@ -548,27 +528,16 @@ definitions:
     type: object
   github_com_yigit_unisphere_internal_app_models_dto.UpdateUserRequest:
     properties:
-      email:
-        type: string
       firstName:
         type: string
       lastName:
+        type: string
+      password:
+        description: Email değişimi engellendi - kullanıcılar email'lerini değiştiremezler
         type: string
     required:
-    - email
     - firstName
     - lastName
-    type: object
-  github_com_yigit_unisphere_internal_app_models_dto.UserBasicResponse:
-    properties:
-      email:
-        type: string
-      firstName:
-        type: string
-      id:
-        type: integer
-      lastName:
-        type: string
     type: object
   github_com_yigit_unisphere_internal_app_models_dto.UserListResponse:
     properties:
@@ -663,6 +632,56 @@ paths:
       security:
       - BearerAuth: []
       summary: Get all users (Admin only)
+      tags:
+      - users
+  /admin/users/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a user by ID. Only accessible by Admin users.
+      parameters:
+      - description: User ID
+        format: int64
+        in: path
+        minimum: 1
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User deleted successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.MessageResponse'
+              type: object
+        "400":
+          description: Invalid user ID format
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "403":
+          description: Forbidden - User does not have admin privileges
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete user
       tags:
       - users
   /auth/forgot-password:
@@ -1532,7 +1551,8 @@ paths:
     post:
       consumes:
       - multipart/form-data
-      description: Creates a new community with optional file upload
+      description: Creates a new community with optional file upload. The current
+        authenticated user will automatically be set as the community lead.
       parameters:
       - description: Community name
         in: formData
@@ -1544,11 +1564,6 @@ paths:
         name: abbreviation
         required: true
         type: string
-      - description: Lead user ID
-        in: formData
-        name: leadId
-        required: true
-        type: integer
       - description: Community files (can upload multiple)
         in: formData
         name: files
@@ -1571,10 +1586,6 @@ paths:
             $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "401":
           description: 'Unauthorized: JWT token missing or invalid'
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-        "404":
-          description: Lead user not found
           schema:
             $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
@@ -1864,19 +1875,13 @@ paths:
     delete:
       consumes:
       - application/json
-      description: Remove a user as a participant from a community
+      description: The authenticated user leaves the specified community
       parameters:
       - description: Community ID
         in: path
         name: id
         required: true
         type: integer
-      - description: Leave community request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.LeaveCommunityRequest'
       produces:
       - application/json
       responses:
@@ -2007,19 +2012,13 @@ paths:
     post:
       consumes:
       - application/json
-      description: Add a user as a participant to a community
+      description: The authenticated user joins the specified community
       parameters:
       - description: Community ID
         in: path
         name: id
         required: true
         type: integer
-      - description: Join community request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.JoinCommunityRequest'
       produces:
       - application/json
       responses:
@@ -3407,55 +3406,6 @@ paths:
       tags:
       - past-exams
   /users/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Deletes a user by ID. Only accessible by Admin users.
-      parameters:
-      - description: User ID
-        format: int64
-        in: path
-        minimum: 1
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: User deleted successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.MessageResponse'
-              type: object
-        "400":
-          description: Invalid user ID format
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-        "401":
-          description: Unauthorized - Invalid or missing token
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-        "403":
-          description: Forbidden - User does not have admin privileges
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-        "404":
-          description: User not found
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete user
-      tags:
-      - users
     get:
       consumes:
       - application/json

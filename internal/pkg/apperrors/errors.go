@@ -92,6 +92,14 @@ func NewConflictError(message string) error {
 	}
 }
 
+// NewForbiddenError creates a new custom error for permission denied with a message
+func NewForbiddenError(message string) error {
+	return &CustomError{
+		Err:     ErrPermissionDenied,
+		Message: message,
+	}
+}
+
 // Is returns whether target matches any of the errors in errList
 // Bu yardımcı fonksiyon, errors.Is() fonksiyonunun birden fazla hatayla kullanımını kolaylaştırır
 func Is(err, target error, errList ...error) bool {

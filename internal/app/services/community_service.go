@@ -34,13 +34,13 @@ type CommunityService interface {
 
 // communityServiceImpl implements CommunityService
 type communityServiceImpl struct {
-	communityRepo           *repositories.CommunityRepository
+	communityRepo            *repositories.CommunityRepository
 	communityParticipantRepo *repositories.CommunityParticipantRepository
-	userRepo                *repositories.UserRepository
-	fileRepo                *repositories.FileRepository
-	fileStorage             *filestorage.LocalStorage
-	authzService            *auth.AuthorizationService
-	logger                  zerolog.Logger
+	userRepo                 *repositories.UserRepository
+	fileRepo                 *repositories.FileRepository
+	fileStorage              *filestorage.LocalStorage
+	authzService             *auth.AuthorizationService
+	logger                   zerolog.Logger
 }
 
 // NewCommunityService creates a new CommunityService
@@ -54,13 +54,13 @@ func NewCommunityService(
 	logger zerolog.Logger,
 ) CommunityService {
 	return &communityServiceImpl{
-		communityRepo:           communityRepo,
+		communityRepo:            communityRepo,
 		communityParticipantRepo: communityParticipantRepo,
-		userRepo:                userRepo,
-		fileRepo:                fileRepo,
-		fileStorage:             fileStorage,
-		authzService:            authzService,
-		logger:                  logger,
+		userRepo:                 userRepo,
+		fileRepo:                 fileRepo,
+		fileStorage:              fileStorage,
+		authzService:             authzService,
+		logger:                   logger,
 	}
 }
 
@@ -77,10 +77,10 @@ func (s *communityServiceImpl) GetAllCommunities(ctx context.Context, filter *dt
 		s.logger.Error().Err(err).
 			Interface("filter", filter).
 			Msg("Failed to get communities from repository, returning empty list")
-			
+
 		// Return an empty list response instead of an error
 		return &dto.CommunityListResponse{
-			Communities:    []dto.CommunityResponse{},
+			Communities: []dto.CommunityResponse{},
 			PaginationInfo: dto.PaginationInfo{
 				CurrentPage: filter.Page,
 				PageSize:    filter.PageSize,
@@ -93,20 +93,6 @@ func (s *communityServiceImpl) GetAllCommunities(ctx context.Context, filter *dt
 	// Prepare response with community leads
 	var communityResponses []dto.CommunityResponse
 	for _, community := range communities {
-		// Get lead information if available
-		var leadResponse *dto.UserBasicResponse
-		if community.LeadID > 0 {
-			lead, err := s.userRepo.FindByID(ctx, community.LeadID)
-			if err == nil && lead != nil {
-				leadResponse = &dto.UserBasicResponse{
-					ID:        lead.ID,
-					FirstName: lead.FirstName,
-					LastName:  lead.LastName,
-					Email:     lead.Email,
-				}
-			}
-		}
-
 		// Get participant count
 		participantCount, err := s.communityParticipantRepo.GetParticipantCountByCommunityID(ctx, community.ID)
 		if err != nil {
@@ -119,17 +105,25 @@ func (s *communityServiceImpl) GetAllCommunities(ctx context.Context, filter *dt
 			profilePhotoURL = &community.ProfilePhoto.FileURL
 		}
 
+		// Extract file IDs for response
+		fileIDs := []dto.SimpleCommunityFileResponse{}
+		for _, file := range community.Files {
+			fileIDs = append(fileIDs, dto.SimpleCommunityFileResponse{
+				ID: file.ID,
+			})
+		}
+
 		communityResponses = append(communityResponses, dto.CommunityResponse{
-			ID:               community.ID,
-			Name:             community.Name,
-			Abbreviation:     community.Abbreviation,
-			LeadID:           community.LeadID,
-			Lead:             leadResponse,
+			ID:                 community.ID,
+			Name:               community.Name,
+			Abbreviation:       community.Abbreviation,
+			LeadID:             community.LeadID,
 			ProfilePhotoFileID: community.ProfilePhotoFileID,
-			ProfilePhotoURL:  profilePhotoURL,
-			ParticipantCount: participantCount,
-			CreatedAt:        community.CreatedAt,
-			UpdatedAt:        community.UpdatedAt,
+			ProfilePhotoURL:    profilePhotoURL,
+			ParticipantCount:   participantCount,
+			Files:              fileIDs,
+			CreatedAt:          community.CreatedAt,
+			UpdatedAt:          community.UpdatedAt,
 		})
 	}
 
@@ -138,7 +132,7 @@ func (s *communityServiceImpl) GetAllCommunities(ctx context.Context, filter *dt
 	if totalPages < 1 {
 		totalPages = 1
 	}
-	
+
 	paginationInfo := dto.PaginationInfo{
 		CurrentPage: filter.Page,
 		PageSize:    filter.PageSize,
@@ -147,7 +141,7 @@ func (s *communityServiceImpl) GetAllCommunities(ctx context.Context, filter *dt
 	}
 
 	return &dto.CommunityListResponse{
-		Communities:   communityResponses,
+		Communities:    communityResponses,
 		PaginationInfo: paginationInfo,
 	}, nil
 }
@@ -169,20 +163,6 @@ func (s *communityServiceImpl) GetCommunityByID(ctx context.Context, id int64) (
 
 	if community == nil {
 		return nil, apperrors.NewResourceNotFoundError("Community not found")
-	}
-
-	// Get lead information if available
-	var leadResponse *dto.UserBasicResponse
-	if community.LeadID > 0 {
-		lead, err := s.userRepo.FindByID(ctx, community.LeadID)
-		if err == nil && lead != nil {
-			leadResponse = &dto.UserBasicResponse{
-				ID:        lead.ID,
-				FirstName: lead.FirstName,
-				LastName:  lead.LastName,
-				Email:     lead.Email,
-			}
-		}
 	}
 
 	// Get participant count
@@ -209,42 +189,38 @@ func (s *communityServiceImpl) GetCommunityByID(ctx context.Context, id int64) (
 	// Map participants to response objects
 	participantResponses := []dto.CommunityParticipantResponse{}
 	for _, participant := range participants {
-		user, err := s.userRepo.FindByID(ctx, participant.UserID)
-		if err != nil || user == nil {
-			continue
-		}
-
 		participantResponses = append(participantResponses, dto.CommunityParticipantResponse{
-			ID:       participant.ID,
 			UserID:   participant.UserID,
 			JoinedAt: participant.JoinedAt,
-			User: &dto.UserBasicResponse{
-				ID:        user.ID,
-				FirstName: user.FirstName,
-				LastName:  user.LastName,
-				Email:     user.Email,
-			},
 		})
 	}
 
 	// Create the base community response
 	communityResponse := dto.CommunityResponse{
-		ID:               community.ID,
-		Name:             community.Name,
-		Abbreviation:     community.Abbreviation,
-		LeadID:           community.LeadID,
-		Lead:             leadResponse,
+		ID:                 community.ID,
+		Name:               community.Name,
+		Abbreviation:       community.Abbreviation,
+		LeadID:             community.LeadID,
 		ProfilePhotoFileID: community.ProfilePhotoFileID,
-		ProfilePhotoURL:  profilePhotoURL,
-		ParticipantCount: participantCount,
-		CreatedAt:        community.CreatedAt,
-		UpdatedAt:        community.UpdatedAt,
+		ProfilePhotoURL:    profilePhotoURL,
+		ParticipantCount:   participantCount,
+		CreatedAt:          community.CreatedAt,
+		UpdatedAt:          community.UpdatedAt,
 	}
+
+	// Extract file IDs for response
+	fileIDs := []dto.SimpleCommunityFileResponse{}
+	for _, file := range community.Files {
+		fileIDs = append(fileIDs, dto.SimpleCommunityFileResponse{
+			ID: file.ID,
+		})
+	}
+	communityResponse.Files = fileIDs
 
 	// Return detailed response with participants
 	return &dto.CommunityDetailResponse{
 		CommunityResponse: communityResponse,
-		Participants:     participantResponses,
+		Participants:      participantResponses,
 	}, nil
 }
 
@@ -262,11 +238,14 @@ func (s *communityServiceImpl) CreateCommunity(ctx context.Context, req *dto.Cre
 		return nil, fmt.Errorf("user ID not found in context")
 	}
 
+	// Use current user as lead instead of the requested lead
+	leadID := userID
+
 	// Check if lead exists
-	lead, err := s.userRepo.FindByID(ctx, req.LeadID)
+	lead, err := s.userRepo.FindByID(ctx, leadID)
 	if err != nil {
 		s.logger.Error().Err(err).
-			Int64("leadID", req.LeadID).
+			Int64("leadID", leadID).
 			Msg("Failed to get lead user")
 		return nil, fmt.Errorf("error checking lead user: %w", err)
 	}
@@ -276,9 +255,9 @@ func (s *communityServiceImpl) CreateCommunity(ctx context.Context, req *dto.Cre
 
 	// Create community model
 	community := &models.Community{
-		Name:         req.Name,
-		Abbreviation: req.Abbreviation,
-		LeadID:       req.LeadID,
+		Name:               req.Name,
+		Abbreviation:       req.Abbreviation,
+		LeadID:             leadID,
 		ProfilePhotoFileID: nil, // No profile photo initially
 	}
 
@@ -294,11 +273,11 @@ func (s *communityServiceImpl) CreateCommunity(ctx context.Context, req *dto.Cre
 	community.ID = communityID
 
 	// Add lead as first participant
-	_, err = s.communityParticipantRepo.AddParticipant(ctx, communityID, req.LeadID)
+	_, err = s.communityParticipantRepo.AddParticipant(ctx, communityID, leadID)
 	if err != nil {
 		s.logger.Warn().Err(err).
 			Int64("communityID", communityID).
-			Int64("leadID", req.LeadID).
+			Int64("leadID", leadID).
 			Msg("Failed to add lead as participant")
 		// Continue even if this fails
 	}
@@ -341,17 +320,6 @@ func (s *communityServiceImpl) CreateCommunity(ctx context.Context, req *dto.Cre
 		})
 	}
 
-	// Add lead information for response
-	var leadResponse *dto.UserBasicResponse
-	if lead != nil {
-		leadResponse = &dto.UserBasicResponse{
-			ID:        lead.ID,
-			FirstName: lead.FirstName,
-			LastName:  lead.LastName,
-			Email:     lead.Email,
-		}
-	}
-
 	// Get participant count (should be 1 for the lead)
 	participantCount, _ := s.communityParticipantRepo.GetParticipantCountByCommunityID(ctx, communityID)
 
@@ -360,7 +328,6 @@ func (s *communityServiceImpl) CreateCommunity(ctx context.Context, req *dto.Cre
 		Name:               community.Name,
 		Abbreviation:       community.Abbreviation,
 		LeadID:             community.LeadID,
-		Lead:               leadResponse,
 		ProfilePhotoFileID: nil,
 		ProfilePhotoURL:    nil,
 		ParticipantCount:   participantCount,
@@ -396,14 +363,13 @@ func (s *communityServiceImpl) UpdateCommunity(ctx context.Context, id int64, re
 		return nil, fmt.Errorf("user ID not found in context")
 	}
 
-	// Check permissions - only lead or admin can update
-	// In a real app, you'd have proper permission checks
+	// Check if the user is the lead of the community
 	if existingCommunity.LeadID != userID {
-		// For now, allowing all updates but would add proper checks in real app
-		s.logger.Warn().
+		s.logger.Error().
 			Int64("userID", userID).
 			Int64("leadID", existingCommunity.LeadID).
-			Msg("User is not the lead, but allowing update for now")
+			Msg("User is not the lead of the community")
+		return nil, apperrors.NewForbiddenError("Only the community lead can update the community")
 	}
 
 	// Check if new lead exists
@@ -444,17 +410,6 @@ func (s *communityServiceImpl) UpdateCommunity(ctx context.Context, id int64, re
 		return nil, fmt.Errorf("error getting updated community: %w", err)
 	}
 
-	// Add lead information for response
-	var leadResponse *dto.UserBasicResponse
-	if lead != nil {
-		leadResponse = &dto.UserBasicResponse{
-			ID:        lead.ID,
-			FirstName: lead.FirstName,
-			LastName:  lead.LastName,
-			Email:     lead.Email,
-		}
-	}
-
 	// Extract file IDs for response
 	var fileIDs []dto.SimpleCommunityFileResponse
 	for _, file := range updatedCommunityFull.Files {
@@ -468,7 +423,6 @@ func (s *communityServiceImpl) UpdateCommunity(ctx context.Context, id int64, re
 		Name:         updatedCommunityFull.Name,
 		Abbreviation: updatedCommunityFull.Abbreviation,
 		LeadID:       updatedCommunityFull.LeadID,
-		Lead:         leadResponse,
 		Files:        fileIDs,
 		CreatedAt:    updatedCommunityFull.CreatedAt,
 		UpdatedAt:    updatedCommunityFull.UpdatedAt,
@@ -500,14 +454,13 @@ func (s *communityServiceImpl) DeleteCommunity(ctx context.Context, id int64) er
 		return fmt.Errorf("user ID not found in context")
 	}
 
-	// Check permissions - only lead or admin can delete
-	// In a real app, you'd have proper permission checks
+	// Check if the user is the lead of the community
 	if existingCommunity.LeadID != userID {
-		// For now, allowing all deletes but would add proper checks in real app
-		s.logger.Warn().
+		s.logger.Error().
 			Int64("userID", userID).
 			Int64("leadID", existingCommunity.LeadID).
-			Msg("User is not the lead, but allowing delete for now")
+			Msg("User is not the lead of the community")
+		return apperrors.NewForbiddenError("Only the community lead can delete the community")
 	}
 
 	// Delete all associated files
@@ -701,9 +654,14 @@ func (s *communityServiceImpl) UpdateProfilePhoto(ctx context.Context, community
 		return nil, fmt.Errorf("user ID not found in context")
 	}
 
-	// Check if user has permission to update profile photo
-	// For now, allowing any authenticated user to update
-	// In a real app, you'd check if user is lead or has admin permissions
+	// Check if the user is the lead of the community
+	if existingCommunity.LeadID != userID {
+		s.logger.Error().
+			Int64("userID", userID).
+			Int64("leadID", existingCommunity.LeadID).
+			Msg("User is not the lead of the community")
+		return nil, apperrors.NewForbiddenError("Only the community lead can update the profile photo")
+	}
 
 	// Delete old profile photo if exists
 	if existingCommunity.ProfilePhotoFileID != nil {
@@ -762,20 +720,6 @@ func (s *communityServiceImpl) UpdateProfilePhoto(ctx context.Context, community
 		return nil, fmt.Errorf("error getting updated community: %w", err)
 	}
 
-	// Get lead information if available
-	var leadResponse *dto.UserBasicResponse
-	if updatedCommunity.LeadID > 0 {
-		lead, err := s.userRepo.FindByID(ctx, updatedCommunity.LeadID)
-		if err == nil && lead != nil {
-			leadResponse = &dto.UserBasicResponse{
-				ID:        lead.ID,
-				FirstName: lead.FirstName,
-				LastName:  lead.LastName,
-				Email:     lead.Email,
-			}
-		}
-	}
-
 	// Get participant count
 	participantCount, err := s.communityParticipantRepo.GetParticipantCountByCommunityID(ctx, communityID)
 	if err != nil {
@@ -793,7 +737,6 @@ func (s *communityServiceImpl) UpdateProfilePhoto(ctx context.Context, community
 		Name:               updatedCommunity.Name,
 		Abbreviation:       updatedCommunity.Abbreviation,
 		LeadID:             updatedCommunity.LeadID,
-		Lead:               leadResponse,
 		ProfilePhotoFileID: updatedCommunity.ProfilePhotoFileID,
 		ProfilePhotoURL:    profilePhotoURL,
 		ParticipantCount:   participantCount,
@@ -826,13 +769,20 @@ func (s *communityServiceImpl) DeleteProfilePhoto(ctx context.Context, community
 	}
 
 	// Get user ID from context
-	_, ok := ctx.Value("userID").(int64)
+	userID, ok := ctx.Value("userID").(int64)
 	if !ok {
 		s.logger.Error().Msg("User ID not found in context")
 		return fmt.Errorf("user ID not found in context")
 	}
 
-	// Check permissions - in a real app, you'd check if user is lead or has admin permissions
+	// Check if the user is the lead of the community
+	if existingCommunity.LeadID != userID {
+		s.logger.Error().
+			Int64("userID", userID).
+			Int64("leadID", existingCommunity.LeadID).
+			Msg("User is not the lead of the community")
+		return apperrors.NewForbiddenError("Only the community lead can delete the profile photo")
+	}
 
 	// Delete physical file if exists
 	if existingCommunity.ProfilePhoto != nil {
@@ -976,18 +926,15 @@ func (s *communityServiceImpl) LeaveCommunity(ctx context.Context, communityID i
 
 // GetCommunityParticipants retrieves all participants for a specific community
 func (s *communityServiceImpl) GetCommunityParticipants(ctx context.Context, communityID int64) ([]dto.CommunityParticipantResponse, error) {
-	s.logger.Debug().
-		Int64("communityID", communityID).
-		Msg("Getting community participants")
+	s.logger.Debug().Int64("communityID", communityID).Msg("Getting community participants")
 
 	// Check if community exists
 	community, err := s.communityRepo.GetByID(ctx, communityID)
 	if err != nil {
-		s.logger.Error().Err(err).
-			Int64("communityID", communityID).
-			Msg("Failed to get community")
-		return nil, fmt.Errorf("error getting community: %w", err)
+		s.logger.Error().Err(err).Int64("communityID", communityID).Msg("Failed to get community")
+		return nil, apperrors.NewResourceNotFoundError("Community not found")
 	}
+
 	if community == nil {
 		return nil, apperrors.NewResourceNotFoundError("Community not found")
 	}
@@ -995,30 +942,16 @@ func (s *communityServiceImpl) GetCommunityParticipants(ctx context.Context, com
 	// Get participants
 	participants, err := s.communityParticipantRepo.GetParticipantsByCommunityID(ctx, communityID)
 	if err != nil {
-		s.logger.Error().Err(err).
-			Int64("communityID", communityID).
-			Msg("Failed to get participants")
-		return nil, fmt.Errorf("error getting participants: %w", err)
+		s.logger.Error().Err(err).Int64("communityID", communityID).Msg("Failed to get participants")
+		return nil, err
 	}
 
 	// Map participants to response objects
 	participantResponses := []dto.CommunityParticipantResponse{}
 	for _, participant := range participants {
-		user, err := s.userRepo.FindByID(ctx, participant.UserID)
-		if err != nil || user == nil {
-			continue
-		}
-
 		participantResponses = append(participantResponses, dto.CommunityParticipantResponse{
-			ID:       participant.ID,
 			UserID:   participant.UserID,
 			JoinedAt: participant.JoinedAt,
-			User: &dto.UserBasicResponse{
-				ID:        user.ID,
-				FirstName: user.FirstName,
-				LastName:  user.LastName,
-				Email:     user.Email,
-			},
 		})
 	}
 

@@ -29,7 +29,8 @@ type IUserRepository interface {
 	EmailExists(ctx context.Context, email string) (bool, error)
 
 	// Profile
-	UpdateProfile(ctx context.Context, userID int64, firstName, lastName, email string) error
+	UpdateProfile(ctx context.Context, userID int64, firstName, lastName string) error
+	UpdatePassword(ctx context.Context, userID int64, hashedPassword string) error
 	UpdateProfilePhotoFileID(ctx context.Context, userID int64, fileID *int64) error
 
 	// Department
@@ -203,19 +204,15 @@ func (r *UserRepository) UpdateLastLogin(ctx context.Context, userID int64) erro
 }
 
 // UpdateProfile updates a user's basic profile information
-func (r *UserRepository) UpdateProfile(ctx context.Context, userID int64, firstName, lastName, email string) error {
+func (r *UserRepository) UpdateProfile(ctx context.Context, userID int64, firstName, lastName string) error {
 	query := `
 		UPDATE users 
-		SET first_name = $2, last_name = $3, email = $4, updated_at = NOW()
+		SET first_name = $2, last_name = $3, updated_at = NOW()
 		WHERE id = $1
 	`
 
-	result, err := r.db.Exec(ctx, query, userID, firstName, lastName, email)
+	result, err := r.db.Exec(ctx, query, userID, firstName, lastName)
 	if err != nil {
-		// Check for duplicate email error
-		if err.Error() == "ERROR: duplicate key value violates unique constraint \"users_email_key\" (SQLSTATE 23505)" {
-			return apperrors.ErrEmailAlreadyExists
-		}
 		return fmt.Errorf("error updating user profile: %w", err)
 	}
 
@@ -668,4 +665,24 @@ func (r *UserRepository) IsEmailVerified(ctx context.Context, userID int64) (boo
 	}
 
 	return verified, nil
+}
+
+// UpdatePassword updates a user's password
+func (r *UserRepository) UpdatePassword(ctx context.Context, userID int64, hashedPassword string) error {
+	query := `
+		UPDATE users 
+		SET password = $2, updated_at = NOW()
+		WHERE id = $1
+	`
+
+	result, err := r.db.Exec(ctx, query, userID, hashedPassword)
+	if err != nil {
+		return fmt.Errorf("error updating user password: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return apperrors.ErrUserNotFound
+	}
+
+	return nil
 }

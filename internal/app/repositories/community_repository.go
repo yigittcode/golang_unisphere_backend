@@ -25,42 +25,42 @@ func (r *CommunityRepository) GetAll(ctx context.Context, leadID *int64, search 
 	// Try to select from the communities table with proper error handling
 	var communities []models.Community
 	var total int64 = 0
-	
+
 	// Build a query that will work with the current database schema
 	// We dynamically determine the column names to ensure compatibility with the database
 	query := `
 		SELECT 
-			id, name, abbreviation, lead_id, 
+			id, name, abbreviation, lead_id, profile_photo_file_id,
 			created_at, updated_at, 
 			COUNT(*) OVER() as total_count
 		FROM communities
 		WHERE 1=1
 	`
-	
+
 	// Build the arguments list and add conditions
 	args := []interface{}{}
 	argIndex := 1
-	
+
 	// Add filters
 	if leadID != nil {
 		query += fmt.Sprintf(" AND lead_id = $%d", argIndex)
 		args = append(args, *leadID)
 		argIndex++
 	}
-	
+
 	if search != nil && *search != "" {
 		searchPattern := "%" + *search + "%"
 		query += fmt.Sprintf(" AND (name ILIKE $%d OR abbreviation ILIKE $%d)", argIndex, argIndex+1)
 		args = append(args, searchPattern, searchPattern)
 		argIndex += 2
 	}
-	
+
 	// Add order, pagination
 	offset := (page - 1) * pageSize
 	query += " ORDER BY id"
 	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", argIndex, argIndex+1)
 	args = append(args, pageSize, offset)
-	
+
 	// Use error handling to recover from potential issues
 	defer func() {
 		if r := recover(); r != nil {
@@ -70,7 +70,7 @@ func (r *CommunityRepository) GetAll(ctx context.Context, leadID *int64, search 
 			total = 0
 		}
 	}()
-	
+
 	// Execute the query with comprehensive error handling
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
@@ -83,47 +83,63 @@ func (r *CommunityRepository) GetAll(ctx context.Context, leadID *int64, search 
 		return []models.Community{}, 0, nil
 	}
 	defer rows.Close()
-	
+
 	// Process results with error handling for each row
 	for rows.Next() {
 		var comm models.Community
+		var profilePhotoFileID *int64
 		err := rows.Scan(
 			&comm.ID,
 			&comm.Name,
 			&comm.Abbreviation,
 			&comm.LeadID,
+			&profilePhotoFileID,
 			&comm.CreatedAt,
 			&comm.UpdatedAt,
 			&total,
 		)
-		
+
 		if err != nil {
 			// If we can't scan a row, log the error and continue
 			fmt.Printf("Error scanning row in GetAll: %v\n", err)
 			continue
 		}
-		
+
+		comm.ProfilePhotoFileID = profilePhotoFileID
+
+		// Get profile photo if exists
+		if comm.ProfilePhotoFileID != nil {
+			profilePhoto, err := r.getProfilePhoto(ctx, *comm.ProfilePhotoFileID)
+			if err != nil {
+				fmt.Printf("Error getting profile photo: %v\n", err)
+			} else {
+				comm.ProfilePhoto = profilePhoto
+			}
+		}
+
+		// Not fetching files for performance optimization in list view
+
 		communities = append(communities, comm)
 	}
-	
+
 	// Check for errors during iteration
 	if err = rows.Err(); err != nil {
 		fmt.Printf("Error iterating rows in GetAll: %v\n", err)
 	}
-	
+
 	// Always return a valid slice, even if empty
 	if communities == nil {
 		communities = []models.Community{}
 	}
-	
+
 	return communities, total, nil
 }
 
 // GetByID retrieves a community by ID
 func (r *CommunityRepository) GetByID(ctx context.Context, id int64) (*models.Community, error) {
-	// Use a simpler query structure to avoid column issues
+	// First get the basic community information
 	query := `
-		SELECT id, name, abbreviation, lead_id, created_at, updated_at
+		SELECT id, name, abbreviation, lead_id, profile_photo_file_id, created_at, updated_at
 		FROM communities
 		WHERE id = $1
 	`
@@ -141,6 +157,7 @@ func (r *CommunityRepository) GetByID(ctx context.Context, id int64) (*models.Co
 		&community.Name,
 		&community.Abbreviation,
 		&community.LeadID,
+		&community.ProfilePhotoFileID,
 		&community.CreatedAt,
 		&community.UpdatedAt,
 	)
@@ -149,6 +166,56 @@ func (r *CommunityRepository) GetByID(ctx context.Context, id int64) (*models.Co
 			return nil, fmt.Errorf("community not found with ID %d", id)
 		}
 		return nil, fmt.Errorf("error executing query: %w", err)
+	}
+
+	// Get profile photo if exists
+	if community.ProfilePhotoFileID != nil {
+		profilePhoto, err := r.getProfilePhoto(ctx, *community.ProfilePhotoFileID)
+		if err != nil {
+			fmt.Printf("Error getting profile photo: %v\n", err)
+		} else {
+			community.ProfilePhoto = profilePhoto
+		}
+	}
+
+	// Get files associated with the community
+	filesQuery := `
+		SELECT f.id, f.file_name, f.file_path, f.file_url, f.file_size, 
+			f.file_type, f.resource_type, f.resource_id, f.uploaded_by, 
+			f.created_at, f.updated_at
+		FROM files f
+		JOIN community_files cf ON f.id = cf.file_id
+		WHERE cf.community_id = $1
+	`
+
+	rows, err := r.db.Query(ctx, filesQuery, id)
+	if err != nil {
+		fmt.Printf("Error getting community files: %v\n", err)
+	} else {
+		defer rows.Close()
+
+		community.Files = []*models.File{}
+		for rows.Next() {
+			var file models.File
+			err := rows.Scan(
+				&file.ID,
+				&file.FileName,
+				&file.FilePath,
+				&file.FileURL,
+				&file.FileSize,
+				&file.FileType,
+				&file.ResourceType,
+				&file.ResourceID,
+				&file.UploadedBy,
+				&file.CreatedAt,
+				&file.UpdatedAt,
+			)
+			if err != nil {
+				fmt.Printf("Error scanning file row: %v\n", err)
+				continue
+			}
+			community.Files = append(community.Files, &file)
+		}
 	}
 
 	return &community, nil
@@ -164,7 +231,7 @@ func (r *CommunityRepository) Create(ctx context.Context, community *models.Comm
 	`
 
 	var id int64
-	err := r.db.QueryRow(ctx, query, 
+	err := r.db.QueryRow(ctx, query,
 		community.Name, community.Abbreviation, community.LeadID).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("error executing query: %w", err)
@@ -182,7 +249,7 @@ func (r *CommunityRepository) Update(ctx context.Context, community *models.Comm
 		WHERE id = $4
 	`
 
-	result, err := r.db.Exec(ctx, query, 
+	result, err := r.db.Exec(ctx, query,
 		community.Name, community.Abbreviation, community.LeadID, community.ID)
 	if err != nil {
 		return fmt.Errorf("error executing query: %w", err)
@@ -265,8 +332,8 @@ func (r *CommunityRepository) RemoveFileFromCommunity(ctx context.Context, commu
 // getProfilePhoto retrieves a single file by ID
 func (r *CommunityRepository) getProfilePhoto(ctx context.Context, fileID int64) (*models.File, error) {
 	query := squirrel.Select(
-		"id", "file_name", "file_path", "file_url", "file_size", 
-		"file_type", "resource_type", "resource_id", "uploaded_by", 
+		"id", "file_name", "file_path", "file_url", "file_size",
+		"file_type", "resource_type", "resource_id", "uploaded_by",
 		"created_at", "updated_at",
 	).
 		From("files").
@@ -311,25 +378,25 @@ func (r *CommunityRepository) UpdateProfilePhoto(ctx context.Context, communityI
 		    updated_at = NOW()
 		WHERE id = $2
 	`
-	
+
 	// Use error handling to recover from potential issues
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Printf("Recovered from panic in UpdateProfilePhoto: %v\n", r)
 		}
 	}()
-	
+
 	// Execute the update query
 	result, err := r.db.Exec(ctx, query, fileID, communityID)
 	if err != nil {
 		fmt.Printf("Error executing UpdateProfilePhoto query: %v\n", err)
 		return fmt.Errorf("error updating profile photo: %w", err)
 	}
-	
+
 	// Check if any rows were affected
 	if result.RowsAffected() == 0 {
 		return fmt.Errorf("community not found with ID %d", communityID)
 	}
-	
+
 	return nil
 }

@@ -8,7 +8,6 @@ import "time"
 type CreateCommunityRequest struct {
 	Name         string `json:"name" form:"name" binding:"required"`
 	Abbreviation string `json:"abbreviation" form:"abbreviation" binding:"required"`
-	LeadID       int64  `json:"leadId" form:"leadId" binding:"required,gt=0"`
 }
 
 // UpdateCommunityRequest represents community update data
@@ -20,43 +19,40 @@ type UpdateCommunityRequest struct {
 
 // JoinCommunityRequest represents the request to join a community
 type JoinCommunityRequest struct {
-	UserID int64 `json:"userId" form:"userId" binding:"required,gt=0"`
+	// Empty struct, uses authenticated user
 }
 
 // LeaveCommunityRequest represents the request to leave a community
 type LeaveCommunityRequest struct {
-	UserID int64 `json:"userId" form:"userId" binding:"required,gt=0"`
+	// Empty struct, uses authenticated user
 }
 
 // --- Response DTOs ---
 
 // ProfilePhotoResponse represents a profile photo for communities
 type ProfilePhotoResponse struct {
-	ID       int64  `json:"id"`
-	FileURL  string `json:"fileUrl"`
+	ID      int64  `json:"id"`
+	FileURL string `json:"fileUrl"`
 }
 
 // CommunityParticipantResponse represents a participant in a community
 type CommunityParticipantResponse struct {
-	ID       int64     `json:"id"`
 	UserID   int64     `json:"userId"`
 	JoinedAt time.Time `json:"joinedAt"`
-	User     *UserBasicResponse `json:"user,omitempty"`
 }
 
 // CommunityResponse represents basic community information
 type CommunityResponse struct {
-	ID                 int64                       `json:"id"`
-	Name               string                      `json:"name"`
-	Abbreviation       string                      `json:"abbreviation"`
-	LeadID             int64                       `json:"leadId"`
-	Lead               *UserBasicResponse          `json:"lead,omitempty"`
-	ProfilePhotoFileID *int64                      `json:"profilePhotoFileId,omitempty"`
-	ProfilePhotoURL    *string                     `json:"profilePhotoUrl,omitempty"`
-	ParticipantCount   int                         `json:"participantCount,omitempty"`
+	ID                 int64                         `json:"id"`
+	Name               string                        `json:"name"`
+	Abbreviation       string                        `json:"abbreviation"`
+	LeadID             int64                         `json:"leadId"`
+	ProfilePhotoFileID *int64                        `json:"profilePhotoFileId,omitempty"`
+	ProfilePhotoURL    *string                       `json:"profilePhotoUrl,omitempty"`
+	ParticipantCount   int                           `json:"participantCount,omitempty"`
 	Files              []SimpleCommunityFileResponse `json:"files,omitempty"`
-	CreatedAt          time.Time                   `json:"createdAt"`
-	UpdatedAt          time.Time                   `json:"updatedAt"`
+	CreatedAt          time.Time                     `json:"createdAt"`
+	UpdatedAt          time.Time                     `json:"updatedAt"`
 }
 
 // CommunityDetailResponse extends CommunityResponse with participant details

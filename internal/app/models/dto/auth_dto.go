@@ -33,7 +33,6 @@ type RegisterRequest struct {
 type UpdateProfileRequest struct {
 	FirstName string `json:"firstName" binding:"required"`
 	LastName  string `json:"lastName" binding:"required"`
-	Email     string `json:"email" binding:"required,email"`
 }
 
 // UserResponse represents basic user information

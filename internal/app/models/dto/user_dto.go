@@ -1,21 +1,20 @@
 package dto
 
-
 // NOTE: UserResponse is already defined in auth_dto.go
 // We'll create an extended version with additional fields
 
-// ExtendedUserResponse represents detailed user information 
+// ExtendedUserResponse represents detailed user information
 // Extends the basic UserResponse with additional fields
 type ExtendedUserResponse struct {
-	ID                 int64      `json:"id"`
-	Email              string     `json:"email"`
-	FirstName          string     `json:"firstName"`
-	LastName           string     `json:"lastName"`
-	Role               string     `json:"role"`
-	DepartmentID       *int64     `json:"departmentId,omitempty"`
-	ProfilePhotoFileID *int64     `json:"profilePhotoFileId,omitempty"`
-	ProfilePhotoURL    string     `json:"profilePhotoUrl,omitempty"`
-	IsActive           bool       `json:"isActive"`
+	ID                 int64  `json:"id"`
+	Email              string `json:"email"`
+	FirstName          string `json:"firstName"`
+	LastName           string `json:"lastName"`
+	Role               string `json:"role"`
+	DepartmentID       *int64 `json:"departmentId,omitempty"`
+	ProfilePhotoFileID *int64 `json:"profilePhotoFileId,omitempty"`
+	ProfilePhotoURL    string `json:"profilePhotoUrl,omitempty"`
+	IsActive           bool   `json:"isActive"`
 }
 
 // UserFilterRequest represents user filtering parameters
@@ -38,8 +37,8 @@ type UserListResponse struct {
 type UpdateUserRequest struct {
 	FirstName string `json:"firstName" binding:"required"`
 	LastName  string `json:"lastName" binding:"required"`
-	Email     string `json:"email" binding:"required,email"`
-	// DepartmentID removed - users shouldn't be able to change their department
+	// Email değişimi engellendi - kullanıcılar email'lerini değiştiremezler
+	Password *string `json:"password,omitempty"`
 }
 
 // ChangePasswordRequest represents a password change request
@@ -52,4 +51,3 @@ type ChangePasswordRequest struct {
 type UpdateProfilePhotoResponse struct {
 	ProfilePhotoFileID int64 `json:"profilePhotoFileId"`
 }
-
