@@ -1,0 +1,67 @@
+version: '3'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: unisphere-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    environment:
+      # Database connection
+      - DB_HOST=postgres
+      - DB_PORT=5432 # This is the internal port within the Docker network
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:}
+      - DB_NAME=${DB_NAME:}
+      # JWT settings
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ACCESS_TOKEN_EXPIRATION=2h
+      - JWT_REFRESH_TOKEN_EXPIRATION=720h
+      # Server settings
+      - SERVER_PORT=8080
+      - SERVER_MODE=${SERVER_MODE:-development}
+      - STORAGE_PATH=/app/uploads
+      # SMTP settings
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL}
+      - SMTP_USE_TLS=${SMTP_USE_TLS}
+    volumes:
+      - uploads:/app/uploads
+    networks:
+      - unisphere-network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: unisphere-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - unisphere-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+  uploads:
+networks:
+  unisphere-network:
+    driver: bridge
