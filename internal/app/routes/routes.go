@@ -17,6 +17,7 @@ func SetupRouter(
 	pastExamController *controllers.PastExamController,
 	classNoteController *controllers.ClassNoteController,
 	communityController *controllers.CommunityController,
+	userController *controllers.UserController,
 	authMiddleware *middleware.AuthMiddleware,
 ) {
 	// API version group
@@ -63,6 +64,15 @@ func SetupRouter(
 
 		// Files endpoint (global access to file details)
 		authenticated.GET("/files/:fileId", classNoteController.GetFileDetails)
+
+		// Admin protected routes
+		adminProtected := authenticatedWithEmailVerified.Group("/admin")
+		adminProtected.Use(authMiddleware.RoleRequired(string(models.RoleAdmin)))
+		{
+			// User management (Admin only)
+			adminProtected.GET("/users", userController.GetAllUsers)
+			adminProtected.DELETE("/users/:id", userController.DeleteUser)
+		}
 
 		// Faculty protected routes (now under authenticated group)
 		facultiesProtected := authenticatedWithEmailVerified.Group("/faculties")

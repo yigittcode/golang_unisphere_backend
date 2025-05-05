@@ -1,7 +1,5 @@
 package dto
 
-import "github.com/yigit/unisphere/internal/app/models"
-
 // LoginRequest represents login credentials
 type LoginRequest struct {
 	Email    string `json:"email" binding:"required,email"`
@@ -24,12 +22,11 @@ type RefreshTokenRequest struct {
 
 // RegisterRequest represents a generic user registration request
 type RegisterRequest struct {
-	Email        string          `json:"email" binding:"required,email"`
-	Password     string          `json:"password" binding:"required,min=8"`
-	FirstName    string          `json:"firstName" binding:"required"`
-	LastName     string          `json:"lastName" binding:"required"`
-	RoleType     models.RoleType `json:"roleType" binding:"required"`
-	DepartmentID int64           `json:"departmentId" binding:"required,min=1"`
+	Email        string `json:"email" binding:"required,email"`
+	Password     string `json:"password" binding:"required,min=8"`
+	FirstName    string `json:"firstName" binding:"required"`
+	LastName     string `json:"lastName" binding:"required"`
+	DepartmentID int64  `json:"departmentId" binding:"required,min=1"`
 }
 
 // UpdateProfileRequest represents profile update data

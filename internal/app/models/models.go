@@ -18,6 +18,7 @@ type Term = enums.Term
 var (
 	RoleStudent    = enums.RoleStudent
 	RoleInstructor = enums.RoleInstructor
+	RoleAdmin      = enums.RoleAdmin
 	TermFall       = enums.TermFall
 	TermSpring     = enums.TermSpring
 )

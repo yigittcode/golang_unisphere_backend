@@ -323,26 +323,23 @@ func (c *UserController) DeleteProfilePhoto(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse("Profile photo deleted successfully"))
 }
 
-// GetUsersByFilter retrieves users based on filter criteria
-// @Summary Get users by filter
-// @Description Retrieves a list of users based on filter criteria with pagination
+// GetAllUsers is an alias for GetUsersByFilter, but intended for admin use only
+// @Summary Get all users (Admin only)
+// @Description Retrieves a list of all users in the system. Only accessible by Admin users.
 // @Tags users
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param departmentId query int false "Filter by department ID"
-// @Param role query string false "Filter by role (STUDENT, INSTRUCTOR)"
-// @Param email query string false "Filter by email (partial match)"
-// @Param name query string false "Filter by name (partial match on first or last name)"
-// @Param page query int false "Page number (1-based)" default(1) minimum(1)
-// @Param pageSize query int false "Page size (default: 10, max: 100)" default(10) minimum(1) maximum(100)
+// @Param page query int false "Page number for pagination" Default(1) minimum(1)
+// @Param limit query int false "Number of items per page" Default(20) maximum(100)
+// @Param role query string false "Filter by role (STUDENT, INSTRUCTOR, ADMIN)"
 // @Success 200 {object} dto.APIResponse{data=dto.UserListResponse} "Users retrieved successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid filter parameters"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden - User does not have admin privileges"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
-// @Router /users [get]
-func (c *UserController) GetUsersByFilter(ctx *gin.Context) {
-	// Parse filter parameters
+// @Router /admin/users [get]
+func (c *UserController) GetAllUsers(ctx *gin.Context) {
+	// Use existing filter method for admin
 	var filter dto.UserFilterRequest
 
 	// Parse pagination parameters
@@ -353,38 +350,17 @@ func (c *UserController) GetUsersByFilter(ctx *gin.Context) {
 	}
 	filter.Page = page
 
-	pageSizeStr := ctx.DefaultQuery("pageSize", "10")
+	pageSizeStr := ctx.DefaultQuery("limit", "20")
 	pageSize, err := strconv.Atoi(pageSizeStr)
 	if err != nil || pageSize < 1 || pageSize > 100 {
 		pageSize = 10
 	}
 	filter.PageSize = pageSize
 
-	// Parse department ID if provided
-	departmentIDStr := ctx.Query("departmentId")
-	if departmentIDStr != "" {
-		departmentID, err := strconv.ParseInt(departmentIDStr, 10, 64)
-		if err == nil {
-			filter.DepartmentID = &departmentID
-		}
-	}
-
-	// Parse role if provided
+	// Get role filter if provided
 	role := ctx.Query("role")
 	if role != "" {
 		filter.Role = &role
-	}
-
-	// Parse email if provided
-	email := ctx.Query("email")
-	if email != "" {
-		filter.Email = &email
-	}
-
-	// Parse name if provided
-	name := ctx.Query("name")
-	if name != "" {
-		filter.Name = &name
 	}
 
 	// Get users by filter
@@ -415,3 +391,64 @@ func (c *UserController) GetUsersByFilter(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response))
 }
 
+// DeleteUser deletes a user by ID (Admin only)
+// @Summary Delete user
+// @Description Deletes a user by ID. Only accessible by Admin users.
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "User ID" Format(int64) minimum(1)
+// @Success 200 {object} dto.APIResponse{data=dto.MessageResponse} "User deleted successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid user ID format"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized - Invalid or missing token"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden - User does not have admin privileges"
+// @Failure 404 {object} dto.ErrorResponse "User not found"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Router /admin/users/{id} [delete]
+func (c *UserController) DeleteUser(ctx *gin.Context) {
+	// Get user ID from URL
+	idParam := ctx.Param("id")
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Invalid user ID")
+		errorDetail = errorDetail.WithDetails("ID must be a valid number")
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
+		return
+	}
+
+	// Get ID of admin user performing the delete
+	adminIDInterface, exists := ctx.Get("userID")
+	if !exists {
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeUnauthorized, "Authentication required")
+		ctx.JSON(http.StatusUnauthorized, dto.NewErrorResponse(errorDetail))
+		return
+	}
+	adminID, ok := adminIDInterface.(int64)
+	if !ok {
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Invalid user ID format")
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(errorDetail))
+		return
+	}
+
+	// Prevent admin from deleting themselves
+	if id == adminID {
+		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Invalid operation")
+		errorDetail = errorDetail.WithDetails("Admin users cannot delete their own account")
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
+		return
+	}
+
+	// Call service to delete the user
+	err = c.userService.DeleteUser(ctx, id)
+	if err != nil {
+		middleware.HandleAPIError(ctx, err)
+		return
+	}
+
+	// Return success response
+	response := dto.MessageResponse{
+		Message: "User deleted successfully",
+	}
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(response))
+}

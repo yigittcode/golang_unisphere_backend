@@ -24,9 +24,91 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/users": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves a list of all users in the system. Only accessible by Admin users.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get all users (Admin only)",
+                "parameters": [
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number for pagination",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Number of items per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by role (STUDENT, INSTRUCTOR, ADMIN)",
+                        "name": "role",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Users retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or missing token",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - User does not have admin privileges",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/forgot-password": {
             "post": {
-                "description": "Sends a password reset link to the user's email",
+                "description": "Sends a password reset code to the user's email",
                 "consumes": [
                     "application/json"
                 ],
@@ -50,7 +132,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Password reset email sent",
+                        "description": "Password reset code sent",
                         "schema": {
                             "allOf": [
                                 {
@@ -224,7 +306,7 @@ const docTemplate = `{
         },
         "/auth/register": {
             "post": {
-                "description": "Creates a new user account (student or instructor) with the provided information. Registration requires email verification.",
+                "description": "Creates a new user account with the provided information. User role is determined automatically based on email pattern (emails starting with 's' followed by digits are assigned STUDENT role, others are assigned INSTRUCTOR role). Registration requires email verification.",
                 "consumes": [
                     "application/json"
                 ],
@@ -266,7 +348,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid request format or invalid role type",
+                        "description": "Invalid request format",
                         "schema": {
                             "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
                         }
@@ -4733,107 +4815,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/users": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieves a list of users based on filter criteria with pagination",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "Get users by filter",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Filter by department ID",
-                        "name": "departmentId",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by role (STUDENT, INSTRUCTOR)",
-                        "name": "role",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by email (partial match)",
-                        "name": "email",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by name (partial match on first or last name)",
-                        "name": "name",
-                        "in": "query"
-                    },
-                    {
-                        "minimum": 1,
-                        "type": "integer",
-                        "default": 1,
-                        "description": "Page number (1-based)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "maximum": 100,
-                        "minimum": 1,
-                        "type": "integer",
-                        "default": 10,
-                        "description": "Page size (default: 10, max: 100)",
-                        "name": "pageSize",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Users retrieved successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserListResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid filter parameters",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized - Invalid or missing token",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/users/profile": {
             "get": {
                 "security": [
@@ -5161,21 +5142,89 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a user by ID. Only accessible by Admin users.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Delete user",
+                "parameters": [
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User deleted successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.MessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid user ID format",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or missing token",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - User does not have admin privileges",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    }
+                }
             }
         }
     },
     "definitions": {
-        "github_com_yigit_unisphere_internal_app_models.RoleType": {
-            "type": "string",
-            "enum": [
-                "STUDENT",
-                "INSTRUCTOR"
-            ],
-            "x-enum-varnames": [
-                "RoleStudent",
-                "RoleInstructor"
-            ]
-        },
         "github_com_yigit_unisphere_internal_app_models_dto.APIResponse": {
             "description": "Generic response structure for all API endpoints",
             "type": "object",
@@ -5783,8 +5832,7 @@ const docTemplate = `{
                 "email",
                 "firstName",
                 "lastName",
-                "password",
-                "roleType"
+                "password"
             ],
             "properties": {
                 "departmentId": {
@@ -5803,9 +5851,6 @@ const docTemplate = `{
                 "password": {
                     "type": "string",
                     "minLength": 8
-                },
-                "roleType": {
-                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models.RoleType"
                 }
             }
         },

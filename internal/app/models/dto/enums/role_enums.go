@@ -6,6 +6,7 @@ type RoleType string
 const (
 	RoleStudent    RoleType = "STUDENT"
 	RoleInstructor RoleType = "INSTRUCTOR"
+	RoleAdmin      RoleType = "ADMIN"
 )
 
 // Term represents a semester term

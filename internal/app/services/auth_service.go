@@ -207,13 +207,40 @@ func (s *authServiceImpl) Register(ctx context.Context, req *dto.RegisterRequest
 		return nil, fmt.Errorf("error hashing password: %w", err)
 	}
 
+	// Determine user role based on email pattern
+	roleType := models.RoleInstructor // Default role is instructor
+
+	// Extract username from email (part before @)
+	emailParts := strings.Split(req.Email, "@")
+	if len(emailParts) > 0 {
+		username := emailParts[0]
+
+		// Check if username starts with 's' followed by digits (e.g., s200201027)
+		if len(username) > 1 && username[0] == 's' {
+			// Check if remaining characters are digits
+			remainingChars := username[1:]
+			isStudent := true
+
+			for _, char := range remainingChars {
+				if !unicode.IsDigit(char) {
+					isStudent = false
+					break
+				}
+			}
+
+			if isStudent && len(remainingChars) > 0 {
+				roleType = models.RoleStudent
+			}
+		}
+	}
+
 	// Create user with department_id and email_verified=false
 	user := &models.User{
 		Email:         req.Email,
 		Password:      string(hashedPassword),
 		FirstName:     req.FirstName,
 		LastName:      req.LastName,
-		RoleType:      req.RoleType,
+		RoleType:      roleType,
 		IsActive:      false, // Set to inactive until email is verified
 		EmailVerified: false, // Email not verified yet
 		DepartmentID:  &req.DepartmentID,

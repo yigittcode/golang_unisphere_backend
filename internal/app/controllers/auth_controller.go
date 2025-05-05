@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
-	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/app/repositories"
 	"github.com/yigit/unisphere/internal/app/services"
@@ -35,13 +34,13 @@ func NewAuthController(authService services.AuthService, userRepo repositories.I
 
 // Register handles user registration
 // @Summary Register a new user
-// @Description Creates a new user account (student or instructor) with the provided information. Registration requires email verification.
+// @Description Creates a new user account with the provided information. User role is determined automatically based on email pattern (emails starting with 's' followed by digits are assigned STUDENT role, others are assigned INSTRUCTOR role). Registration requires email verification.
 // @Tags auth
 // @Accept json
 // @Produce json
 // @Param request body dto.RegisterRequest true "User registration information"
 // @Success 201 {object} dto.APIResponse{data=dto.RegisterResponse} "User registration initiated. Check email for verification link."
-// @Failure 400 {object} dto.ErrorResponse "Invalid request format or invalid role type"
+// @Failure 400 {object} dto.ErrorResponse "Invalid request format"
 // @Failure 409 {object} dto.ErrorResponse "Email already exists"
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /auth/register [post]
@@ -52,25 +51,6 @@ func (c *AuthController) Register(ctx *gin.Context) {
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		c.logger.Warn().Err(err).Msg("Invalid registration request payload")
 		errorDetail := dto.HandleValidationError(err)
-		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
-		return
-	}
-
-	// Validate role type
-	validRoles := []string{string(models.RoleStudent), string(models.RoleInstructor)}
-	roleIsValid := false
-
-	for _, role := range validRoles {
-		if string(req.RoleType) == role {
-			roleIsValid = true
-			break
-		}
-	}
-
-	if !roleIsValid {
-		c.logger.Warn().Str("roleType", string(req.RoleType)).Msg("Invalid role type")
-		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Invalid role type")
-		errorDetail = errorDetail.WithDetails("Role type must be either STUDENT or INSTRUCTOR")
 		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
 		return
 	}
@@ -99,7 +79,6 @@ func (c *AuthController) Register(ctx *gin.Context) {
 		Str("firstName", req.FirstName).
 		Str("lastName", req.LastName).
 		Int64("departmentId", req.DepartmentID).
-		Str("roleType", string(req.RoleType)).
 		Msg("User registration request received")
 
 	// Register user

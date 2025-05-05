@@ -39,7 +39,7 @@ import (
 // Dependencies holds all the application dependencies
 type Dependencies struct {
 	AuthService          appServices.AuthService       // Interface type
-	UserService          appServices.UserService       // User Service
+	UserService          appServices.UserService       // Interface type
 	FacultyService       appServices.FacultyService    // Interface type
 	DepartmentService    appServices.DepartmentService // Interface type
 	PastExamService      appServices.PastExamService   // Interface type
@@ -276,7 +276,8 @@ func SetupRouter(cfg *config.Config, deps *Dependencies, lgr zerolog.Logger) *gi
 		deps.PastExamController,
 		deps.ClassNoteController,
 		deps.CommunityController,
-		deps.AuthMiddleware, // Pass the middleware struct itself
+		deps.UserController,
+		deps.AuthMiddleware,
 	)
 
 	// Manually add user routes to avoid conflicts
@@ -302,7 +303,7 @@ func SetupRouter(cfg *config.Config, deps *Dependencies, lgr zerolog.Logger) *gi
 	// User endpoints that require email verification
 	usersVerified := authenticatedWithEmailVerified.Group("/users")
 	{
-		usersVerified.GET("", deps.UserController.GetUsersByFilter)
+		usersVerified.GET("", deps.UserController.GetAllUsers)
 		usersVerified.GET("/:id", deps.UserController.GetUserByID)
 	}
 

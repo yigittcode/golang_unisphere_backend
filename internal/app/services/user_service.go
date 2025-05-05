@@ -26,6 +26,7 @@ type UserService interface {
 	DeleteProfilePhoto(ctx context.Context, userID int64) error
 	GetUsersByFilter(ctx context.Context, filter *dto.UserFilterRequest) ([]*models.User, int64, error)
 	GetFileByID(ctx context.Context, fileID int64) (*models.File, error)
+	DeleteUser(ctx context.Context, userID int64) error
 }
 
 // userServiceImpl implements UserService
@@ -64,7 +65,7 @@ func (s *userServiceImpl) GetUserByID(ctx context.Context, id int64) (*models.Us
 	if user == nil {
 		return nil, apperrors.ErrUserNotFound
 	}
-	
+
 	// Get department information if available
 	if user.DepartmentID != nil {
 		department, err := s.departmentRepo.GetByID(ctx, *user.DepartmentID)
@@ -72,7 +73,7 @@ func (s *userServiceImpl) GetUserByID(ctx context.Context, id int64) (*models.Us
 			user.Department = department
 		}
 	}
-	
+
 	return user, nil
 }
 
@@ -86,7 +87,7 @@ func (s *userServiceImpl) GetUsersByDepartment(ctx context.Context, departmentID
 	if department == nil {
 		return nil, apperrors.ErrDepartmentNotFound
 	}
-	
+
 	// Get users by department
 	var users []*models.User
 	if roleType != nil {
@@ -96,11 +97,11 @@ func (s *userServiceImpl) GetUsersByDepartment(ctx context.Context, departmentID
 	} else {
 		users, err = s.userRepo.FindByDepartment(ctx, departmentID)
 	}
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("error finding users by department: %w", err)
 	}
-	
+
 	return users, nil
 }
 
@@ -110,7 +111,7 @@ func (s *userServiceImpl) GetUserProfile(ctx context.Context, userID int64) (*mo
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// If user has a profile photo, get the file information
 	if user.ProfilePhotoFileID != nil {
 		file, err := s.fileRepo.GetByID(ctx, *user.ProfilePhotoFileID)
@@ -120,7 +121,7 @@ func (s *userServiceImpl) GetUserProfile(ctx context.Context, userID int64) (*mo
 			s.logger.Debug().Int64("fileID", file.ID).Str("fileURL", file.FileURL).Msg("Found profile photo for user")
 		}
 	}
-	
+
 	return user, nil
 }
 
@@ -140,7 +141,7 @@ func (s *userServiceImpl) UpdateUserProfile(ctx context.Context, userID int64, r
 		s.logger.Error().Int64("userID", userID).Msg("User not found for profile update")
 		return nil, apperrors.ErrUserNotFound
 	}
-	
+
 	// Check if email is changing and if it's already in use
 	if currentUser.Email != req.Email {
 		// Check if email is already in use by another user
@@ -160,21 +161,21 @@ func (s *userServiceImpl) UpdateUserProfile(ctx context.Context, userID int64, r
 			return nil, apperrors.ErrEmailAlreadyExists
 		}
 	}
-	
+
 	// Update user information
 	currentUser.FirstName = req.FirstName
 	currentUser.LastName = req.LastName
 	currentUser.Email = req.Email
-	
+
 	// Department ID is no longer part of the update request
 	// Users can't change their department through the profile update
-	
+
 	// Save updated user
 	err = s.userRepo.Update(ctx, currentUser)
 	if err != nil {
 		return nil, fmt.Errorf("error updating user: %w", err)
 	}
-	
+
 	// Return updated user
 	return currentUser, nil
 }
@@ -189,29 +190,29 @@ func (s *userServiceImpl) UpdateProfilePhoto(ctx context.Context, userID int64, 
 	if user == nil {
 		return nil, apperrors.ErrUserNotFound
 	}
-	
+
 	// Get the content type
 	contentType := fileHeader.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "image/") {
 		return nil, fmt.Errorf("file is not an image: %s", contentType)
 	}
-	
+
 	// Generate a storage path based on user ID
 	subPath := fmt.Sprintf("profile_photos/user_%d", userID)
-	
+
 	// Upload to storage - LocalStorage will generate a unique filename using UUID
 	fileURL, err := s.fileStorage.SaveFileWithPath(fileHeader, subPath)
 	if err != nil {
 		return nil, fmt.Errorf("error uploading file: %w", err)
 	}
-	
+
 	// Get just the filename from the URL
 	filename := filepath.Base(fileURL)
-	
+
 	// Extract relative path from URL
 	relativeFilePath := strings.TrimPrefix(fileURL, s.fileStorage.GetBaseURL())
 	relativeFilePath = strings.TrimPrefix(relativeFilePath, "/uploads/")
-	
+
 	// Create file record
 	file := &models.File{
 		FileName:     filename,
@@ -223,7 +224,7 @@ func (s *userServiceImpl) UpdateProfilePhoto(ctx context.Context, userID int64, 
 		ResourceID:   userID,
 		UploadedBy:   userID,
 	}
-	
+
 	// Save file metadata first
 	fileID, err := s.fileRepo.Create(ctx, file)
 	if err != nil {
@@ -232,7 +233,7 @@ func (s *userServiceImpl) UpdateProfilePhoto(ctx context.Context, userID int64, 
 		return nil, fmt.Errorf("error saving file metadata: %w", err)
 	}
 	file.ID = fileID
-	
+
 	// Delete old profile photo if exists
 	if user.ProfilePhotoFileID != nil && *user.ProfilePhotoFileID != fileID {
 		oldFile, err := s.fileRepo.GetByID(ctx, *user.ProfilePhotoFileID)
@@ -240,7 +241,7 @@ func (s *userServiceImpl) UpdateProfilePhoto(ctx context.Context, userID int64, 
 			// Store the old file path for deletion after user update succeeds
 			oldFilePath := oldFile.FilePath
 			oldFileID := oldFile.ID
-			
+
 			// Update user's profile photo ID first
 			err = s.userRepo.UpdateProfilePhotoFileID(ctx, userID, &fileID)
 			if err != nil {
@@ -249,7 +250,7 @@ func (s *userServiceImpl) UpdateProfilePhoto(ctx context.Context, userID int64, 
 				_ = s.fileRepo.Delete(ctx, fileID)
 				return nil, fmt.Errorf("error updating user's profile photo ID: %w", err)
 			}
-			
+
 			// Now that user update succeeded, delete old file
 			_ = s.fileStorage.DeleteFile(oldFilePath)
 			_ = s.fileRepo.Delete(ctx, oldFileID)
@@ -264,7 +265,7 @@ func (s *userServiceImpl) UpdateProfilePhoto(ctx context.Context, userID int64, 
 			return nil, fmt.Errorf("error updating user's profile photo ID: %w", err)
 		}
 	}
-	
+
 	// Return the file information
 	return file, nil
 }
@@ -279,12 +280,12 @@ func (s *userServiceImpl) DeleteProfilePhoto(ctx context.Context, userID int64) 
 	if user == nil {
 		return apperrors.ErrUserNotFound
 	}
-	
+
 	// If no profile photo, return specific error
 	if user.ProfilePhotoFileID == nil {
 		return apperrors.NewResourceNotFoundError("Profile photo does not exist for this user")
 	}
-	
+
 	// Get the file details
 	oldFile, err := s.fileRepo.GetByID(ctx, *user.ProfilePhotoFileID)
 	if err != nil {
@@ -292,14 +293,14 @@ func (s *userServiceImpl) DeleteProfilePhoto(ctx context.Context, userID int64) 
 			Msg("Could not find profile photo file record to delete")
 		// Even if we can't find the file record, we should still update the user
 		// to clear their profile photo ID to fix inconsistent state
-	} 
-	
+	}
+
 	// First, update the user's profile photo ID to null
 	err = s.userRepo.UpdateProfilePhotoFileID(ctx, userID, nil)
 	if err != nil {
 		return fmt.Errorf("error updating user profile: %w", err)
 	}
-	
+
 	// If we found the file, delete it
 	if oldFile != nil {
 		// Now that the user record is updated, delete the file
@@ -307,14 +308,14 @@ func (s *userServiceImpl) DeleteProfilePhoto(ctx context.Context, userID int64) 
 			s.logger.Warn().Err(delErr).Str("filePath", oldFile.FilePath).
 				Msg("Failed to delete profile photo file from storage")
 		}
-		
+
 		// Delete the file record
 		if delErr := s.fileRepo.Delete(ctx, *user.ProfilePhotoFileID); delErr != nil {
 			s.logger.Warn().Err(delErr).Int64("fileID", *user.ProfilePhotoFileID).
 				Msg("Failed to delete profile photo record from database")
 		}
 	}
-	
+
 	return nil
 }
 
@@ -335,20 +336,20 @@ func (s *userServiceImpl) GetUsersByFilter(ctx context.Context, filter *dto.User
 		role := models.RoleType(*filter.Role)
 		roleType = &role
 	}
-	
+
 	// Get users by filter
-	users, total, err := s.userRepo.FindByFilter(ctx, 
-		filter.DepartmentID, 
-		roleType, 
-		filter.Email, 
+	users, total, err := s.userRepo.FindByFilter(ctx,
+		filter.DepartmentID,
+		roleType,
+		filter.Email,
 		filter.Name,
-		filter.Page, 
+		filter.Page,
 		filter.PageSize)
-	
+
 	if err != nil {
 		return nil, 0, fmt.Errorf("error finding users by filter: %w", err)
 	}
-	
+
 	// Load departments for users
 	for _, user := range users {
 		if user.DepartmentID != nil {
@@ -358,7 +359,39 @@ func (s *userServiceImpl) GetUsersByFilter(ctx context.Context, filter *dto.User
 			}
 		}
 	}
-	
+
 	return users, total, nil
 }
 
+// DeleteUser deletes a user by ID
+func (s *userServiceImpl) DeleteUser(ctx context.Context, userID int64) error {
+	// Get user information to confirm existence
+	user, err := s.userRepo.FindByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("error finding user: %w", err)
+	}
+	if user == nil {
+		return apperrors.ErrUserNotFound
+	}
+
+	// Don't allow deleting users with ADMIN role
+	if user.RoleType == models.RoleAdmin {
+		return fmt.Errorf("cannot delete admin user: users with ADMIN role are protected")
+	}
+
+	// Delete user profile photo if it exists
+	if user.ProfilePhotoFileID != nil {
+		// Try to delete the profile photo, but continue even if it fails
+		if err := s.DeleteProfilePhoto(ctx, userID); err != nil {
+			s.logger.Warn().Err(err).Int64("userID", userID).Msg("Failed to delete profile photo during user deletion")
+		}
+	}
+
+	// Delete user
+	if err := s.userRepo.Delete(ctx, userID); err != nil {
+		return fmt.Errorf("error deleting user: %w", err)
+	}
+
+	s.logger.Info().Int64("userID", userID).Msg("User deleted successfully")
+	return nil
+}

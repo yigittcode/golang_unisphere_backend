@@ -1,13 +1,5 @@
 basePath: /api/v1
 definitions:
-  github_com_yigit_unisphere_internal_app_models.RoleType:
-    enum:
-    - STUDENT
-    - INSTRUCTOR
-    type: string
-    x-enum-varnames:
-    - RoleStudent
-    - RoleInstructor
   github_com_yigit_unisphere_internal_app_models_dto.APIResponse:
     description: Generic response structure for all API endpoints
     properties:
@@ -443,15 +435,12 @@ definitions:
       password:
         minLength: 8
         type: string
-      roleType:
-        $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models.RoleType'
     required:
     - departmentId
     - email
     - firstName
     - lastName
     - password
-    - roleType
     type: object
   github_com_yigit_unisphere_internal_app_models_dto.RegisterResponse:
     properties:
@@ -624,11 +613,63 @@ info:
   title: UniSphere API
   version: "1.0"
 paths:
+  /admin/users:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of all users in the system. Only accessible by
+        Admin users.
+      parameters:
+      - default: 1
+        description: Page number for pagination
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - default: 20
+        description: Number of items per page
+        in: query
+        maximum: 100
+        name: limit
+        type: integer
+      - description: Filter by role (STUDENT, INSTRUCTOR, ADMIN)
+        in: query
+        name: role
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Users retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserListResponse'
+              type: object
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "403":
+          description: Forbidden - User does not have admin privileges
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all users (Admin only)
+      tags:
+      - users
   /auth/forgot-password:
     post:
       consumes:
       - application/json
-      description: Sends a password reset link to the user's email
+      description: Sends a password reset code to the user's email
       parameters:
       - description: Email for password reset
         in: body
@@ -640,7 +681,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: Password reset email sent
+          description: Password reset code sent
           schema:
             allOf:
             - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
@@ -749,8 +790,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates a new user account (student or instructor) with the provided
-        information. Registration requires email verification.
+      description: Creates a new user account with the provided information. User
+        role is determined automatically based on email pattern (emails starting with
+        's' followed by digits are assigned STUDENT role, others are assigned INSTRUCTOR
+        role). Registration requires email verification.
       parameters:
       - description: User registration information
         in: body
@@ -771,7 +814,7 @@ paths:
                   $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.RegisterResponse'
               type: object
         "400":
-          description: Invalid request format or invalid role type
+          description: Invalid request format
           schema:
             $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "409":
@@ -3363,59 +3406,45 @@ paths:
       summary: Delete a file from a past exam
       tags:
       - past-exams
-  /users:
-    get:
+  /users/{id}:
+    delete:
       consumes:
       - application/json
-      description: Retrieves a list of users based on filter criteria with pagination
+      description: Deletes a user by ID. Only accessible by Admin users.
       parameters:
-      - description: Filter by department ID
-        in: query
-        name: departmentId
-        type: integer
-      - description: Filter by role (STUDENT, INSTRUCTOR)
-        in: query
-        name: role
-        type: string
-      - description: Filter by email (partial match)
-        in: query
-        name: email
-        type: string
-      - description: Filter by name (partial match on first or last name)
-        in: query
-        name: name
-        type: string
-      - default: 1
-        description: Page number (1-based)
-        in: query
+      - description: User ID
+        format: int64
+        in: path
         minimum: 1
-        name: page
-        type: integer
-      - default: 10
-        description: 'Page size (default: 10, max: 100)'
-        in: query
-        maximum: 100
-        minimum: 1
-        name: pageSize
+        name: id
+        required: true
         type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: Users retrieved successfully
+          description: User deleted successfully
           schema:
             allOf:
             - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserListResponse'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.MessageResponse'
               type: object
         "400":
-          description: Invalid filter parameters
+          description: Invalid user ID format
           schema:
             $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "401":
           description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "403":
+          description: Forbidden - User does not have admin privileges
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "404":
+          description: User not found
           schema:
             $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
         "500":
@@ -3424,10 +3453,9 @@ paths:
             $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Get users by filter
+      summary: Delete user
       tags:
       - users
-  /users/{id}:
     get:
       consumes:
       - application/json
