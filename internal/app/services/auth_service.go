@@ -34,6 +34,10 @@ type AuthService interface {
 	Login(ctx context.Context, req *dto.LoginRequest) (*dto.TokenResponse, error)
 	RefreshToken(ctx context.Context, token string) (*dto.TokenResponse, error)
 
+	// Password reset
+	ForgotPassword(ctx context.Context, email string) error
+	ResetPassword(ctx context.Context, token string, newPassword string) error
+
 	// User profile
 	GetProfile(ctx context.Context, userID int64) (*dto.UserResponse, error)
 	GetUserByID(ctx context.Context, userID int64) (*models.User, error)
@@ -47,16 +51,17 @@ type AuthService interface {
 
 // authServiceImpl implements the AuthService interface
 type authServiceImpl struct {
-	userRepo              *repositories.UserRepository
-	tokenRepo             *repositories.TokenRepository
-	departmentRepo        *repositories.DepartmentRepository
-	facultyRepo           *repositories.FacultyRepository
-	fileRepo              *repositories.FileRepository
-	fileStorage           *filestorage.LocalStorage
-	verificationTokenRepo *repositories.VerificationTokenRepository
-	emailService          email.EmailService
-	jwtService            *auth.JWTService
-	logger                zerolog.Logger
+	userRepo               *repositories.UserRepository
+	tokenRepo              *repositories.TokenRepository
+	departmentRepo         *repositories.DepartmentRepository
+	facultyRepo            *repositories.FacultyRepository
+	fileRepo               *repositories.FileRepository
+	fileStorage            *filestorage.LocalStorage
+	verificationTokenRepo  *repositories.VerificationTokenRepository
+	passwordResetTokenRepo *repositories.PasswordResetTokenRepository
+	emailService           email.EmailService
+	jwtService             *auth.JWTService
+	logger                 zerolog.Logger
 }
 
 // NewAuthService creates a new AuthService
@@ -68,21 +73,23 @@ func NewAuthService(
 	fileRepo *repositories.FileRepository,
 	fileStorage *filestorage.LocalStorage,
 	verificationTokenRepo *repositories.VerificationTokenRepository,
+	passwordResetTokenRepo *repositories.PasswordResetTokenRepository,
 	emailService email.EmailService,
 	jwtService *auth.JWTService,
 	logger zerolog.Logger,
 ) AuthService {
 	return &authServiceImpl{
-		userRepo:              userRepo,
-		tokenRepo:             tokenRepo,
-		departmentRepo:        departmentRepo,
-		facultyRepo:           facultyRepo,
-		fileRepo:              fileRepo,
-		fileStorage:           fileStorage,
-		verificationTokenRepo: verificationTokenRepo,
-		emailService:          emailService,
-		jwtService:            jwtService,
-		logger:                logger,
+		userRepo:               userRepo,
+		tokenRepo:              tokenRepo,
+		departmentRepo:         departmentRepo,
+		facultyRepo:            facultyRepo,
+		fileRepo:               fileRepo,
+		fileStorage:            fileStorage,
+		verificationTokenRepo:  verificationTokenRepo,
+		passwordResetTokenRepo: passwordResetTokenRepo,
+		emailService:           emailService,
+		jwtService:             jwtService,
+		logger:                 logger,
 	}
 }
 
@@ -207,8 +214,8 @@ func (s *authServiceImpl) Register(ctx context.Context, req *dto.RegisterRequest
 		FirstName:     req.FirstName,
 		LastName:      req.LastName,
 		RoleType:      req.RoleType,
-		IsActive:      false,  // Set to inactive until email is verified
-		EmailVerified: false,  // Email not verified yet
+		IsActive:      false, // Set to inactive until email is verified
+		EmailVerified: false, // Email not verified yet
 		DepartmentID:  &req.DepartmentID,
 	}
 
@@ -266,7 +273,7 @@ func (s *authServiceImpl) Login(ctx context.Context, req *dto.LoginRequest) (*dt
 	// if !user.EmailVerified {
 	// 	return nil, apperrors.ErrEmailNotVerified
 	// }
-	
+
 	// Automatically mark email as verified if it's not
 	if !user.EmailVerified {
 		s.logger.Info().Int64("userID", user.ID).Msg("Auto-verifying email for login")
@@ -495,7 +502,7 @@ func (s *authServiceImpl) ResendVerificationEmail(ctx context.Context, email str
 	if strings.TrimSpace(email) == "" {
 		return fmt.Errorf("%w: email cannot be empty", apperrors.ErrValidationFailed)
 	}
-	
+
 	// Convert email to lowercase to ensure consistency
 	email = strings.ToLower(email)
 
@@ -587,4 +594,174 @@ func (s *authServiceImpl) generateTokenResponse(ctx context.Context, user *model
 	}
 
 	return tokenResponse, nil
+}
+
+// GenerateTokenForPasswordReset generates a new random token for password reset
+func GenerateTokenForPasswordReset() (string, error) {
+	return GenerateTokenForVerification() // Use the same token generation
+}
+
+// ForgotPassword initiates the password reset process
+func (s *authServiceImpl) ForgotPassword(ctx context.Context, email string) error {
+	// Validate email
+	if err := s.validateEmail(email); err != nil {
+		return err
+	}
+
+	// Convert email to lowercase
+	email = strings.ToLower(email)
+
+	// Get user by email
+	user, err := s.userRepo.GetByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, apperrors.ErrUserNotFound) {
+			// Don't reveal that the user doesn't exist for security reasons
+			s.logger.Info().Str("email", email).Msg("Password reset requested for non-existent user")
+			return nil
+		}
+		return fmt.Errorf("error retrieving user: %w", err)
+	}
+
+	// Delete any existing password reset tokens for user
+	err = s.passwordResetTokenRepo.DeleteTokensByUserID(ctx, user.ID)
+	if err != nil {
+		s.logger.Warn().Err(err).Int64("userID", user.ID).Msg("Failed to delete existing password reset tokens")
+		// Continue anyway
+	}
+
+	// Generate password reset token
+	resetToken, err := GenerateTokenForPasswordReset()
+	if err != nil {
+		s.logger.Error().Err(err).Int64("userID", user.ID).Msg("Failed to generate password reset token")
+		return fmt.Errorf("error generating reset token: %w", err)
+	}
+
+	// Store password reset token (valid for 24 hours)
+	expiryTime := time.Now().Add(24 * time.Hour)
+	err = s.passwordResetTokenRepo.CreateToken(ctx, user.ID, resetToken, expiryTime)
+	if err != nil {
+		s.logger.Error().Err(err).Int64("userID", user.ID).Msg("Failed to store password reset token")
+		return fmt.Errorf("error storing reset token: %w", err)
+	}
+
+	// Send password reset email
+	err = s.emailService.SendPasswordResetEmail(user.Email, user.FirstName, resetToken)
+	if err != nil {
+		s.logger.Error().Err(err).Int64("userID", user.ID).Msg("Failed to send password reset email")
+		return fmt.Errorf("error sending password reset email: %w", err)
+	}
+
+	return nil
+}
+
+// ResetPassword resets a user's password using a valid token
+func (s *authServiceImpl) ResetPassword(ctx context.Context, token string, newPassword string) error {
+	// Validate token
+	if strings.TrimSpace(token) == "" {
+		return apperrors.ErrInvalidPasswordResetToken
+	}
+
+	// Validate new password
+	if err := s.ValidatePassword(newPassword); err != nil {
+		return err
+	}
+
+	// Get token info
+	userID, expiryDate, used, err := s.passwordResetTokenRepo.GetTokenInfo(ctx, token)
+	if err != nil {
+		s.logger.Error().Err(err).Str("token", token).Msg("Failed to get password reset token info")
+		return apperrors.ErrInvalidPasswordResetToken
+	}
+
+	// Check if token has already been used
+	if used {
+		s.logger.Warn().Str("token", token).Msg("Password reset token already used")
+		return apperrors.ErrPasswordResetTokenUsed
+	}
+
+	// Check if token is expired
+	if expiryDate.Before(time.Now()) {
+		s.logger.Warn().Str("token", token).Time("expiryDate", expiryDate).Msg("Password reset token expired")
+		// Delete expired token
+		_ = s.passwordResetTokenRepo.DeleteToken(ctx, token)
+		return apperrors.ErrInvalidPasswordResetToken
+	}
+
+	// Get user
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		s.logger.Error().Err(err).Int64("userID", userID).Msg("Failed to get user for password reset")
+		return fmt.Errorf("user not found: %w", err)
+	}
+
+	// Hash new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("error hashing password: %w", err)
+	}
+
+	// Update user's password - Execute a direct query rather than using Update
+	query := `
+		UPDATE users 
+		SET password = $1, updated_at = NOW() 
+		WHERE id = $2
+	`
+
+	_, err = s.userRepo.GetDB().Exec(ctx, query, string(hashedPassword), userID)
+	if err != nil {
+		s.logger.Error().Err(err).Int64("userID", userID).Msg("Failed to update user password with direct query")
+		// Fall back to using the user object if direct query fails
+
+		// Update user's password
+		user.Password = string(hashedPassword)
+		err = s.userRepo.Update(ctx, user)
+		if err != nil {
+			s.logger.Error().Err(err).Int64("userID", userID).Msg("Failed to update user password with both methods")
+			return fmt.Errorf("error updating user password: %w", err)
+		}
+	} else {
+		s.logger.Info().Int64("userID", userID).Msg("User password updated successfully with direct query")
+	}
+
+	// Mark token as used
+	err = s.passwordResetTokenRepo.MarkTokenAsUsed(ctx, token)
+	if err != nil {
+		s.logger.Warn().Err(err).Str("token", token).Msg("Failed to mark password reset token as used")
+		// Don't return error since password was updated successfully
+	}
+
+	// Ensure that the user account is active and email is verified
+	if !user.IsActive || !user.EmailVerified {
+		// Do a direct update for activation too
+		activateQuery := `
+			UPDATE users 
+			SET is_active = true, email_verified = true, updated_at = NOW() 
+			WHERE id = $1
+		`
+
+		_, err = s.userRepo.GetDB().Exec(ctx, activateQuery, userID)
+		if err != nil {
+			s.logger.Warn().Err(err).Int64("userID", userID).Msg("Failed to activate user with direct query")
+
+			// Fall back to the original method
+			user.IsActive = true
+			user.EmailVerified = true
+			err = s.userRepo.Update(ctx, user)
+			if err != nil {
+				s.logger.Warn().Err(err).Int64("userID", userID).Msg("Failed to activate user account after password reset")
+				// Don't return error since password was updated successfully
+			}
+		} else {
+			s.logger.Info().Int64("userID", userID).Msg("User activated successfully with direct query")
+		}
+	}
+
+	// Send password changed notification email
+	err = s.emailService.SendPasswordChangedEmail(user.Email, user.FirstName)
+	if err != nil {
+		s.logger.Warn().Err(err).Int64("userID", userID).Msg("Failed to send password changed notification")
+		// Don't return error since password was updated successfully
+	}
+
+	return nil
 }

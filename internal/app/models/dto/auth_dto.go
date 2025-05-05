@@ -24,12 +24,12 @@ type RefreshTokenRequest struct {
 
 // RegisterRequest represents a generic user registration request
 type RegisterRequest struct {
-	Email        string         `json:"email" binding:"required,email"`
-	Password     string         `json:"password" binding:"required,min=8"`
-	FirstName    string         `json:"firstName" binding:"required"`
-	LastName     string         `json:"lastName" binding:"required"`
+	Email        string          `json:"email" binding:"required,email"`
+	Password     string          `json:"password" binding:"required,min=8"`
+	FirstName    string          `json:"firstName" binding:"required"`
+	LastName     string          `json:"lastName" binding:"required"`
 	RoleType     models.RoleType `json:"roleType" binding:"required"`
-	DepartmentID int64          `json:"departmentId" binding:"required,min=1"`
+	DepartmentID int64           `json:"departmentId" binding:"required,min=1"`
 }
 
 // UpdateProfileRequest represents profile update data
@@ -41,14 +41,14 @@ type UpdateProfileRequest struct {
 
 // UserResponse represents basic user information
 type UserResponse struct {
-	ID                 int64      `json:"id"`
-	Email              string     `json:"email"`
-	FirstName          string     `json:"firstName"`
-	LastName           string     `json:"lastName"`
-	Role               string     `json:"role"`
-	DepartmentID       *int64     `json:"departmentId,omitempty"`
-	ProfilePhotoFileID *int64     `json:"profilePhotoFileId,omitempty"`
-	ProfilePhotoURL    string     `json:"profilePhotoUrl,omitempty"`
+	ID                 int64  `json:"id"`
+	Email              string `json:"email"`
+	FirstName          string `json:"firstName"`
+	LastName           string `json:"lastName"`
+	Role               string `json:"role"`
+	DepartmentID       *int64 `json:"departmentId,omitempty"`
+	ProfilePhotoFileID *int64 `json:"profilePhotoFileId,omitempty"`
+	ProfilePhotoURL    string `json:"profilePhotoUrl,omitempty"`
 }
 
 // AuthResponse represents successful authentication response
@@ -71,4 +71,20 @@ type VerifyEmailRequest struct {
 // VerifyEmailResponse defines the response model for email verification
 type VerifyEmailResponse struct {
 	Message string `json:"message" example:"Email verified successfully"`
+}
+
+// ForgotPasswordRequest represents a password reset request
+type ForgotPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+// ResetPasswordRequest represents a password reset operation
+type ResetPasswordRequest struct {
+	Token       string `json:"token" binding:"required"`
+	NewPassword string `json:"newPassword" binding:"required,min=8"`
+}
+
+// MessageResponse represents a simple message response
+type MessageResponse struct {
+	Message string `json:"message"`
 }

@@ -45,6 +45,8 @@ func SetupRouter(
 		auth.POST("/refresh", authController.RefreshToken)
 		auth.GET("/verify-email", authController.VerifyEmail)
 		auth.POST("/resend-verification", authController.ResendVerificationEmail)
+		auth.POST("/forgot-password", authController.ForgotPassword)
+		auth.POST("/reset-password", authController.ResetPassword)
 		// Profile route moved to authenticated group
 	}
 

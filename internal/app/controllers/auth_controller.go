@@ -47,7 +47,7 @@ func NewAuthController(authService services.AuthService, userRepo repositories.I
 // @Router /auth/register [post]
 func (c *AuthController) Register(ctx *gin.Context) {
 	c.logger.Debug().Msg("Register endpoint called")
-	
+
 	var req dto.RegisterRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		c.logger.Warn().Err(err).Msg("Invalid registration request payload")
@@ -59,14 +59,14 @@ func (c *AuthController) Register(ctx *gin.Context) {
 	// Validate role type
 	validRoles := []string{string(models.RoleStudent), string(models.RoleInstructor)}
 	roleIsValid := false
-	
+
 	for _, role := range validRoles {
 		if string(req.RoleType) == role {
 			roleIsValid = true
 			break
 		}
 	}
-	
+
 	if !roleIsValid {
 		c.logger.Warn().Str("roleType", string(req.RoleType)).Msg("Invalid role type")
 		errorDetail := dto.NewErrorDetail(dto.ErrorCodeValidationFailed, "Invalid role type")
@@ -272,6 +272,88 @@ func (c *AuthController) ResendVerificationEmail(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, dto.APIResponse{
 		Data: map[string]string{
 			"message": "Verification email has been resent. Please check your inbox.",
+		},
+	})
+}
+
+// ForgotPassword handles password reset request
+// @Summary Request password reset
+// @Description Sends a password reset code to the user's email
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body dto.ForgotPasswordRequest true "Email for password reset"
+// @Success 200 {object} dto.APIResponse{data=dto.MessageResponse} "Password reset code sent"
+// @Failure 400 {object} dto.ErrorResponse "Invalid email format"
+// @Failure 404 {object} dto.ErrorResponse "User not found"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Router /auth/forgot-password [post]
+func (c *AuthController) ForgotPassword(ctx *gin.Context) {
+	var req dto.ForgotPasswordRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		c.logger.Warn().Err(err).Msg("Invalid forgot password request payload")
+		errorDetail := dto.HandleValidationError(err)
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
+		return
+	}
+
+	// Process forgot password request
+	err := c.authService.ForgotPassword(ctx.Request.Context(), req.Email)
+	if err != nil {
+		c.logger.Warn().Err(err).Str("email", req.Email).Msg("Forgot password request failed")
+		middleware.HandleAPIError(ctx, err)
+		return
+	}
+
+	// Log successful forgot password request
+	c.logger.Info().
+		Str("email", req.Email).
+		Msg("Password reset code sent successfully")
+
+	// Return success response
+	ctx.JSON(http.StatusOK, dto.APIResponse{
+		Data: dto.MessageResponse{
+			Message: "Password reset code has been sent to your email address.",
+		},
+	})
+}
+
+// ResetPassword handles password reset
+// @Summary Reset password
+// @Description Resets a user's password using the reset token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body dto.ResetPasswordRequest true "Reset token and new password"
+// @Success 200 {object} dto.APIResponse{data=dto.MessageResponse} "Password reset successful"
+// @Failure 400 {object} dto.ErrorResponse "Invalid request format or weak password"
+// @Failure 401 {object} dto.ErrorResponse "Invalid or expired token"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Router /auth/reset-password [post]
+func (c *AuthController) ResetPassword(ctx *gin.Context) {
+	var req dto.ResetPasswordRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		c.logger.Warn().Err(err).Msg("Invalid reset password request payload")
+		errorDetail := dto.HandleValidationError(err)
+		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(errorDetail))
+		return
+	}
+
+	// Process password reset
+	err := c.authService.ResetPassword(ctx.Request.Context(), req.Token, req.NewPassword)
+	if err != nil {
+		c.logger.Warn().Err(err).Msg("Password reset failed")
+		middleware.HandleAPIError(ctx, err)
+		return
+	}
+
+	// Log successful password reset
+	c.logger.Info().Msg("Password reset successful")
+
+	// Return success response
+	ctx.JSON(http.StatusOK, dto.APIResponse{
+		Data: dto.MessageResponse{
+			Message: "Your password has been successfully reset. You can now login with your new password.",
 		},
 	})
 }

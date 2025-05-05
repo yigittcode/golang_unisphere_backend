@@ -182,6 +182,7 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 		deps.Repos.FileRepository,
 		deps.FileStorage,
 		deps.Repos.VerificationTokenRepository,
+		deps.Repos.PasswordResetTokenRepository,
 		deps.EmailService,
 		deps.JWTService,
 		lgr,
@@ -262,6 +263,9 @@ func SetupRouter(cfg *config.Config, deps *Dependencies, lgr zerolog.Logger) *gi
 
 	// Setup Swagger
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json"), ginSwagger.DefaultModelsExpandDepth(1)))
+
+	// Setup static files for frontend
+	router.Static("/public", "./public")
 
 	// Setup API routes using the original method for now
 	// Will migrate to V2 in a future update

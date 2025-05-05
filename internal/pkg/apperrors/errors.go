@@ -65,9 +65,15 @@ var (
 
 // Email verification errors
 var (
-	ErrEmailNotVerified = errors.New("email not verified")
-	ErrInvalidEmailToken = errors.New("invalid or expired email verification token")
+	ErrEmailNotVerified     = errors.New("email not verified")
+	ErrInvalidEmailToken    = errors.New("invalid or expired email verification token")
 	ErrEmailAlreadyVerified = errors.New("email already verified")
+)
+
+// Password reset errors
+var (
+	ErrInvalidPasswordResetToken = errors.New("invalid or expired password reset token")
+	ErrPasswordResetTokenUsed    = errors.New("password reset token has already been used")
 )
 
 // NewResourceNotFoundError creates a new custom error for resource not found with a message

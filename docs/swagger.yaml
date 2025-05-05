@@ -336,6 +336,13 @@ definitions:
       name:
         type: string
     type: object
+  github_com_yigit_unisphere_internal_app_models_dto.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
   github_com_yigit_unisphere_internal_app_models_dto.JoinCommunityRequest:
     properties:
       userId:
@@ -359,6 +366,11 @@ definitions:
     required:
     - email
     - password
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.MessageResponse:
+    properties:
+      message:
+        type: string
     type: object
   github_com_yigit_unisphere_internal_app_models_dto.PastExamListResponse:
     properties:
@@ -449,6 +461,17 @@ definitions:
       userId:
         example: 123
         type: integer
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.ResetPasswordRequest:
+    properties:
+      newPassword:
+        minLength: 8
+        type: string
+      token:
+        type: string
+    required:
+    - newPassword
+    - token
     type: object
   github_com_yigit_unisphere_internal_app_models_dto.SimpleClassNoteFileResponse:
     properties:
@@ -601,6 +624,45 @@ info:
   title: UniSphere API
   version: "1.0"
 paths:
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Sends a password reset link to the user's email
+      parameters:
+      - description: Email for password reset
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password reset email sent
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.MessageResponse'
+              type: object
+        "400":
+          description: Invalid email format
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      summary: Request password reset
+      tags:
+      - auth
   /auth/login:
     post:
       consumes:
@@ -766,6 +828,45 @@ paths:
           schema:
             $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
       summary: Resend verification email
+      tags:
+      - auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Resets a user's password using the reset token
+      parameters:
+      - description: Reset token and new password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password reset successful
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.MessageResponse'
+              type: object
+        "400":
+          description: Invalid request format or weak password
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "401":
+          description: Invalid or expired token
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      summary: Reset password
       tags:
       - auth
   /auth/verify-email:

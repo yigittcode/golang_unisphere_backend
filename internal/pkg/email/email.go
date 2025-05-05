@@ -16,18 +16,20 @@ import (
 type EmailService interface {
 	SendVerificationEmail(toEmail, toName, token string) error
 	SendWelcomeEmail(toEmail, toName string) error
+	SendPasswordResetEmail(toEmail, toName, token string) error
+	SendPasswordChangedEmail(toEmail, toName string) error
 }
 
 // SMTPConfig holds configuration for SMTP server
 type SMTPConfig struct {
-	Host     string
-	Port     int
-	Username string
-	Password string
-	FromName string
+	Host      string
+	Port      int
+	Username  string
+	Password  string
+	FromName  string
 	FromEmail string
-	UseTLS   bool
-	BaseURL  string // Base URL for the application
+	UseTLS    bool
+	BaseURL   string // Base URL for the application
 }
 
 // EmailServiceImpl implements EmailService
@@ -53,15 +55,15 @@ func (s *EmailServiceImpl) SendVerificationEmail(toEmail, toName, token string) 
 			Str("token", token).
 			Str("verificationURL", fmt.Sprintf("%s/api/v1/auth/verify-email?token=%s", s.config.BaseURL, token)).
 			Msg("SMTP credentials not configured - verification email not sent. Use the token/URL above for testing.")
-		
+
 		// Return success for development purposes
 		return nil
 	}
 	subject := "Verify Your Email Address - UniSphere"
-	
+
 	// Create verification URL
 	verificationURL := fmt.Sprintf("%s/api/v1/auth/verify-email?token=%s", s.config.BaseURL, token)
-	
+
 	body := fmt.Sprintf(`
 		<html>
 		<body>
@@ -85,7 +87,7 @@ func (s *EmailServiceImpl) SendVerificationEmail(toEmail, toName, token string) 
 		</body>
 		</html>
 	`, toName, verificationURL, token)
-	
+
 	return s.sendHTMLEmail(toEmail, subject, body)
 }
 
@@ -97,12 +99,12 @@ func (s *EmailServiceImpl) SendWelcomeEmail(toEmail, toName string) error {
 			Str("toEmail", toEmail).
 			Str("toName", toName).
 			Msg("SMTP credentials not configured - welcome email not sent.")
-		
+
 		// Return success for development purposes
 		return nil
 	}
 	subject := "Welcome to UniSphere - Your Account is Active"
-	
+
 	body := fmt.Sprintf(`
 		<html>
 		<body>
@@ -118,7 +120,83 @@ func (s *EmailServiceImpl) SendWelcomeEmail(toEmail, toName string) error {
 		</body>
 		</html>
 	`, toName)
-	
+
+	return s.sendHTMLEmail(toEmail, subject, body)
+}
+
+// SendPasswordResetEmail sends a password reset email with only the reset token/code
+func (s *EmailServiceImpl) SendPasswordResetEmail(toEmail, toName, token string) error {
+	// If username or password is empty, log the email (for development only)
+	if s.config.Username == "" || s.config.Password == "" {
+		s.logger.Warn().
+			Str("toEmail", toEmail).
+			Str("toName", toName).
+			Str("token", token).
+			Msg("SMTP credentials not configured - logging password reset token instead")
+
+		// Return success for development purposes
+		return nil
+	}
+
+	subject := "UniSphere Password Reset Code"
+
+	body := fmt.Sprintf(`
+		<html>
+		<body>
+			<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+				<h2 style="color: #333;">Password Reset Request</h2>
+				<p>Hello %s,</p>
+				<p>We received a password reset request for your UniSphere account.</p>
+				
+				<p>Your password reset code is:</p>
+				<div style="background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 24px; letter-spacing: 5px; margin: 20px 0; font-weight: bold;">
+					%s
+				</div>
+				
+				<p>Enter this code in the password reset screen to reset your password.</p>
+				
+				<p>This code is valid for 24 hours. If you did not request a password reset, you can safely ignore this email.</p>
+				
+				<p>Best regards,<br>The UniSphere Team</p>
+			</div>
+		</body>
+		</html>
+	`, toName, token)
+
+	return s.sendHTMLEmail(toEmail, subject, body)
+}
+
+// SendPasswordChangedEmail sends a notification that the password was changed
+func (s *EmailServiceImpl) SendPasswordChangedEmail(toEmail, toName string) error {
+	// If username or password is empty, log the email (for development only)
+	if s.config.Username == "" || s.config.Password == "" {
+		s.logger.Warn().
+			Str("toEmail", toEmail).
+			Str("toName", toName).
+			Msg("SMTP credentials not configured - logging password changed notification instead")
+
+		// Return success for development purposes
+		return nil
+	}
+
+	subject := "UniSphere Password Changed"
+
+	body := fmt.Sprintf(`
+		<html>
+		<body>
+			<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+				<h2 style="color: #333;">Your Password Has Been Changed</h2>
+				<p>Hello %s,</p>
+				<p>Your UniSphere account password has been successfully changed.</p>
+				
+				<p>If you did not make this change, please contact us immediately.</p>
+				
+				<p>Best regards,<br>The UniSphere Team</p>
+			</div>
+		</body>
+		</html>
+	`, toName)
+
 	return s.sendHTMLEmail(toEmail, subject, body)
 }
 
@@ -131,7 +209,7 @@ func (s *EmailServiceImpl) sendHTMLEmail(toEmail, subject, htmlBody string) erro
 		s.config.Password,
 		s.config.Host,
 	)
-	
+
 	// Set up email headers
 	headers := make(map[string]string)
 	headers["From"] = fmt.Sprintf("%s <%s>", s.config.FromName, s.config.FromEmail)
@@ -139,24 +217,24 @@ func (s *EmailServiceImpl) sendHTMLEmail(toEmail, subject, htmlBody string) erro
 	headers["Subject"] = subject
 	headers["MIME-Version"] = "1.0"
 	headers["Content-Type"] = "text/html; charset=UTF-8"
-	
+
 	// Construct message
 	message := ""
 	for key, value := range headers {
 		message += fmt.Sprintf("%s: %s\r\n", key, value)
 	}
 	message += "\r\n" + htmlBody
-	
+
 	// Connect to the server, set up a connection
 	serverAddress := s.config.Host + ":" + strconv.Itoa(s.config.Port)
-	
+
 	// Use TLS if configured
 	if s.config.UseTLS {
 		tlsConfig := &tls.Config{
 			InsecureSkipVerify: true,
 			ServerName:         s.config.Host,
 		}
-		
+
 		// Connect to the SMTP server with TLS
 		conn, err := tls.Dial("tcp", serverAddress, tlsConfig)
 		if err != nil {
@@ -164,20 +242,20 @@ func (s *EmailServiceImpl) sendHTMLEmail(toEmail, subject, htmlBody string) erro
 			return fmt.Errorf("failed to connect to SMTP server: %w", err)
 		}
 		defer conn.Close()
-		
+
 		client, err := smtp.NewClient(conn, s.config.Host)
 		if err != nil {
 			s.logger.Error().Err(err).Msg("Failed to create SMTP client")
 			return fmt.Errorf("failed to create SMTP client: %w", err)
 		}
 		defer client.Quit()
-		
+
 		// Authenticate
 		if err = client.Auth(auth); err != nil {
 			s.logger.Error().Err(err).Msg("SMTP authentication failed")
 			return fmt.Errorf("SMTP authentication failed: %w", err)
 		}
-		
+
 		// Set the sender and recipient
 		if err = client.Mail(s.config.FromEmail); err != nil {
 			return fmt.Errorf("failed to set sender: %w", err)
@@ -185,7 +263,7 @@ func (s *EmailServiceImpl) sendHTMLEmail(toEmail, subject, htmlBody string) erro
 		if err = client.Rcpt(toEmail); err != nil {
 			return fmt.Errorf("failed to set recipient: %w", err)
 		}
-		
+
 		// Send the email body
 		w, err := client.Data()
 		if err != nil {
@@ -199,7 +277,7 @@ func (s *EmailServiceImpl) sendHTMLEmail(toEmail, subject, htmlBody string) erro
 		if err != nil {
 			return fmt.Errorf("failed to close data writer: %w", err)
 		}
-		
+
 		return nil
 	} else {
 		// Simple SMTP without TLS
@@ -214,7 +292,7 @@ func (s *EmailServiceImpl) sendHTMLEmail(toEmail, subject, htmlBody string) erro
 			s.logger.Error().Err(err).Str("server", serverAddress).Msg("Failed to send email")
 			return fmt.Errorf("failed to send email: %w", err)
 		}
-		
+
 		return nil
 	}
 }
@@ -224,7 +302,7 @@ func GenerateVerificationToken() (string, error) {
 	// Using crypto/rand for secure random generation
 	const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	result := make([]byte, 32)
-	
+
 	var err error
 	for i := range result {
 		var n *big.Int
@@ -236,12 +314,12 @@ func GenerateVerificationToken() (string, error) {
 			result[i] = chars[n.Int64()]
 		}
 	}
-	
+
 	// If there was any error during generation, return it, but still return the token
 	// since we used a fallback method
 	if err != nil {
 		return string(result), fmt.Errorf("secure random generation partially failed: %w", err)
 	}
-	
+
 	return string(result), nil
 }
