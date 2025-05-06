@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -268,8 +267,10 @@ func SetupRouter(cfg *config.Config, deps *Dependencies, lgr zerolog.Logger) *gi
 	// Setup static files for frontend
 	router.Static("/public", "./public")
 
-	// Setup API routes using the original method for now
-	// Will migrate to V2 in a future update
+	// Serve uploaded files
+	router.Static("/uploads", cfg.Server.StoragePath)
+
+	// Setup all API routes
 	appRoutes.SetupRouter(router,
 		deps.AuthController,
 		deps.FacultyController,
@@ -280,41 +281,6 @@ func SetupRouter(cfg *config.Config, deps *Dependencies, lgr zerolog.Logger) *gi
 		deps.UserController,
 		deps.AuthMiddleware,
 	)
-
-	// Manually add user routes to avoid conflicts
-	v1 := router.Group("/api/v1")
-	authenticated := v1.Group("")
-	authenticated.Use(deps.AuthMiddleware.JWTAuth())
-
-	// Routes available to authenticated users, even without email verification
-	// Add basic user profile endpoints (so users can verify their emails)
-	users := authenticated.Group("/users")
-	{
-		// Profile routes available without email verification
-		users.GET("/profile", deps.UserController.GetUserProfile)
-		users.PUT("/profile", deps.UserController.UpdateUserProfile)
-		users.POST("/profile/photo", deps.UserController.UpdateProfilePhoto)
-		users.DELETE("/profile/photo", deps.UserController.DeleteProfilePhoto)
-	}
-
-	// Routes that require email verification
-	authenticatedWithEmailVerified := authenticated.Group("")
-	authenticatedWithEmailVerified.Use(deps.AuthMiddleware.EmailVerificationRequired())
-
-	// User endpoints that require email verification
-	usersVerified := authenticatedWithEmailVerified.Group("/users")
-	{
-		usersVerified.GET("", deps.UserController.GetAllUsers)
-		usersVerified.GET("/:id", deps.UserController.GetUserByID)
-	}
-
-	// Use a different URL pattern to avoid conflicts with /departments/:id endpoint
-	authenticated.GET("/department-users/:departmentId", deps.UserController.GetUsersByDepartment)
-
-	// Test endpoint
-	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "pong", "status": "success"})
-	})
 
 	return router
 }
