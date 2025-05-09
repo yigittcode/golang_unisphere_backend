@@ -4,7 +4,7 @@
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'role_type') THEN
-        CREATE TYPE role_type AS ENUM ('STUDENT', 'INSTRUCTOR');
+        CREATE TYPE role_type AS ENUM ('STUDENT', 'INSTRUCTOR', 'ADMIN');
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'term_type') THEN
