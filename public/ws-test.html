@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UnisphereChat WebSocket Test Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        input, button, textarea {
+            padding: 8px;
+        }
+        
+        .messages {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            height: 350px;
+            overflow-y: auto;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        
+        .message.outgoing {
+            background-color: #e1f5fe;
+            align-self: flex-end;
+        }
+        
+        .message.incoming {
+            background-color: #f5f5f5;
+            align-self: flex-start;
+        }
+        
+        .message.system {
+            background-color: #fff9c4;
+            text-align: center;
+            font-style: italic;
+        }
+        
+        .sender {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .timestamp {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .connected {
+            color: green;
+        }
+        
+        .disconnected {
+            color: red;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .file-preview {
+            max-width: 200px;
+            max-height: 200px;
+            margin-top: 10px;
+        }
+        
+        pre {
+            background-color: #f8f8f8;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Unisphere Chat WebSocket Test Client</h1>
+    
+    <div class="container">
+        <div class="form-group">
+            <label for="token">JWT Token:</label>
+            <input type="text" id="token" placeholder="Enter your JWT token">
+        </div>
+        
+        <div class="form-group">
+            <label for="communityId">Community ID:</label>
+            <input type="number" id="communityId" placeholder="Enter community ID">
+        </div>
+        
+        <button id="connectBtn">Connect</button>
+        <div id="status" class="disconnected">Disconnected</div>
+        
+        <div class="controls">
+            <div class="connected-ui" style="display: none; width: 100%;">
+                <div class="messages" id="messages"></div>
+                
+                <div class="form-group">
+                    <label for="messageInput">Message:</label>
+                    <textarea id="messageInput" placeholder="Type your message..."></textarea>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between;">
+                    <button id="sendBtn">Send Message</button>
+                    <button id="disconnectBtn">Disconnect</button>
+                </div>
+            </div>
+        </div>
+        
+        <h2>WebSocket Message Log</h2>
+        <pre id="log"></pre>
+    </div>
+    
+    <script>
+        let socket = null;
+        let token = "";
+        let communityId = 0;
+        
+        function appendToLog(message, direction) {
+            const log = document.getElementById('log');
+            const timestamp = new Date().toISOString();
+            log.innerHTML += `[${timestamp}] ${direction}: ${message}\n`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function appendMessage(message) {
+            const messagesContainer = document.getElementById('messages');
+            const messageEl = document.createElement('div');
+            
+            if (message.type === 'system') {
+                messageEl.className = 'message system';
+                messageEl.innerHTML = `<div>${message.content}</div>`;
+            } else {
+                const isOutgoing = message.senderId === parseInt(localStorage.getItem('userId'));
+                messageEl.className = `message ${isOutgoing ? 'outgoing' : 'incoming'}`;
+                
+                let content = '';
+                if (message.type === 'file') {
+                    const fileExtension = message.fileUrl.split('.').pop().toLowerCase();
+                    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExtension);
+                    
+                    if (isImage) {
+                        content = `
+                            <div>${message.content}</div>
+                            <img src="${message.fileUrl}" class="file-preview" alt="File">
+                        `;
+                    } else {
+                        content = `
+                            <div>${message.content}</div>
+                            <div><a href="${message.fileUrl}" target="_blank">Download File</a></div>
+                        `;
+                    }
+                } else {
+                    content = `<div>${message.content}</div>`;
+                }
+                
+                const timestamp = new Date(message.timestamp).toLocaleTimeString();
+                messageEl.innerHTML = `
+                    <div class="sender">User ${message.senderId}</div>
+                    ${content}
+                    <div class="timestamp">${timestamp}</div>
+                `;
+            }
+            
+            messagesContainer.appendChild(messageEl);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        document.getElementById('connectBtn').addEventListener('click', function() {
+            token = document.getElementById('token').value.trim();
+            communityId = document.getElementById('communityId').value.trim();
+            
+            if (!token) {
+                alert('Please enter a JWT token');
+                return;
+            }
+            
+            if (!communityId) {
+                alert('Please enter a community ID');
+                return;
+            }
+            
+            // Parse JWT to get user ID
+            try {
+                const tokenParts = token.split('.');
+                if (tokenParts.length === 3) {
+                    const payload = JSON.parse(atob(tokenParts[1]));
+                    localStorage.setItem('userId', payload.userID || payload.userId || payload.sub);
+                }
+            } catch (e) {
+                console.error('Error parsing JWT token:', e);
+            }
+            
+            // Close existing socket if any
+            if (socket) {
+                socket.close();
+            }
+            
+            // Build the WebSocket URL
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = window.location.host;
+            const wsEndpoint = `${protocol}//${host}/api/v1/communities/${communityId}/chat/ws`;
+            
+            // Add the token as a query parameter
+            const url = new URL(wsEndpoint, window.location.href);
+            url.searchParams.append('token', token);
+            
+            // Connect to WebSocket
+            socket = new WebSocket(url);
+            
+            socket.onopen = function(e) {
+                document.getElementById('status').className = 'connected';
+                document.getElementById('status').textContent = 'Connected';
+                document.getElementsByClassName('connected-ui')[0].style.display = 'block';
+                appendToLog('Connection established', 'INFO');
+                
+                // Send a system message to the UI
+                appendMessage({
+                    type: 'system',
+                    content: 'Connected to chat'
+                });
+            };
+            
+            socket.onmessage = function(event) {
+                appendToLog(event.data, 'RECEIVED');
+                
+                // Parse the message
+                try {
+                    const message = JSON.parse(event.data);
+                    appendMessage(message);
+                } catch (e) {
+                    console.error('Error parsing message:', e);
+                    appendToLog('Error parsing message: ' + e.message, 'ERROR');
+                }
+            };
+            
+            socket.onclose = function(event) {
+                if (event.wasClean) {
+                    appendToLog(`Connection closed cleanly, code=${event.code} reason=${event.reason}`, 'INFO');
+                } else {
+                    appendToLog('Connection died', 'ERROR');
+                }
+                
+                document.getElementById('status').className = 'disconnected';
+                document.getElementById('status').textContent = 'Disconnected';
+                document.getElementsByClassName('connected-ui')[0].style.display = 'none';
+                
+                // Send a system message to the UI
+                appendMessage({
+                    type: 'system',
+                    content: 'Disconnected from chat'
+                });
+            };
+            
+            socket.onerror = function(error) {
+                appendToLog(`Error: ${error.message}`, 'ERROR');
+                document.getElementById('status').className = 'disconnected';
+                document.getElementById('status').textContent = 'Error: ' + error.message;
+            };
+        });
+        
+        document.getElementById('sendBtn').addEventListener('click', function() {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                alert('Not connected to WebSocket');
+                return;
+            }
+            
+            const content = document.getElementById('messageInput').value.trim();
+            if (!content) {
+                alert('Please enter a message');
+                return;
+            }
+            
+            const message = {
+                type: 'text',
+                content: content,
+                communityId: parseInt(communityId),
+                timestamp: new Date().toISOString()
+            };
+            
+            socket.send(JSON.stringify(message));
+            appendToLog(JSON.stringify(message), 'SENT');
+            document.getElementById('messageInput').value = '';
+        });
+        
+        document.getElementById('messageInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('sendBtn').click();
+            }
+        });
+        
+        document.getElementById('disconnectBtn').addEventListener('click', function() {
+            if (socket) {
+                socket.close();
+                socket = null;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -6,11 +6,12 @@ import "time"
 type FileType string
 
 const (
-	FileTypePastExam             FileType = "PAST_EXAM"
-	FileTypeClassNote            FileType = "CLASS_NOTE"
-	FileTypeProfilePhoto         FileType = "PROFILE_PHOTO"
-	FileTypeCommunity            FileType = "COMMUNITY"
+	FileTypePastExam              FileType = "PAST_EXAM"
+	FileTypeClassNote             FileType = "CLASS_NOTE"
+	FileTypeProfilePhoto          FileType = "PROFILE_PHOTO"
+	FileTypeCommunity             FileType = "COMMUNITY"
 	FileTypeCommunityProfilePhoto FileType = "COMMUNITY_PROFILE_PHOTO"
+	FileTypeChatMessage           FileType = "CHAT_MESSAGE"
 )
 
 // File represents a file in the system

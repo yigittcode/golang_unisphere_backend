@@ -24,6 +24,7 @@ var (
 	ErrValidationFailed = errors.New("validation failed")
 	ErrInvalidEmail     = errors.New("invalid email")
 	ErrInvalidPassword  = errors.New("invalid password")
+	ErrBadRequest       = errors.New("bad request")
 
 	// User errors
 	ErrUserNotFound       = errors.New("user not found")
@@ -96,6 +97,14 @@ func NewConflictError(message string) error {
 func NewForbiddenError(message string) error {
 	return &CustomError{
 		Err:     ErrPermissionDenied,
+		Message: message,
+	}
+}
+
+// NewBadRequestError creates a new custom error for bad request with a message
+func NewBadRequestError(message string) error {
+	return &CustomError{
+		Err:     ErrBadRequest,
 		Message: message,
 	}
 }

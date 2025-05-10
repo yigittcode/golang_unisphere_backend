@@ -8,6 +8,7 @@ import "time"
 type CreateCommunityRequest struct {
 	Name         string `json:"name" form:"name" binding:"required"`
 	Abbreviation string `json:"abbreviation" form:"abbreviation" binding:"required"`
+	// ProfilePhoto is handled separately in the multipart form
 }
 
 // UpdateCommunityRequest represents community update data
@@ -43,16 +44,15 @@ type CommunityParticipantResponse struct {
 
 // CommunityResponse represents basic community information
 type CommunityResponse struct {
-	ID                 int64                         `json:"id"`
-	Name               string                        `json:"name"`
-	Abbreviation       string                        `json:"abbreviation"`
-	LeadID             int64                         `json:"leadId"`
-	ProfilePhotoFileID *int64                        `json:"profilePhotoFileId,omitempty"`
-	ProfilePhotoURL    *string                       `json:"profilePhotoUrl,omitempty"`
-	ParticipantCount   int                           `json:"participantCount,omitempty"`
-	Files              []SimpleCommunityFileResponse `json:"files,omitempty"`
-	CreatedAt          time.Time                     `json:"createdAt"`
-	UpdatedAt          time.Time                     `json:"updatedAt"`
+	ID                 int64   `json:"id"`
+	Name               string  `json:"name"`
+	Abbreviation       string  `json:"abbreviation"`
+	LeadID             int64   `json:"leadId"`
+	ProfilePhotoFileID *int64  `json:"profilePhotoFileId,omitempty"`
+	ProfilePhotoURL    *string `json:"profilePhotoUrl,omitempty"`
+	ParticipantCount   int     `json:"participantCount,omitempty"`
+	CreatedAt          time.Time `json:"createdAt"`
+	UpdatedAt          time.Time `json:"updatedAt"`
 }
 
 // CommunityDetailResponse extends CommunityResponse with participant details
@@ -61,10 +61,7 @@ type CommunityDetailResponse struct {
 	Participants []CommunityParticipantResponse `json:"participants,omitempty"`
 }
 
-// SimpleCommunityFileResponse represents a simple file reference for a community
-type SimpleCommunityFileResponse struct {
-	ID int64 `json:"id"`
-}
+// Note: SimpleCommunityFileResponse has been removed as file management is now handled through chat
 
 // CommunityListResponse represents a list of communities
 type CommunityListResponse struct {

@@ -21,3 +21,4 @@ package services
 // - DepartmentService: Handles operations related to departments
 // - PastExamService: Handles operations related to past exams
 // - CommunityService: Handles operations related to communities
+// - ChatService: Handles chat messages for communities

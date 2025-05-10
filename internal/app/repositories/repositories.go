@@ -31,6 +31,7 @@ type Repositories struct {
 	FileRepository                 *FileRepository
 	CommunityRepository            *CommunityRepository
 	CommunityParticipantRepository *CommunityParticipantRepository
+	ChatRepository                 *ChatRepository
 }
 
 // NewRepositories initializes all repositories
@@ -47,5 +48,6 @@ func NewRepositories(db *pgxpool.Pool) *Repositories {
 		FileRepository:                 NewFileRepository(db),
 		CommunityRepository:            NewCommunityRepository(db),
 		CommunityParticipantRepository: NewCommunityParticipantRepository(db),
+		ChatRepository:                 NewChatRepository(db),
 	}
 }

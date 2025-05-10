@@ -8,6 +8,7 @@ import (
 	"github.com/yigit/unisphere/internal/app/models"
 	"github.com/yigit/unisphere/internal/app/models/dto"
 	"github.com/yigit/unisphere/internal/middleware"
+	"github.com/yigit/unisphere/internal/pkg/websocket"
 )
 
 // SetupRouter configures all application routes
@@ -20,6 +21,8 @@ func SetupRouter(
 	classNoteController *controllers.ClassNoteController,
 	communityController *controllers.CommunityController,
 	userController *controllers.UserController,
+	chatController *controllers.ChatController,
+	wsHandler *websocket.Handler,
 	authMiddleware *middleware.AuthMiddleware,
 ) {
 	// API version group
@@ -29,7 +32,7 @@ func SetupRouter(
 	setupPublicRoutes(v1, facultyController, departmentController)
 	setupAuthRoutes(v1, authController)
 	setupUserRoutes(v1, userController, authMiddleware)
-	setupContentRoutes(v1, pastExamController, classNoteController, communityController, authMiddleware, departmentController, facultyController)
+	setupContentRoutes(v1, pastExamController, classNoteController, communityController, chatController, wsHandler, authMiddleware, departmentController, facultyController)
 
 	// Health check endpoint (public)
 	v1.GET("/health", func(c *gin.Context) {
@@ -127,12 +130,14 @@ func setupUserRoutes(
 	authenticated.GET("/department-users/:departmentId", userController.GetUsersByDepartment)
 }
 
-// setupContentRoutes configures routes for content like past exams, class notes and communities
+// setupContentRoutes configures routes for content like past exams, class notes, communities, and chat
 func setupContentRoutes(
 	v1 *gin.RouterGroup,
 	pastExamController *controllers.PastExamController,
 	classNoteController *controllers.ClassNoteController,
 	communityController *controllers.CommunityController,
+	chatController *controllers.ChatController,
+	wsHandler *websocket.Handler,
 	authMiddleware *middleware.AuthMiddleware,
 	departmentController *controllers.DepartmentController,
 	facultyController *controllers.FacultyController,
@@ -229,9 +234,6 @@ func setupContentRoutes(
 			communitiesAuthProtected.PUT("/:id", communityController.UpdateCommunity)    // Update an existing community
 			communitiesAuthProtected.DELETE("/:id", communityController.DeleteCommunity) // Delete a community
 
-			// File management for communities
-			communitiesAuthProtected.POST("/:id/files", communityController.AddFileToCommunity)                // Upload and attach files
-			communitiesAuthProtected.DELETE("/:id/files/:fileId", communityController.DeleteFileFromCommunity) // Remove a file
 
 			// Profile photo management
 			communitiesAuthProtected.POST("/:id/profile-photo", communityController.UpdateProfilePhoto)   // Update profile photo
@@ -242,6 +244,16 @@ func setupContentRoutes(
 			communitiesAuthProtected.POST("/:id/participants", communityController.JoinCommunity)           // Join community
 			communitiesAuthProtected.DELETE("/:id/participants", communityController.LeaveCommunity)        // Leave community
 			communitiesAuthProtected.GET("/:id/participants/check", communityController.IsUserParticipant)  // Check if user is participant
+			
+			// Chat routes
+			communitiesAuthProtected.GET("/:id/chat", chatController.GetChatMessages)                      // Get chat messages
+			communitiesAuthProtected.GET("/:id/chat/:messageId", chatController.GetChatMessageByID)        // Get chat message by ID
+			communitiesAuthProtected.POST("/:id/chat/text", chatController.SendTextMessage)                // Send text message
+			communitiesAuthProtected.POST("/:id/chat/file", chatController.SendFileMessage)                // Send file message
+			communitiesAuthProtected.DELETE("/:id/chat/:messageId", chatController.DeleteChatMessage)      // Delete chat message
+
+			// WebSocket route for real-time chat
+			communitiesAuthProtected.GET("/:id/chat/ws", wsHandler.HandleConnection)                     // WebSocket connection for real-time chat
 		}
 	}
 }

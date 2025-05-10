@@ -32,6 +32,7 @@ import (
 	"github.com/yigit/unisphere/internal/pkg/email" // Import email package
 	"github.com/yigit/unisphere/internal/pkg/helpers"
 	"github.com/yigit/unisphere/internal/pkg/logger"
+	"github.com/yigit/unisphere/internal/pkg/websocket" // Import WebSocket package
 	"github.com/yigit/unisphere/internal/seed" // Import the new seed package
 )
 
@@ -44,6 +45,7 @@ type Dependencies struct {
 	PastExamService      appServices.PastExamService   // Interface type
 	ClassNoteService     appServices.ClassNoteService  // Interface type
 	CommunityService     appServices.CommunityService  // Interface type
+	ChatService          appServices.ChatService       // Interface type
 	AuthController       *appControllers.AuthController
 	FacultyController    *appControllers.FacultyController
 	DepartmentController *appControllers.DepartmentController
@@ -51,6 +53,7 @@ type Dependencies struct {
 	PastExamController   *appControllers.PastExamController
 	ClassNoteController  *appControllers.ClassNoteController
 	CommunityController  *appControllers.CommunityController
+	ChatController       *appControllers.ChatController
 	AuthMiddleware       *appMiddleware.AuthMiddleware // Pointer to middleware struct
 	Repos                *appRepos.Repositories        // Include the main repo container
 	JWTService           *pkgAuth.JWTService
@@ -58,6 +61,8 @@ type Dependencies struct {
 	EmailService         email.EmailService
 	Logger               zerolog.Logger
 	FileStorage          *filestorage.LocalStorage // Add FileStorage
+	WSHub                *websocket.Hub            // WebSocket hub for real-time communication
+	WSHandler            *websocket.Handler        // WebSocket connection handler
 }
 
 // LoadConfigAndSetupLogger loads configuration and initializes the logger.
@@ -226,6 +231,45 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 		deps.AuthzService,
 		deps.Logger,
 	)
+	
+	// Initialize WebSocket Hub
+	deps.WSHub = websocket.NewHub(deps.Logger)
+	
+	// Start the WebSocket Hub in a separate goroutine
+	go deps.WSHub.Run()
+	lgr.Info().Msg("WebSocket hub initialized and running")
+	
+	// Initialize WebSocket Handler
+	deps.WSHandler = websocket.NewHandler(
+		deps.WSHub,
+		deps.Repos.CommunityParticipantRepository,
+		deps.Logger,
+	)
+	lgr.Info().Msg("WebSocket handler initialized")
+	
+	// Initialize WebSocket Message Handler for database persistence
+	messageHandler := websocket.NewMessageHandler(
+		deps.Repos.ChatRepository,
+		deps.Repos.UserRepository,
+		deps.WSHub,
+		deps.Logger,
+	)
+	
+	// Start the message handler
+	messageHandler.Start()
+	lgr.Info().Msg("WebSocket message handler initialized and running")
+	
+	// Initialize Chat Service with WebSocket Hub
+	deps.ChatService = appServices.NewChatService(
+		deps.Repos.ChatRepository,
+		deps.Repos.CommunityRepository,
+		deps.Repos.CommunityParticipantRepository,
+		deps.Repos.UserRepository,
+		deps.Repos.FileRepository,
+		deps.FileStorage,
+		deps.WSHub,
+		deps.Logger,
+	)
 
 	deps.AuthMiddleware = appMiddleware.NewAuthMiddleware(deps.JWTService, deps.Repos.UserRepository)
 
@@ -241,6 +285,7 @@ func BuildDependencies(cfg *config.Config, dbPool *pgxpool.Pool, lgr zerolog.Log
 	deps.PastExamController = appControllers.NewPastExamController(deps.PastExamService, deps.FileStorage)
 	deps.ClassNoteController = appControllers.NewClassNoteController(deps.ClassNoteService, deps.FileStorage)
 	deps.CommunityController = appControllers.NewCommunityController(deps.CommunityService, deps.FileStorage)
+	deps.ChatController = appControllers.NewChatController(deps.ChatService)
 
 	return deps, nil
 }
@@ -279,6 +324,8 @@ func SetupRouter(cfg *config.Config, deps *Dependencies, lgr zerolog.Logger) *gi
 		deps.ClassNoteController,
 		deps.CommunityController,
 		deps.UserController,
+		deps.ChatController,
+		deps.WSHandler,
 		deps.AuthMiddleware,
 	)
 

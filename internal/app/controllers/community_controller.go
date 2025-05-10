@@ -149,7 +149,7 @@ func (c *CommunityController) GetCommunityByID(ctx *gin.Context) {
 // @Security BearerAuth
 // @Param name formData string true "Community name"
 // @Param abbreviation formData string true "Community abbreviation"
-// @Param files formData file false "Community files (can upload multiple)"
+// @Param profilePhoto formData file false "Community profile photo (single image file)"
 // @Success 201 {object} dto.APIResponse{data=dto.CommunityResponse} "Community created successfully"
 // @Failure 400 {object} dto.ErrorResponse "Invalid request parameters"
 // @Failure 401 {object} dto.ErrorResponse "Unauthorized: JWT token missing or invalid"
@@ -166,20 +166,20 @@ func (c *CommunityController) CreateCommunity(ctx *gin.Context) {
 		return
 	}
 
-	// Get files (optional)
-	var files []*multipart.FileHeader
+	// Get profile photo (optional)
+	var profilePhoto *multipart.FileHeader
 
-	// Get files from the multipart form
-	form, err := ctx.MultipartForm()
-	if err == nil && form != nil && form.File != nil {
-		if uploadedFiles, ok := form.File["files"]; ok && len(uploadedFiles) > 0 {
-			files = uploadedFiles
-			fmt.Printf("Found %d files in request\n", len(files))
-		}
+	// Get profile photo from the multipart form
+	profilePhoto, fileErr := ctx.FormFile("profilePhoto")
+	if fileErr != nil && fileErr != http.ErrMissingFile {
+		fmt.Printf("Error reading profile photo: %v\n", fileErr)
+		// Continue without profile photo
+	} else if profilePhoto != nil {
+		fmt.Printf("Found profile photo in request: %s\n", profilePhoto.Filename)
 	}
 
 	// Create community
-	community, err := c.communityService.CreateCommunity(ctx, &req, files)
+	community, err := c.communityService.CreateCommunity(ctx, &req, profilePhoto)
 	if err != nil {
 		middleware.HandleAPIError(ctx, err)
 		return
@@ -289,144 +289,9 @@ func (c *CommunityController) DeleteCommunity(ctx *gin.Context) {
 		dto.SuccessResponse{Message: "Community deleted successfully"}))
 }
 
-// AddFileToCommunity godoc
-// @Summary Add files to an existing community
-// @Description Add one or more files to an existing community
-// @Tags communities
-// @Accept multipart/form-data
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "Community ID"
-// @Param files formData file true "Files to upload (can be multiple)"
-// @Success 200 {object} dto.APIResponse{data=dto.SuccessResponse}
-// @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail} "Unauthorized: JWT token missing or invalid"
-// @Failure 404 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Router /communities/{id}/files [post]
-func (c *CommunityController) AddFileToCommunity(ctx *gin.Context) {
-	fmt.Println("********* AddFileToCommunity BAŞLANGIÇ *********")
+// Note: AddFileToCommunity method removed as file sharing is now handled through chat feature
 
-	// Parse community ID from path
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
-			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid community ID")))
-		return
-	}
-
-	fmt.Printf("Adding files to community with ID: %d\n", id)
-
-	// Get files
-	var files []*multipart.FileHeader
-
-	// Get files from the multipart form
-	form, err := ctx.MultipartForm()
-	if err == nil && form != nil && form.File != nil {
-		if uploadedFiles, ok := form.File["files"]; ok && len(uploadedFiles) > 0 {
-			files = uploadedFiles
-			fmt.Printf("Found %d files in the request\n", len(files))
-		}
-	}
-
-	if len(files) == 0 {
-		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
-			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "No files provided")))
-		return
-	}
-
-	// Process each file
-	successCount := 0
-	var lastError error
-
-	for _, file := range files {
-		err := c.communityService.AddFileToCommunity(ctx, id, file)
-		if err != nil {
-			fmt.Printf("Error adding file to community: %v\n", err)
-			lastError = err
-		} else {
-			successCount++
-		}
-	}
-
-	if successCount == 0 && lastError != nil {
-		// All files failed to upload
-		switch {
-		case errors.Is(lastError, apperrors.ErrResourceNotFound) || strings.Contains(lastError.Error(), "not found"):
-			ctx.JSON(http.StatusNotFound, dto.NewErrorResponse(
-				dto.NewErrorDetail(dto.ErrorCodeResourceNotFound, "Community not found")))
-		default:
-			ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-				dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to add files to community").WithDetails(lastError.Error())))
-		}
-		return
-	}
-
-	fmt.Printf("********* AddFileToCommunity BAŞARILI: %d/%d files added *********\n", successCount, len(files))
-	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(
-		dto.SuccessResponse{Message: fmt.Sprintf("%d files added to community successfully", successCount)}))
-}
-
-// DeleteFileFromCommunity godoc
-// @Summary Delete a file from a community
-// @Description Remove a file from a community
-// @Tags communities
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "Community ID"
-// @Param fileId path int true "File ID"
-// @Success 200 {object} dto.APIResponse{data=dto.SuccessResponse}
-// @Failure 400 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Failure 401 {object} dto.APIResponse{error=dto.ErrorDetail} "Unauthorized: JWT token missing or invalid"
-// @Failure 404 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Failure 500 {object} dto.APIResponse{error=dto.ErrorDetail}
-// @Router /communities/{id}/files/{fileId} [delete]
-func (c *CommunityController) DeleteFileFromCommunity(ctx *gin.Context) {
-	fmt.Println("********* DeleteFileFromCommunity BAŞLANGIÇ *********")
-
-	// Parse community ID from path
-	idStr := ctx.Param("id")
-	communityID, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
-			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid community ID")))
-		return
-	}
-
-	// Parse file ID from path
-	fileIDStr := ctx.Param("fileId")
-	fileID, err := strconv.ParseInt(fileIDStr, 10, 64)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(
-			dto.NewErrorDetail(dto.ErrorCodeInvalidRequest, "Invalid file ID")))
-		return
-	}
-
-	fmt.Printf("Deleting file %d from community with ID: %d\n", fileID, communityID)
-
-	// Delete file from community
-	err = c.communityService.RemoveFileFromCommunity(ctx, communityID, fileID)
-	if err != nil {
-		fmt.Printf("Error deleting file from community: %v\n", err)
-
-		// Handle specific error cases
-		switch {
-		case errors.Is(err, apperrors.ErrResourceNotFound) || strings.Contains(err.Error(), "not found"):
-			ctx.JSON(http.StatusNotFound, dto.NewErrorResponse(
-				dto.NewErrorDetail(dto.ErrorCodeResourceNotFound, "Resource not found")))
-		default:
-			ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(
-				dto.NewErrorDetail(dto.ErrorCodeInternalServer, "Failed to delete file from community").WithDetails(err.Error())))
-		}
-		return
-	}
-
-	fmt.Println("********* DeleteFileFromCommunity BAŞARILI *********")
-	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(
-		dto.SuccessResponse{Message: "File deleted from community successfully"}))
-}
+// Note: DeleteFileFromCommunity method removed as file sharing is now handled through chat feature
 
 // UpdateProfilePhoto godoc
 // @Summary Update a community's profile photo

@@ -180,12 +180,11 @@ func (r *CommunityRepository) GetByID(ctx context.Context, id int64) (*models.Co
 
 	// Get files associated with the community
 	filesQuery := `
-		SELECT f.id, f.file_name, f.file_path, f.file_url, f.file_size, 
-			f.file_type, f.resource_type, f.resource_id, f.uploaded_by, 
-			f.created_at, f.updated_at
-		FROM files f
-		JOIN community_files cf ON f.id = cf.file_id
-		WHERE cf.community_id = $1
+		SELECT id, file_name, file_path, file_url, file_size, 
+			file_type, resource_type, resource_id, uploaded_by, 
+			created_at, updated_at
+		FROM files
+		WHERE resource_type = 'COMMUNITY' AND resource_id = $1
 	`
 
 	rows, err := r.db.Query(ctx, filesQuery, id)
@@ -285,49 +284,9 @@ func (r *CommunityRepository) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-// AddFileToCommunity adds a file to a community
-func (r *CommunityRepository) AddFileToCommunity(ctx context.Context, communityID int64, fileID int64) error {
-	query := squirrel.Insert("community_files").
-		Columns("community_id", "file_id").
-		Values(communityID, fileID).
-		PlaceholderFormat(squirrel.Dollar)
-
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return fmt.Errorf("error building SQL: %w", err)
-	}
-
-	_, err = r.db.Exec(ctx, sql, args...)
-	if err != nil {
-		return fmt.Errorf("error executing query: %w", err)
-	}
-
-	return nil
-}
-
-// RemoveFileFromCommunity removes a file from a community
-func (r *CommunityRepository) RemoveFileFromCommunity(ctx context.Context, communityID int64, fileID int64) error {
-	query := squirrel.Delete("community_files").
-		Where("community_id = ?", communityID).
-		Where("file_id = ?", fileID).
-		PlaceholderFormat(squirrel.Dollar)
-
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return fmt.Errorf("error building SQL: %w", err)
-	}
-
-	result, err := r.db.Exec(ctx, sql, args...)
-	if err != nil {
-		return fmt.Errorf("error executing query: %w", err)
-	}
-
-	if result.RowsAffected() == 0 {
-		return fmt.Errorf("no rows affected")
-	}
-
-	return nil
-}
+// Note: We've removed the AddFileToCommunity and RemoveFileFromCommunity methods
+// as we're no longer using the community_files table.
+// Files are now tracked directly in the files table with resource_type='COMMUNITY'
 
 // getProfilePhoto retrieves a single file by ID
 func (r *CommunityRepository) getProfilePhoto(ctx context.Context, fileID int64) (*models.File, error) {

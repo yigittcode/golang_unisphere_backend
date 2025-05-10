@@ -19,7 +19,7 @@ import (
 type CommunityService interface {
 	GetAllCommunities(ctx context.Context, filter *dto.CommunityFilterRequest) (*dto.CommunityListResponse, error)
 	GetCommunityByID(ctx context.Context, id int64) (*dto.CommunityDetailResponse, error)
-	CreateCommunity(ctx context.Context, req *dto.CreateCommunityRequest, files []*multipart.FileHeader) (*dto.CommunityResponse, error)
+	CreateCommunity(ctx context.Context, req *dto.CreateCommunityRequest, profilePhoto *multipart.FileHeader) (*dto.CommunityResponse, error)
 	UpdateCommunity(ctx context.Context, id int64, req *dto.UpdateCommunityRequest) (*dto.CommunityResponse, error)
 	DeleteCommunity(ctx context.Context, id int64) error
 	AddFileToCommunity(ctx context.Context, communityID int64, file *multipart.FileHeader) error
@@ -105,13 +105,6 @@ func (s *communityServiceImpl) GetAllCommunities(ctx context.Context, filter *dt
 			profilePhotoURL = &community.ProfilePhoto.FileURL
 		}
 
-		// Extract file IDs for response
-		fileIDs := []dto.SimpleCommunityFileResponse{}
-		for _, file := range community.Files {
-			fileIDs = append(fileIDs, dto.SimpleCommunityFileResponse{
-				ID: file.ID,
-			})
-		}
 
 		communityResponses = append(communityResponses, dto.CommunityResponse{
 			ID:                 community.ID,
@@ -121,7 +114,6 @@ func (s *communityServiceImpl) GetAllCommunities(ctx context.Context, filter *dt
 			ProfilePhotoFileID: community.ProfilePhotoFileID,
 			ProfilePhotoURL:    profilePhotoURL,
 			ParticipantCount:   participantCount,
-			Files:              fileIDs,
 			CreatedAt:          community.CreatedAt,
 			UpdatedAt:          community.UpdatedAt,
 		})
@@ -208,15 +200,6 @@ func (s *communityServiceImpl) GetCommunityByID(ctx context.Context, id int64) (
 		UpdatedAt:          community.UpdatedAt,
 	}
 
-	// Extract file IDs for response
-	fileIDs := []dto.SimpleCommunityFileResponse{}
-	for _, file := range community.Files {
-		fileIDs = append(fileIDs, dto.SimpleCommunityFileResponse{
-			ID: file.ID,
-		})
-	}
-	communityResponse.Files = fileIDs
-
 	// Return detailed response with participants
 	return &dto.CommunityDetailResponse{
 		CommunityResponse: communityResponse,
@@ -225,10 +208,10 @@ func (s *communityServiceImpl) GetCommunityByID(ctx context.Context, id int64) (
 }
 
 // CreateCommunity creates a new community
-func (s *communityServiceImpl) CreateCommunity(ctx context.Context, req *dto.CreateCommunityRequest, files []*multipart.FileHeader) (*dto.CommunityResponse, error) {
+func (s *communityServiceImpl) CreateCommunity(ctx context.Context, req *dto.CreateCommunityRequest, profilePhoto *multipart.FileHeader) (*dto.CommunityResponse, error) {
 	s.logger.Debug().
 		Interface("request", req).
-		Int("fileCount", len(files)).
+		Bool("hasProfilePhoto", profilePhoto != nil).
 		Msg("Creating new community")
 
 	// Get user ID from context for authorization checks
@@ -282,42 +265,40 @@ func (s *communityServiceImpl) CreateCommunity(ctx context.Context, req *dto.Cre
 		// Continue even if this fails
 	}
 
-	// Process files if any
-	var fileIDs []dto.SimpleCommunityFileResponse
-	for _, fileHeader := range files {
+	// Process profile photo if provided
+	var profilePhotoFileID *int64
+	var profilePhotoURL *string
+	
+	if profilePhoto != nil {
 		s.logger.Info().
-			Str("filename", fileHeader.Filename).
+			Str("filename", profilePhoto.Filename).
 			Int64("communityID", communityID).
-			Msg("Processing file for new community")
+			Msg("Processing profile photo for new community")
 
-		// Upload the file
-		file, err := s.uploadFile(ctx, fileHeader, models.FileTypeCommunity, communityID, userID)
+		// Upload the profile photo
+		file, err := s.uploadFile(ctx, profilePhoto, models.FileTypeCommunityProfilePhoto, communityID, userID)
 		if err != nil {
 			s.logger.Error().Err(err).
-				Str("filename", fileHeader.Filename).
+				Str("filename", profilePhoto.Filename).
 				Int64("communityID", communityID).
-				Msg("Failed to upload file for community")
-			continue // Skip this file and continue with others
+				Msg("Failed to upload profile photo for community")
+		} else {
+			// Update the community with profile photo ID
+			err = s.communityRepo.UpdateProfilePhoto(ctx, communityID, &file.ID)
+			if err != nil {
+				s.logger.Error().Err(err).
+					Int64("communityID", communityID).
+					Int64("fileID", file.ID).
+					Msg("Failed to update community profile photo ID")
+
+				// Clean up - delete the file if we couldn't update the community
+				_ = s.fileStorage.DeleteFile(file.FilePath)
+				_ = s.fileRepo.Delete(ctx, file.ID)
+			} else {
+				profilePhotoFileID = &file.ID
+				profilePhotoURL = &file.FileURL
+			}
 		}
-
-		// Link file to community
-		err = s.communityRepo.AddFileToCommunity(ctx, communityID, file.ID)
-		if err != nil {
-			s.logger.Error().Err(err).
-				Int64("fileID", file.ID).
-				Int64("communityID", communityID).
-				Msg("Failed to link file to community")
-
-			// Clean up - delete the file if we couldn't link it
-			_ = s.fileStorage.DeleteFile(file.FilePath)
-			_ = s.fileRepo.Delete(ctx, file.ID)
-			continue
-		}
-
-		// Add file ID to response
-		fileIDs = append(fileIDs, dto.SimpleCommunityFileResponse{
-			ID: file.ID,
-		})
 	}
 
 	// Get participant count (should be 1 for the lead)
@@ -328,10 +309,9 @@ func (s *communityServiceImpl) CreateCommunity(ctx context.Context, req *dto.Cre
 		Name:               community.Name,
 		Abbreviation:       community.Abbreviation,
 		LeadID:             community.LeadID,
-		ProfilePhotoFileID: nil,
-		ProfilePhotoURL:    nil,
+		ProfilePhotoFileID: profilePhotoFileID,
+		ProfilePhotoURL:    profilePhotoURL,
 		ParticipantCount:   participantCount,
-		Files:              fileIDs,
 		CreatedAt:          community.CreatedAt,
 		UpdatedAt:          community.UpdatedAt,
 	}, nil
@@ -410,22 +390,21 @@ func (s *communityServiceImpl) UpdateCommunity(ctx context.Context, id int64, re
 		return nil, fmt.Errorf("error getting updated community: %w", err)
 	}
 
-	// Extract file IDs for response
-	var fileIDs []dto.SimpleCommunityFileResponse
-	for _, file := range updatedCommunityFull.Files {
-		fileIDs = append(fileIDs, dto.SimpleCommunityFileResponse{
-			ID: file.ID,
-		})
+	// Get profile photo URL
+	var profilePhotoURL *string
+	if updatedCommunityFull.ProfilePhoto != nil {
+		profilePhotoURL = &updatedCommunityFull.ProfilePhoto.FileURL
 	}
 
 	return &dto.CommunityResponse{
-		ID:           updatedCommunityFull.ID,
-		Name:         updatedCommunityFull.Name,
-		Abbreviation: updatedCommunityFull.Abbreviation,
-		LeadID:       updatedCommunityFull.LeadID,
-		Files:        fileIDs,
-		CreatedAt:    updatedCommunityFull.CreatedAt,
-		UpdatedAt:    updatedCommunityFull.UpdatedAt,
+		ID:                 updatedCommunityFull.ID,
+		Name:               updatedCommunityFull.Name,
+		Abbreviation:       updatedCommunityFull.Abbreviation,
+		LeadID:             updatedCommunityFull.LeadID,
+		ProfilePhotoFileID: updatedCommunityFull.ProfilePhotoFileID,
+		ProfilePhotoURL:    profilePhotoURL,
+		CreatedAt:          updatedCommunityFull.CreatedAt,
+		UpdatedAt:          updatedCommunityFull.UpdatedAt,
 	}, nil
 }
 
@@ -524,7 +503,7 @@ func (s *communityServiceImpl) AddFileToCommunity(ctx context.Context, community
 	// Check permissions if needed
 
 	// Upload file
-	uploadedFile, err := s.uploadFile(ctx, file, models.FileTypeCommunity, communityID, userID)
+	_, err = s.uploadFile(ctx, file, models.FileTypeCommunity, communityID, userID)
 	if err != nil {
 		s.logger.Error().Err(err).
 			Str("filename", file.Filename).
@@ -533,20 +512,8 @@ func (s *communityServiceImpl) AddFileToCommunity(ctx context.Context, community
 		return fmt.Errorf("failed to upload file: %w", err)
 	}
 
-	// Link file to community
-	err = s.communityRepo.AddFileToCommunity(ctx, communityID, uploadedFile.ID)
-	if err != nil {
-		s.logger.Error().Err(err).
-			Int64("fileID", uploadedFile.ID).
-			Int64("communityID", communityID).
-			Msg("Failed to link file to community")
-
-		// Clean up - delete the file if we couldn't link it
-		_ = s.fileStorage.DeleteFile(uploadedFile.FilePath)
-		_ = s.fileRepo.Delete(ctx, uploadedFile.ID)
-
-		return fmt.Errorf("failed to link file to community: %w", err)
-	}
+	// The file is already linked to the community via resource_type and resource_id
+	// No additional linking required as we've removed the community_files table
 
 	return nil
 }
@@ -597,15 +564,8 @@ func (s *communityServiceImpl) RemoveFileFromCommunity(ctx context.Context, comm
 	// This is a temporary fix - in a production app, you'd want to properly validate
 	// the file belongs to the community before deletion
 
-	// Remove file from community
-	err = s.communityRepo.RemoveFileFromCommunity(ctx, communityID, fileID)
-	if err != nil {
-		s.logger.Error().Err(err).
-			Int64("fileID", fileID).
-			Int64("communityID", communityID).
-			Msg("Failed to remove file from community")
-		return fmt.Errorf("failed to remove file from community: %w", err)
-	}
+	// We no longer need to remove the file from the community_files table
+	// as we're not using that table anymore. Files are tracked directly in the files table.
 
 	// Delete file record
 	err = s.fileRepo.Delete(ctx, fileID)
@@ -1042,6 +1002,9 @@ func (s *communityServiceImpl) uploadFile(ctx context.Context, fileHeader *multi
 		return nil, fmt.Errorf("error saving file metadata: %w", err)
 	}
 	file.ID = fileID
+
+	// We're no longer tracking community files in a separate table.
+	// Files are now stored directly in the files table with resource_type='COMMUNITY'
 
 	return file, nil
 }

@@ -1712,8 +1712,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "file",
-                        "description": "Community files (can upload multiple)",
-                        "name": "files",
+                        "description": "Community profile photo (single image file)",
+                        "name": "profilePhoto",
                         "in": "formData"
                     }
                 ],
@@ -1981,24 +1981,24 @@ const docTemplate = `{
                 }
             }
         },
-        "/communities/{id}/files": {
-            "post": {
+        "/communities/{id}/chat": {
+            "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Add one or more files to an existing community",
+                "description": "Retrieve chat messages for a specific community with pagination and filters",
                 "consumes": [
-                    "multipart/form-data"
+                    "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "communities"
+                    "chat"
                 ],
-                "summary": "Add files to an existing community",
+                "summary": "Get community chat messages",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2008,11 +2008,29 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "file",
-                        "description": "Files to upload (can be multiple)",
-                        "name": "files",
-                        "in": "formData",
-                        "required": true
+                        "type": "string",
+                        "description": "Get messages before this timestamp (RFC3339 format)",
+                        "name": "before",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Get messages after this timestamp (RFC3339 format)",
+                        "name": "after",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Maximum number of messages to retrieve (default: 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter messages by sender ID",
+                        "name": "senderId",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2027,7 +2045,10 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse"
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ChatMessageResponse"
+                                            }
                                         }
                                     }
                                 }
@@ -2070,8 +2091,26 @@ const docTemplate = `{
                             ]
                         }
                     },
+                    "403": {
+                        "description": "Forbidden: User is not a participant in the community",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Community not found",
                         "schema": {
                             "allOf": [
                                 {
@@ -2109,14 +2148,166 @@ const docTemplate = `{
                 }
             }
         },
-        "/communities/{id}/files/{fileId}": {
-            "delete": {
+        "/communities/{id}/chat/file": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Remove a file from a community",
+                "description": "Send a new file message to a specific community's chat",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "summary": "Send a file message to a community chat",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Community ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional message content to accompany the file",
+                        "name": "content",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "File to upload (PDF or image)",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ChatMessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized: JWT token missing or invalid",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden: User is not a participant in the community",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Community not found",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/communities/{id}/chat/text": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Send a new text message to a specific community's chat",
                 "consumes": [
                     "application/json"
                 ],
@@ -2124,9 +2315,219 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "communities"
+                    "chat"
                 ],
-                "summary": "Delete a file from a community",
+                "summary": "Send a text message to a community chat",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Community ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Message details",
+                        "name": "message",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.CreateChatMessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ChatMessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized: JWT token missing or invalid",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden: User is not a participant in the community",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Community not found",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/communities/{id}/chat/ws": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upgrades HTTP connection to a WebSocket connection for real-time chat messaging",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat",
+                    "websocket"
+                ],
+                "summary": "Establish a WebSocket connection for real-time chat",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Community ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "101": {
+                        "description": "Switching Protocols to WebSocket",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid community ID",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized: JWT token missing or invalid",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden: User is not a participant in the community",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
+                        }
+                    }
+                }
+            }
+        },
+        "/communities/{id}/chat/{messageId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a specific chat message by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "summary": "Get chat message by ID",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2137,8 +2538,152 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "File ID",
-                        "name": "fileId",
+                        "description": "Message ID",
+                        "name": "messageId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ChatMessageDetailResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized: JWT token missing or invalid",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden: User is not a participant in the community",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Message not found",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a specific chat message (only available to message sender or community lead)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "summary": "Delete a chat message",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Community ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Message ID",
+                        "name": "messageId",
                         "in": "path",
                         "required": true
                     }
@@ -2198,8 +2743,26 @@ const docTemplate = `{
                             ]
                         }
                     },
+                    "403": {
+                        "description": "Forbidden: User is not the message sender or community lead",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Message not found",
                         "schema": {
                             "allOf": [
                                 {
@@ -5196,6 +5759,10 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "gin.H": {
+            "type": "object",
+            "additionalProperties": {}
+        },
         "github_com_yigit_unisphere_internal_app_models_dto.APIResponse": {
             "description": "Generic response structure for all API endpoints",
             "type": "object",
@@ -5207,6 +5774,118 @@ const docTemplate = `{
                     "description": "Timestamp of when the response was generated",
                     "type": "string",
                     "example": "2025-04-23T12:01:05.123Z"
+                }
+            }
+        },
+        "github_com_yigit_unisphere_internal_app_models_dto.ChatFileResponse": {
+            "type": "object",
+            "properties": {
+                "fileName": {
+                    "type": "string"
+                },
+                "fileSize": {
+                    "type": "integer"
+                },
+                "fileType": {
+                    "type": "string"
+                },
+                "fileUrl": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_yigit_unisphere_internal_app_models_dto.ChatMessageDetailResponse": {
+            "type": "object",
+            "properties": {
+                "communityId": {
+                    "type": "integer"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "file": {
+                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ChatFileResponse"
+                },
+                "fileId": {
+                    "type": "integer"
+                },
+                "fileName": {
+                    "description": "File information if available",
+                    "type": "string"
+                },
+                "fileType": {
+                    "type": "string"
+                },
+                "fileUrl": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "messageType": {
+                    "type": "string"
+                },
+                "sender": {
+                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserBasicResponse"
+                },
+                "senderId": {
+                    "type": "integer"
+                },
+                "senderName": {
+                    "description": "Sender information",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_yigit_unisphere_internal_app_models_dto.ChatMessageResponse": {
+            "type": "object",
+            "properties": {
+                "communityId": {
+                    "type": "integer"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "fileId": {
+                    "type": "integer"
+                },
+                "fileName": {
+                    "description": "File information if available",
+                    "type": "string"
+                },
+                "fileType": {
+                    "type": "string"
+                },
+                "fileUrl": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "messageType": {
+                    "type": "string"
+                },
+                "senderId": {
+                    "type": "integer"
+                },
+                "senderName": {
+                    "description": "Sender information",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         },
@@ -5353,12 +6032,6 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
-                "files": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SimpleCommunityFileResponse"
-                    }
-                },
                 "id": {
                     "type": "integer"
                 },
@@ -5379,6 +6052,24 @@ const docTemplate = `{
                 },
                 "updatedAt": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_yigit_unisphere_internal_app_models_dto.CreateChatMessageRequest": {
+            "type": "object",
+            "required": [
+                "messageType"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "messageType": {
+                    "type": "string",
+                    "enum": [
+                        "TEXT",
+                        "FILE"
+                    ]
                 }
             }
         },
@@ -5831,14 +6522,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_yigit_unisphere_internal_app_models_dto.SimpleCommunityFileResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                }
-            }
-        },
         "github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse": {
             "type": "object",
             "properties": {
@@ -5964,6 +6647,23 @@ const docTemplate = `{
                 },
                 "password": {
                     "description": "Email değişimi engellendi - kullanıcılar email'lerini değiştiremezler",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_yigit_unisphere_internal_app_models_dto.UserBasicResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lastName": {
                     "type": "string"
                 }
             }

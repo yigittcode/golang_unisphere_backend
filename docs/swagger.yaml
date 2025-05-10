@@ -1,5 +1,8 @@
 basePath: /api/v1
 definitions:
+  gin.H:
+    additionalProperties: {}
+    type: object
   github_com_yigit_unisphere_internal_app_models_dto.APIResponse:
     description: Generic response structure for all API endpoints
     properties:
@@ -8,6 +11,81 @@ definitions:
       timestamp:
         description: Timestamp of when the response was generated
         example: "2025-04-23T12:01:05.123Z"
+        type: string
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.ChatFileResponse:
+    properties:
+      fileName:
+        type: string
+      fileSize:
+        type: integer
+      fileType:
+        type: string
+      fileUrl:
+        type: string
+      id:
+        type: integer
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.ChatMessageDetailResponse:
+    properties:
+      communityId:
+        type: integer
+      content:
+        type: string
+      createdAt:
+        type: string
+      file:
+        $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ChatFileResponse'
+      fileId:
+        type: integer
+      fileName:
+        description: File information if available
+        type: string
+      fileType:
+        type: string
+      fileUrl:
+        type: string
+      id:
+        type: integer
+      messageType:
+        type: string
+      sender:
+        $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.UserBasicResponse'
+      senderId:
+        type: integer
+      senderName:
+        description: Sender information
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.ChatMessageResponse:
+    properties:
+      communityId:
+        type: integer
+      content:
+        type: string
+      createdAt:
+        type: string
+      fileId:
+        type: integer
+      fileName:
+        description: File information if available
+        type: string
+      fileType:
+        type: string
+      fileUrl:
+        type: string
+      id:
+        type: integer
+      messageType:
+        type: string
+      senderId:
+        type: integer
+      senderName:
+        description: Sender information
+        type: string
+      updatedAt:
         type: string
     type: object
   github_com_yigit_unisphere_internal_app_models_dto.ClassNoteFileResponse:
@@ -109,10 +187,6 @@ definitions:
         type: string
       createdAt:
         type: string
-      files:
-        items:
-          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SimpleCommunityFileResponse'
-        type: array
       id:
         type: integer
       leadId:
@@ -127,6 +201,18 @@ definitions:
         type: string
       updatedAt:
         type: string
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.CreateChatMessageRequest:
+    properties:
+      content:
+        type: string
+      messageType:
+        enum:
+        - TEXT
+        - FILE
+        type: string
+    required:
+    - messageType
     type: object
   github_com_yigit_unisphere_internal_app_models_dto.CreateDepartmentRequest:
     properties:
@@ -447,11 +533,6 @@ definitions:
       id:
         type: integer
     type: object
-  github_com_yigit_unisphere_internal_app_models_dto.SimpleCommunityFileResponse:
-    properties:
-      id:
-        type: integer
-    type: object
   github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse:
     properties:
       message:
@@ -538,6 +619,17 @@ definitions:
     required:
     - firstName
     - lastName
+    type: object
+  github_com_yigit_unisphere_internal_app_models_dto.UserBasicResponse:
+    properties:
+      email:
+        type: string
+      firstName:
+        type: string
+      id:
+        type: integer
+      lastName:
+        type: string
     type: object
   github_com_yigit_unisphere_internal_app_models_dto.UserListResponse:
     properties:
@@ -1564,9 +1656,9 @@ paths:
         name: abbreviation
         required: true
         type: string
-      - description: Community files (can upload multiple)
+      - description: Community profile photo (single image file)
         in: formData
-        name: files
+        name: profilePhoto
         type: file
       produces:
       - application/json
@@ -1733,33 +1825,286 @@ paths:
       summary: Update a community
       tags:
       - communities
-  /communities/{id}/files:
-    post:
+  /communities/{id}/chat:
+    get:
       consumes:
-      - multipart/form-data
-      description: Add one or more files to an existing community
+      - application/json
+      description: Retrieve chat messages for a specific community with pagination
+        and filters
       parameters:
       - description: Community ID
         in: path
         name: id
         required: true
         type: integer
-      - description: Files to upload (can be multiple)
+      - description: Get messages before this timestamp (RFC3339 format)
+        in: query
+        name: before
+        type: string
+      - description: Get messages after this timestamp (RFC3339 format)
+        in: query
+        name: after
+        type: string
+      - default: 50
+        description: 'Maximum number of messages to retrieve (default: 50)'
+        in: query
+        name: limit
+        type: integer
+      - description: Filter messages by sender ID
+        in: query
+        name: senderId
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ChatMessageResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "403":
+          description: 'Forbidden: User is not a participant in the community'
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "404":
+          description: Community not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get community chat messages
+      tags:
+      - chat
+  /communities/{id}/chat/{messageId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a specific chat message (only available to message sender
+        or community lead)
+      parameters:
+      - description: Community ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Message ID
+        in: path
+        name: messageId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "403":
+          description: 'Forbidden: User is not the message sender or community lead'
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "404":
+          description: Message not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a chat message
+      tags:
+      - chat
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific chat message by its ID
+      parameters:
+      - description: Community ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Message ID
+        in: path
+        name: messageId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ChatMessageDetailResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "403":
+          description: 'Forbidden: User is not a participant in the community'
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "404":
+          description: Message not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get chat message by ID
+      tags:
+      - chat
+  /communities/{id}/chat/file:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Send a new file message to a specific community's chat
+      parameters:
+      - description: Community ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Optional message content to accompany the file
         in: formData
-        name: files
+        name: content
+        type: string
+      - description: File to upload (PDF or image)
+        in: formData
+        name: file
         required: true
         type: file
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           schema:
             allOf:
             - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ChatMessageResponse'
               type: object
         "400":
           description: Bad Request
@@ -1779,8 +2124,17 @@ paths:
                 error:
                   $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
               type: object
+        "403":
+          description: 'Forbidden: User is not a participant in the community'
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
         "404":
-          description: Not Found
+          description: Community not found
           schema:
             allOf:
             - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
@@ -1799,36 +2153,37 @@ paths:
               type: object
       security:
       - BearerAuth: []
-      summary: Add files to an existing community
+      summary: Send a file message to a community chat
       tags:
-      - communities
-  /communities/{id}/files/{fileId}:
-    delete:
+      - chat
+  /communities/{id}/chat/text:
+    post:
       consumes:
       - application/json
-      description: Remove a file from a community
+      description: Send a new text message to a specific community's chat
       parameters:
       - description: Community ID
         in: path
         name: id
         required: true
         type: integer
-      - description: File ID
-        in: path
-        name: fileId
+      - description: Message details
+        in: body
+        name: message
         required: true
-        type: integer
+        schema:
+          $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.CreateChatMessageRequest'
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           schema:
             allOf:
             - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.SuccessResponse'
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ChatMessageResponse'
               type: object
         "400":
           description: Bad Request
@@ -1848,8 +2203,17 @@ paths:
                 error:
                   $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
               type: object
+        "403":
+          description: 'Forbidden: User is not a participant in the community'
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorDetail'
+              type: object
         "404":
-          description: Not Found
+          description: Community not found
           schema:
             allOf:
             - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
@@ -1868,9 +2232,50 @@ paths:
               type: object
       security:
       - BearerAuth: []
-      summary: Delete a file from a community
+      summary: Send a text message to a community chat
       tags:
-      - communities
+      - chat
+  /communities/{id}/chat/ws:
+    get:
+      consumes:
+      - application/json
+      description: Upgrades HTTP connection to a WebSocket connection for real-time
+        chat messaging
+      parameters:
+      - description: Community ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "101":
+          description: Switching Protocols to WebSocket
+          schema:
+            type: string
+        "400":
+          description: Invalid community ID
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: 'Forbidden: User is not a participant in the community'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Establish a WebSocket connection for real-time chat
+      tags:
+      - chat
+      - websocket
   /communities/{id}/participants:
     delete:
       consumes:
