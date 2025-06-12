@@ -14,7 +14,6 @@ import (
 )
 
 // CreateDefaultData creates default faculties and departments if they don't exist.
-// Moved from bootstrap package.
 func CreateDefaultData(ctx context.Context, dbPool *pgxpool.Pool, lgr zerolog.Logger) error {
 	facultyRepo := appRepos.NewFacultyRepository(dbPool)
 	departmentRepo := appRepos.NewDepartmentRepository(dbPool)
@@ -23,82 +22,71 @@ func CreateDefaultData(ctx context.Context, dbPool *pgxpool.Pool, lgr zerolog.Lo
 	lgr.Info().Msg("Checking/Creating default data (Faculties/Departments)...")
 	var finalErr error // To collect potential errors without stopping the process
 
-	// --- Engineering Faculty & Departments --- //
-	engineeringFaculty := &appModels.Faculty{Name: "Engineering Faculty", Code: "ENG"}
-	engineeringID, err := facultyRepo.CreateFaculty(ctx, engineeringFaculty)
-	if err != nil && !errors.Is(err, apperrors.ErrFacultyAlreadyExists) {
-		lgr.Error().Err(err).Msg("Error creating engineering faculty")
-		finalErr = errors.Join(finalErr, err)
-	} else if errors.Is(err, apperrors.ErrFacultyAlreadyExists) {
-		// Find existing ID if needed
-		faculties, errGet := facultyRepo.GetAllFaculties(ctx)
-		if errGet == nil {
-			for _, f := range faculties {
-				if f.Code == "ENG" {
-					engineeringID = f.ID
-					break
+	// --- Helper function to create department ---
+	createDept := func(facultyID int64, name, code string) {
+		dept := &appModels.Department{FacultyID: facultyID, Name: name, Code: code}
+		err := departmentRepo.Create(ctx, dept)
+		if err != nil && !errors.Is(err, apperrors.ErrDepartmentAlreadyExists) {
+			lgr.Error().Err(err).Msgf("Error creating department: %s", name)
+			finalErr = errors.Join(finalErr, err)
+		}
+	}
+
+	// --- Helper function to create faculty and get its ID ---
+	createFaculty := func(name, code string) int64 {
+		faculty := &appModels.Faculty{Name: name, Code: code}
+		id, err := facultyRepo.CreateFaculty(ctx, faculty)
+		if err != nil && !errors.Is(err, apperrors.ErrFacultyAlreadyExists) {
+			lgr.Error().Err(err).Msgf("Error creating faculty: %s", name)
+			finalErr = errors.Join(finalErr, err)
+			return 0
+		} else if errors.Is(err, apperrors.ErrFacultyAlreadyExists) {
+			// Find existing ID if it already exists
+			faculties, errGet := facultyRepo.GetAllFaculties(ctx)
+			if errGet == nil {
+				for _, f := range faculties {
+					if f.Code == code {
+						return f.ID
+					}
 				}
+			} else {
+				lgr.Error().Err(errGet).Msgf("Error getting existing faculties to find %s ID", code)
+				finalErr = errors.Join(finalErr, errGet)
 			}
-		} else {
-			lgr.Error().Err(errGet).Msg("Error getting existing faculties to find ENG ID")
-			finalErr = errors.Join(finalErr, errGet)
 		}
+		return id
 	}
 
-	if engineeringID > 0 {
-		// Create Computer Engineering
-		compEngDept := &appModels.Department{FacultyID: engineeringID, Name: "Computer Engineering", Code: "CENG"}
-		err = departmentRepo.Create(ctx, compEngDept)
-		if err != nil && !errors.Is(err, apperrors.ErrDepartmentAlreadyExists) {
-			lgr.Error().Err(err).Msg("Error creating computer engineering department")
-			finalErr = errors.Join(finalErr, err)
-		}
-		// Create Electrical Engineering
-		eeeDept := &appModels.Department{FacultyID: engineeringID, Name: "Electrical Engineering", Code: "EEE"}
-		err = departmentRepo.Create(ctx, eeeDept)
-		if err != nil && !errors.Is(err, apperrors.ErrDepartmentAlreadyExists) {
-			lgr.Error().Err(err).Msg("Error creating electrical engineering department")
-			finalErr = errors.Join(finalErr, err)
-		}
+	// --- Güzel Sanatlar ve Tasarım Fakültesi --- //
+	gstfID := createFaculty("Güzel Sanatlar ve Tasarım Fakültesi", "GSTF")
+	if gstfID > 0 {
+		createDept(gstfID, "Film Tasarım ve Yönetimi (İngilizce)", "FTY")
+		createDept(gstfID, "Yeni Medya ve İletişim (İngilizce)", "YMI")
+		createDept(gstfID, "İç Mimarlık ve Çevre Tasarımı (İngilizce)", "ICM")
 	}
 
-	// --- Science Faculty & Departments --- //
-	scienceFaculty := &appModels.Faculty{Name: "Science Faculty", Code: "SCI"}
-	scienceID, err := facultyRepo.CreateFaculty(ctx, scienceFaculty)
-	if err != nil && !errors.Is(err, apperrors.ErrFacultyAlreadyExists) {
-		lgr.Error().Err(err).Msg("Error creating science faculty")
-		finalErr = errors.Join(finalErr, err)
-	} else if errors.Is(err, apperrors.ErrFacultyAlreadyExists) {
-		// Find existing ID if needed
-		faculties, errGet := facultyRepo.GetAllFaculties(ctx)
-		if errGet == nil {
-			for _, f := range faculties {
-				if f.Code == "SCI" {
-					scienceID = f.ID
-					break
-				}
-			}
-		} else {
-			lgr.Error().Err(errGet).Msg("Error getting existing faculties to find SCI ID")
-			finalErr = errors.Join(finalErr, errGet)
-		}
+	// --- Hukuk Fakültesi --- //
+	createFaculty("Hukuk Fakültesi", "HUKUK") // No departments for this one as per request
+
+	// --- Mühendislik ve Mimarlık Fakültesi --- //
+	mmfID := createFaculty("Mühendislik ve Mimarlık Fakültesi", "MMF")
+	if mmfID > 0 {
+		createDept(mmfID, "Bilgisayar Mühendisliği (İngilizce)", "CENG")
+		createDept(mmfID, "Bilgisayar Mühendisliği (Türkçe)", "CENG_TR")
+		createDept(mmfID, "Bilişim Sistemleri Mühendisliği (İngilizce)", "ISE")
+		createDept(mmfID, "Endüstri Mühendisliği (İngilizce)", "IE")
+		createDept(mmfID, "Elektrik Elektronik Mühendisliği (İngilizce)", "EEE")
+		createDept(mmfID, "Yazılım Mühendisliği (İngilizce)", "SE")
 	}
 
-	if scienceID > 0 {
-		// Create Mathematics
-		mathDept := &appModels.Department{FacultyID: scienceID, Name: "Mathematics", Code: "MATH"}
-		err = departmentRepo.Create(ctx, mathDept)
-		if err != nil && !errors.Is(err, apperrors.ErrDepartmentAlreadyExists) {
-			lgr.Error().Err(err).Msg("Error creating mathematics department")
-			finalErr = errors.Join(finalErr, err)
-		}
-		// Create Physics
-		physDept := &appModels.Department{FacultyID: scienceID, Name: "Physics", Code: "PHYS"}
-		err = departmentRepo.Create(ctx, physDept)
-		if err != nil && !errors.Is(err, apperrors.ErrDepartmentAlreadyExists) {
-			lgr.Error().Err(err).Msg("Error creating physics department")
-			finalErr = errors.Join(finalErr, err)
-		}
+	// --- İnsan ve Toplum Bilimleri Fakültesi --- //
+	itbfID := createFaculty("İnsan ve Toplum Bilimleri Fakültesi", "ITBF")
+	if itbfID > 0 {
+		createDept(itbfID, "Psikoloji", "PSI")
+		createDept(itbfID, "İngilizce Mütercim ve Tercümanlık", "IMT")
+		createDept(itbfID, "İşletme", "ISL")
+		createDept(itbfID, "Yönetim Bilişim Sistemleri", "YBS")
+		createDept(itbfID, "Siyaset Bilimi ve Kamu Yönetimi Bölümü", "SBKY")
 	}
 
 	// --- Create Default Admin User --- //
@@ -119,12 +107,14 @@ func CreateDefaultData(ctx context.Context, dbPool *pgxpool.Pool, lgr zerolog.Lo
 		} else {
 			// Get a department ID for the admin (Computer Engineering if available)
 			var departmentID int64
-			departments, err := departmentRepo.GetByFacultyID(ctx, engineeringID)
-			if err == nil && len(departments) > 0 {
-				for _, dept := range departments {
-					if dept.Code == "CENG" {
-						departmentID = dept.ID
-						break
+			if mmfID > 0 {
+				departments, err := departmentRepo.GetByFacultyID(ctx, mmfID)
+				if err == nil && len(departments) > 0 {
+					for _, dept := range departments {
+						if dept.Code == "CENG" {
+							departmentID = dept.ID
+							break
+						}
 					}
 				}
 			}

@@ -153,6 +153,9 @@ func setupContentRoutes(
 	authenticatedWithEmailVerified := authenticated.Group("")
 	authenticatedWithEmailVerified.Use(authMiddleware.EmailVerificationRequired())
 
+	// Route for the authenticated user to get their communities
+	authenticatedWithEmailVerified.GET("/my-communities", communityController.GetMyCommunities)
+
 	// Faculty protected routes
 	facultiesProtected := authenticatedWithEmailVerified.Group("/faculties")
 	{
@@ -234,7 +237,6 @@ func setupContentRoutes(
 			communitiesAuthProtected.PUT("/:id", communityController.UpdateCommunity)    // Update an existing community
 			communitiesAuthProtected.DELETE("/:id", communityController.DeleteCommunity) // Delete a community
 
-
 			// Profile photo management
 			communitiesAuthProtected.POST("/:id/profile-photo", communityController.UpdateProfilePhoto)   // Update profile photo
 			communitiesAuthProtected.DELETE("/:id/profile-photo", communityController.DeleteProfilePhoto) // Delete profile photo
@@ -244,16 +246,16 @@ func setupContentRoutes(
 			communitiesAuthProtected.POST("/:id/participants", communityController.JoinCommunity)           // Join community
 			communitiesAuthProtected.DELETE("/:id/participants", communityController.LeaveCommunity)        // Leave community
 			communitiesAuthProtected.GET("/:id/participants/check", communityController.IsUserParticipant)  // Check if user is participant
-			
+
 			// Chat routes
-			communitiesAuthProtected.GET("/:id/chat", chatController.GetChatMessages)                      // Get chat messages
-			communitiesAuthProtected.GET("/:id/chat/:messageId", chatController.GetChatMessageByID)        // Get chat message by ID
-			communitiesAuthProtected.POST("/:id/chat/text", chatController.SendTextMessage)                // Send text message
-			communitiesAuthProtected.POST("/:id/chat/file", chatController.SendFileMessage)                // Send file message
-			communitiesAuthProtected.DELETE("/:id/chat/:messageId", chatController.DeleteChatMessage)      // Delete chat message
+			communitiesAuthProtected.GET("/:id/chat", chatController.GetChatMessages)                 // Get chat messages
+			communitiesAuthProtected.GET("/:id/chat/:messageId", chatController.GetChatMessageByID)   // Get chat message by ID
+			communitiesAuthProtected.POST("/:id/chat/text", chatController.SendTextMessage)           // Send text message
+			communitiesAuthProtected.POST("/:id/chat/file", chatController.SendFileMessage)           // Send file message
+			communitiesAuthProtected.DELETE("/:id/chat/:messageId", chatController.DeleteChatMessage) // Delete chat message
 
 			// WebSocket route for real-time chat
-			communitiesAuthProtected.GET("/:id/chat/ws", wsHandler.HandleConnection)                     // WebSocket connection for real-time chat
+			communitiesAuthProtected.GET("/:id/chat/ws", wsHandler.HandleConnection) // WebSocket connection for real-time chat
 		}
 	}
 }

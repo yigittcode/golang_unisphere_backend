@@ -3331,6 +3331,39 @@ paths:
       summary: Get file details
       tags:
       - files
+  /my-communities:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of all communities the authenticated user is a
+        member of.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Communities retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.CommunityResponse'
+                  type: array
+              type: object
+        "401":
+          description: 'Unauthorized: JWT token missing or invalid'
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get my communities
+      tags:
+      - communities
   /past-exams:
     get:
       consumes:

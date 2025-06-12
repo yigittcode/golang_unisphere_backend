@@ -359,3 +359,64 @@ func (r *CommunityRepository) UpdateProfilePhoto(ctx context.Context, communityI
 
 	return nil
 }
+
+// FindCommunitiesByUserID retrieves all communities a user is participating in
+func (r *CommunityRepository) FindCommunitiesByUserID(ctx context.Context, userID int64) ([]models.Community, error) {
+	queryBuilder := squirrel.Select(
+		"c.id", "c.name", "c.abbreviation", "c.lead_id",
+		"c.profile_photo_file_id", "c.created_at", "c.updated_at",
+	).
+		From("communities c").
+		Join("community_participants cp ON c.id = cp.community_id").
+		Where(squirrel.Eq{"cp.user_id": userID}).
+		OrderBy("c.name ASC").
+		PlaceholderFormat(squirrel.Dollar)
+
+	sql, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("error building SQL for finding communities by user ID: %w", err)
+	}
+
+	rows, err := r.db.Query(ctx, sql, args...)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return []models.Community{}, nil
+		}
+		return nil, fmt.Errorf("error executing query to find communities by user ID: %w", err)
+	}
+	defer rows.Close()
+
+	var communities []models.Community
+	for rows.Next() {
+		var comm models.Community
+		err := rows.Scan(
+			&comm.ID,
+			&comm.Name,
+			&comm.Abbreviation,
+			&comm.LeadID,
+			&comm.ProfilePhotoFileID,
+			&comm.CreatedAt,
+			&comm.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning community row: %w", err)
+		}
+
+		if comm.ProfilePhotoFileID != nil {
+			profilePhoto, photoErr := r.getProfilePhoto(ctx, *comm.ProfilePhotoFileID)
+			if photoErr != nil {
+				// Log the error but don't fail the whole operation
+				fmt.Printf("Error getting profile photo for community %d: %v\n", comm.ID, photoErr)
+			} else {
+				comm.ProfilePhoto = profilePhoto
+			}
+		}
+		communities = append(communities, comm)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating community rows: %w", err)
+	}
+
+	return communities, nil
+}

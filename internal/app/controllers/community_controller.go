@@ -650,3 +650,38 @@ func (c *CommunityController) IsUserParticipant(ctx *gin.Context) {
 		"isParticipant": isParticipant,
 	}))
 }
+
+// GetMyCommunities handles retrieving all communities for the authenticated user
+// @Summary Get my communities
+// @Description Retrieves a list of all communities the authenticated user is a member of.
+// @Tags communities
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} dto.APIResponse{data=[]dto.CommunityResponse} "Communities retrieved successfully"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized: JWT token missing or invalid"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Router /my-communities [get]
+func (c *CommunityController) GetMyCommunities(ctx *gin.Context) {
+	// Get current user ID from context (set by auth middleware)
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		middleware.HandleAPIError(ctx, apperrors.ErrTokenInvalid)
+		return
+	}
+
+	userIDInt64, ok := userID.(int64)
+	if !ok {
+		middleware.HandleAPIError(ctx, fmt.Errorf("invalid user ID format in token: %v", userID))
+		return
+	}
+
+	// Get communities from service
+	communities, err := c.communityService.GetMyCommunities(ctx, userIDInt64)
+	if err != nil {
+		middleware.HandleAPIError(ctx, err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, dto.NewSuccessResponse(communities))
+}

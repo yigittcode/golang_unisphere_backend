@@ -4621,6 +4621,61 @@
                 }
             }
         },
+        "/my-communities": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves a list of all communities the authenticated user is a member of.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "communities"
+                ],
+                "summary": "Get my communities",
+                "responses": {
+                    "200": {
+                        "description": "Communities retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.CommunityResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized: JWT token missing or invalid",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_yigit_unisphere_internal_app_models_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/past-exams": {
             "get": {
                 "security": [

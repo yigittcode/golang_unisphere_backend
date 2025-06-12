@@ -80,6 +80,42 @@ func (r *CommunityParticipantRepository) GetParticipantCountByCommunityID(ctx co
 	return count, nil
 }
 
+// GetParticipantCountsByCommunityIDs retrieves the number of participants for multiple communities
+func (r *CommunityParticipantRepository) GetParticipantCountsByCommunityIDs(ctx context.Context, communityIDs []int64) (map[int64]int, error) {
+	if len(communityIDs) == 0 {
+		return make(map[int64]int), nil
+	}
+
+	query := squirrel.Select("community_id", "COUNT(*)").
+		From("community_participants").
+		Where(squirrel.Eq{"community_id": communityIDs}).
+		GroupBy("community_id").
+		PlaceholderFormat(squirrel.Dollar)
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("error building SQL: %w", err)
+	}
+
+	rows, err := r.db.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, fmt.Errorf("error executing query: %w", err)
+	}
+	defer rows.Close()
+
+	counts := make(map[int64]int)
+	for rows.Next() {
+		var communityID int64
+		var count int
+		if err := rows.Scan(&communityID, &count); err != nil {
+			return nil, fmt.Errorf("error scanning row: %w", err)
+		}
+		counts[communityID] = count
+	}
+
+	return counts, nil
+}
+
 // GetCommunitiesByUserID retrieves all communities a user is participating in
 func (r *CommunityParticipantRepository) GetCommunitiesByUserID(ctx context.Context, userID int64) ([]int64, error) {
 	query := squirrel.Select("community_id").

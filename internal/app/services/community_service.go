@@ -30,6 +30,7 @@ type CommunityService interface {
 	LeaveCommunity(ctx context.Context, communityID int64, userID int64) error
 	GetCommunityParticipants(ctx context.Context, communityID int64) ([]dto.CommunityParticipantResponse, error)
 	IsUserParticipant(ctx context.Context, communityID int64, userID int64) (bool, error)
+	GetMyCommunities(ctx context.Context, userID int64) ([]dto.CommunityResponse, error)
 }
 
 // communityServiceImpl implements CommunityService
@@ -104,7 +105,6 @@ func (s *communityServiceImpl) GetAllCommunities(ctx context.Context, filter *dt
 		if community.ProfilePhoto != nil {
 			profilePhotoURL = &community.ProfilePhoto.FileURL
 		}
-
 
 		communityResponses = append(communityResponses, dto.CommunityResponse{
 			ID:                 community.ID,
@@ -268,7 +268,7 @@ func (s *communityServiceImpl) CreateCommunity(ctx context.Context, req *dto.Cre
 	// Process profile photo if provided
 	var profilePhotoFileID *int64
 	var profilePhotoURL *string
-	
+
 	if profilePhoto != nil {
 		s.logger.Info().
 			Str("filename", profilePhoto.Filename).
@@ -960,6 +960,64 @@ func (s *communityServiceImpl) IsUserParticipant(ctx context.Context, communityI
 	}
 
 	return isParticipant, nil
+}
+
+// GetMyCommunities retrieves all communities a user is a member of
+func (s *communityServiceImpl) GetMyCommunities(ctx context.Context, userID int64) ([]dto.CommunityResponse, error) {
+	s.logger.Debug().Int64("userID", userID).Msg("Getting communities for user")
+
+	// Get communities user is a member of
+	communities, err := s.communityRepo.FindCommunitiesByUserID(ctx, userID)
+	if err != nil {
+		s.logger.Error().Err(err).Int64("userID", userID).Msg("Failed to get communities for user")
+		return nil, fmt.Errorf("error getting communities for user: %w", err)
+	}
+
+	if len(communities) == 0 {
+		return []dto.CommunityResponse{}, nil
+	}
+
+	// Get community IDs
+	communityIDs := make([]int64, len(communities))
+	for i, c := range communities {
+		communityIDs[i] = c.ID
+	}
+
+	// Get participant counts for all communities in one query
+	participantCounts, err := s.communityParticipantRepo.GetParticipantCountsByCommunityIDs(ctx, communityIDs)
+	if err != nil {
+		s.logger.Error().Err(err).Interface("communityIDs", communityIDs).Msg("Failed to get participant counts for communities")
+		// Continue without counts, or return an error? Let's continue and default to 0.
+		participantCounts = make(map[int64]int) // initialize to empty map to avoid nil pointer
+	}
+
+	// Map to response DTOs
+	communityResponses := make([]dto.CommunityResponse, len(communities))
+	for i, community := range communities {
+		var profilePhotoURL *string
+		if community.ProfilePhoto != nil {
+			profilePhotoURL = &community.ProfilePhoto.FileURL
+		}
+
+		count, ok := participantCounts[community.ID]
+		if !ok {
+			count = 0 // Should not happen if query is correct, but as a safeguard
+		}
+
+		communityResponses[i] = dto.CommunityResponse{
+			ID:                 community.ID,
+			Name:               community.Name,
+			Abbreviation:       community.Abbreviation,
+			LeadID:             community.LeadID,
+			ProfilePhotoFileID: community.ProfilePhotoFileID,
+			ProfilePhotoURL:    profilePhotoURL,
+			ParticipantCount:   count,
+			CreatedAt:          community.CreatedAt,
+			UpdatedAt:          community.UpdatedAt,
+		}
+	}
+
+	return communityResponses, nil
 }
 
 // Helper method to upload a file
