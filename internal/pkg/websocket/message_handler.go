@@ -58,6 +58,15 @@ func (h *MessageHandler) processMessages() {
 
 // processTextMessage saves a text message to the database
 func (h *MessageHandler) processTextMessage(message *Message) {
+	// Skip if message already has an ID (already saved by HTTP service)
+	if message.ID > 0 {
+		h.logger.Debug().
+			Int64("messageID", message.ID).
+			Int64("communityID", message.CommunityID).
+			Msg("Skipping database save - message already persisted")
+		return
+	}
+	
 	// Create a context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

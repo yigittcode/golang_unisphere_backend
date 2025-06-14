@@ -32,7 +32,7 @@ type chatServiceImpl struct {
 	userRepo                 *repositories.UserRepository
 	fileRepo                 *repositories.FileRepository
 	fileStorage              *filestorage.LocalStorage
-	wsHub                    *websocket.Hub // WebSocket hub for real-time messaging
+	wsHub                    *websocket.Hub 
 	logger                   zerolog.Logger
 }
 
